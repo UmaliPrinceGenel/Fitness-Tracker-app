@@ -1,6 +1,6 @@
 {
-    "name": "fitness_tracker_app",
-    "short_name": "fitness_tracker_app",
+    "name": "rockies_fitness_app",
+    "short_name": "rockies_fitness_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
