@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/semi_circle_progress.dart';
+import 'detail_screen.dart';
 import 'dart:math' as math;
 
 class HealthDashboard extends StatelessWidget {
@@ -17,7 +18,10 @@ class HealthDashboard extends StatelessWidget {
           selectedItemColor: Colors.orange,
           unselectedItemColor: Colors.grey,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.circle), label: "Health"),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite),
+              label: "Health",
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.directions_run),
               label: "Workout",
@@ -209,11 +213,11 @@ class HealthDashboard extends StatelessWidget {
                     childAspectRatio: 0.89, // Increase card height
                     children: [
                       const _InfoCard(
-                        title: "Sleep",
-                        subtitle: "7 hrs 40 mins\n12 September | Good",
-                        progressText: "Excellent",
-                        icon: Icons.bedtime,
-                        iconColor: Colors.purple,
+                        title: "Body Fat %",
+                        subtitle: "22.5%\n12 September | Normal",
+                        progressText: "Healthy",
+                        icon: Icons.opacity,
+                        iconColor: Colors.blue,
                       ),
                       const _InfoCard(
                         title: "Weight",
@@ -333,35 +337,44 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: const Color(0xFF191919),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: iconColor ?? Colors.white, size: 28),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+    return GestureDetector(
+      onTap: () {
+        // Navigate to detail screen based on card type
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DetailScreen(title: title)),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: iconColor ?? Colors.white, size: 28),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const Spacer(),
-            Text(
-              progressText,
-              style: const TextStyle(color: Colors.greenAccent, fontSize: 12),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const Spacer(),
+              Text(
+                progressText,
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );
