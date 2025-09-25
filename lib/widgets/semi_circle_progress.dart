@@ -56,8 +56,8 @@ class _SemiCirclePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.butt;
 
-    // Calories background (darker orange)
-    backgroundPaint.color = Colors.orange.withOpacity(0.3);
+    // Calories background (darker red-orange)
+    backgroundPaint.color = Colors.deepOrange.withOpacity(0.3);
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       math.pi, // Start at 180 degrees (π radians)
@@ -66,8 +66,8 @@ class _SemiCirclePainter extends CustomPainter {
       backgroundPaint,
     );
 
-    // Steps background (darker yellow) with gap
-    backgroundPaint.color = Colors.yellow.withOpacity(0.3);
+    // Steps background (darker yellow-orange) with gap
+    backgroundPaint.color = Colors.amber.withOpacity(0.3);
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius - strokeWidth - gap),
       math.pi, // Start at 180 degrees (π radians)
@@ -87,25 +87,25 @@ class _SemiCirclePainter extends CustomPainter {
     );
 
     // Draw progress arcs (lighter colors for progress) with straight ends
-    // Calories progress (lighter orange)
+    // Calories progress (lighter red-orange)
     _drawCustomProgressArc(
       canvas,
       center,
       radius,
       math.pi,
       caloriesSweep,
-      Colors.orange,
+      Colors.deepOrange,
       strokeWidth,
     );
 
-    // Steps progress (lighter yellow) with gap
+    // Steps progress (lighter yellow-orange) with gap
     _drawCustomProgressArc(
       canvas,
       center,
       radius - strokeWidth - gap,
       math.pi,
       stepsSweep,
-      Colors.yellow,
+      Colors.amber,
       strokeWidth,
     );
 

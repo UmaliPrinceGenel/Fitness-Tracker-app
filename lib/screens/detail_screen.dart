@@ -67,63 +67,65 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
               overflow: TextOverflow.ellipsis,
             ),
-            GestureDetector(
-              onTap: () async {
-                DateTime? pickedDate = await showDatePicker(
-                  context: context,
-                  initialDate: DateFormat('yyyy-MM-dd').parse(selectedDate),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2101),
-                );
-                if (pickedDate != null) {
-                  setState(() {
-                    selectedDate = DateFormat('yyyy-MM-dd').format(pickedDate);
-                  });
-                }
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Display either single date or date range based on current tab
-                  if (widget.title == "Weight" && _currentIndex == 1) ...[
-                    // Trend tab - show date range
-                    Text(
-                      _getFormattedDateRange(),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
+            // Only show date picker for Weight screen and non-BMI screens
+            if (widget.title != "BMI") ...[
+              GestureDetector(
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateFormat('yyyy-MM-dd').parse(selectedDate),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2101),
+                  );
+                  if (pickedDate != null) {
+                    setState(() {
+                      selectedDate = DateFormat(
+                        'yyyy-MM-dd',
+                      ).format(pickedDate);
+                    });
+                  }
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Display either single date or date range based on current tab
+                    if (widget.title == "Weight" && _currentIndex == 1) ...[
+                      // Trend tab - show date range
+                      Text(
+                        _getFormattedDateRange(),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
-                  ] else ...[
-                    // Latest tab or other screens - show single date
-                    Text(
-                      formattedDate,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
+                    ] else ...[
+                      // Latest tab or other screens - show single date
+                      Text(
+                        formattedDate,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                       ),
+                    ],
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      color: Colors.white70,
+                      size: 16,
                     ),
                   ],
-                  const Icon(
-                    Icons.arrow_drop_down,
-                    color: Colors.white70,
-                    size: 16,
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
         centerTitle: true,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            color: Colors.grey[800], // Grey background for popup menu
-            onSelected: (String result) {
-              // Handle menu item selection
-              if (result == 'all_data') {
-                // Handle "All data" selection
-              } else if (result == 'add_data') {
+          if (widget.title == "Body Fat %") ...[
+            // Plus button for Body Fat % page
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.white),
+              onPressed: () {
                 // Navigate to Add Data screen
                 Navigator.push(
                   context,
@@ -131,25 +133,45 @@ class _DetailScreenState extends State<DetailScreen> {
                     builder: (context) => AddDataScreen(title: widget.title),
                   ),
                 );
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'all_data',
-                child: Text(
-                  'All data',
-                  style: TextStyle(color: Colors.white), // White text
+              },
+            ),
+          ] else ...[
+            // Original popup menu for other pages
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              color: Colors.grey[800], // Grey background for popup menu
+              onSelected: (String result) {
+                // Handle menu item selection
+                if (result == 'all_data') {
+                  // Handle "All data" selection
+                } else if (result == 'add_data') {
+                  // Navigate to Add Data screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddDataScreen(title: widget.title),
+                    ),
+                  );
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'all_data',
+                  child: Text(
+                    'All data',
+                    style: TextStyle(color: Colors.white), // White text
+                  ),
                 ),
-              ),
-              PopupMenuItem<String>(
-                value: 'add_data',
-                child: Text(
-                  'Add data',
-                  style: TextStyle(color: Colors.white), // White text
+                PopupMenuItem<String>(
+                  value: 'add_data',
+                  child: Text(
+                    'Add data',
+                    style: TextStyle(color: Colors.white), // White text
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
       body: SafeArea(
@@ -346,7 +368,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           const Divider(
                             color: Colors.white38,
                             height: 1,
-                            thickness: 0.5,
+                            thickness: 0.2,
                           ),
                           const SizedBox(height: 10),
                           Row(
@@ -599,6 +621,128 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   ),
                 ],
+              ] else if (widget.title == "BMI") ...[
+                // BMI Card - Redesigned UI
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // BMI Value and Level with separator
+                        Row(
+                          children: [
+                            // BMI Number - Top Left
+                            Text(
+                              _getCurrentValue(), // This will show the BMI value like "22.0"
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Vertical Line Separator
+                            Container(
+                              width: 1,
+                              height: 30,
+                              color: Colors.white38,
+                            ),
+                            const SizedBox(width: 12),
+                            // Level - Top Right
+                            Text(
+                              _getBMILevelFromValue(), // This will show the level like "Normal"
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // 4-color horizontal representation of BMI levels
+                        Container(
+                          height: 30,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            gradient: const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                Colors.blue, // Low BMI (< 18.5)
+                                Colors.green, // Normal BMI (18.5-24.9)
+                                Colors.orange, // High BMI (25.0-29.9)
+                                Colors.deepOrange, // Very High BMI (≥ 30.0)
+                              ],
+                              stops: [
+                                0.24, // End of Low range
+                                0.49, // End of Normal range
+                                0.74, // End of High range
+                                1.0, // End of Very High range
+                              ], // Stops for the color transitions
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // BMI Scale Labels
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: const [
+                            Text(
+                              "Low",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              "Normal",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              "High",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              "Very High",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Recommendation text
+                        Text(
+                          _getBMIRecommendation(),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ] else ...[
                 // Graph placeholder (in a real app, you would use a charting library like fl_chart)
                 Container(
@@ -635,38 +779,90 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Summary section
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Summary",
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                // History section for Body Fat % page
+                if (widget.title == "Body Fat %") ...[
+                  // History card
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // History title in blue color
+                          Text(
+                            "History",
+                            style: TextStyle(
+                              color: Colors.blue, // Blue color for label
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildSummaryItem("Current Value", _getCurrentValue()),
-                        const SizedBox(height: 8),
-                        _buildSummaryItem("7-Day Average", _getAverageValue()),
-                        const SizedBox(height: 8),
-                        _buildSummaryItem("Trend", _getTrend()),
-                        const SizedBox(height: 8),
-                        _buildSummaryItem("Goal", _getGoal()),
-                      ],
+                          const SizedBox(height: 10),
+                          const Divider(
+                            color: Colors.white38,
+                            height: 1,
+                            thickness: 0.5,
+                          ),
+                          const SizedBox(height: 15),
+
+                          // History items - sample data
+                          _buildHistoryItem("2025-09-20", "10:30 AM", "22.5%"),
+                          const SizedBox(height: 15),
+                          _buildHistoryItem("2025-09-15", "09:15 AM", "23.1%"),
+                          const SizedBox(height: 15),
+                          _buildHistoryItem("2025-09-10", "11:45 AM", "23.8%"),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                ],
+
+                // Summary section for non-Body Fat % and non-BMI pages
+                if (widget.title != "Body Fat %") ...[
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Summary",
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _buildSummaryItem(
+                            "Current Value",
+                            _getCurrentValue(),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSummaryItem(
+                            "7-Day Average",
+                            _getAverageValue(),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSummaryItem("Trend", _getTrend()),
+                          const SizedBox(height: 8),
+                          _buildSummaryItem("Goal", _getGoal()),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -696,6 +892,53 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // Build history item for Body Fat % page
+  Widget _buildHistoryItem(String date, String time, String percentage) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white38, width: 0.5)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left side: Date and time
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date in big font
+              Text(
+                DateFormat(
+                  'MMMM d, yyyy',
+                ).format(DateFormat('yyyy-MM-dd').parse(date)),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Time below date
+              Text(
+                time,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+          // Right side: Percentage in big font
+          Text(
+            percentage,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -935,5 +1178,40 @@ class _DetailScreenState extends State<DetailScreen> {
         ),
       ],
     );
+  }
+
+  // Helper method to get BMI level from the value
+  String _getBMILevelFromValue() {
+    String bmiValueStr = _getCurrentValue();
+    double bmiValue =
+        double.tryParse(bmiValueStr) ?? 22.0; // Default to 2.0 if parsing fails
+
+    if (bmiValue < 18.5) {
+      return "Low";
+    } else if (bmiValue >= 18.5 && bmiValue <= 24.9) {
+      return "Normal";
+    } else if (bmiValue >= 25.0 && bmiValue <= 29.9) {
+      return "High";
+    } else {
+      return "Very High";
+    }
+  }
+
+  // Helper method to get BMI recommendation based on the value
+  String _getBMIRecommendation() {
+    String bmiValueStr = _getCurrentValue();
+    double bmiValue =
+        double.tryParse(bmiValueStr) ??
+        22.0; // Default to 22.0 if parsing fails
+
+    if (bmiValue < 18.5) {
+      return "BMI is low. Consider consulting a healthcare professional to develop a healthy eating plan.";
+    } else if (bmiValue >= 18.5 && bmiValue <= 24.9) {
+      return "BMI is normal. Keep eating healthy and exercise regularly to avoid the accumulation of abdominal fat.";
+    } else if (bmiValue >= 25.0 && bmiValue <= 29.9) {
+      return "BMI is high. Consider incorporating more physical activity and a balanced diet to maintain a healthy weight.";
+    } else {
+      return "BMI is very high. It's recommended to consult with a healthcare professional for guidance on weight management.";
+    }
   }
 }

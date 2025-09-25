@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import '../widgets/semi_circle_progress.dart';
 import 'detail_screen.dart';
+import 'my_profile.dart'; // Import the new profile page
 import 'dart:math' as math;
 
-class HealthDashboard extends StatelessWidget {
+class HealthDashboard extends StatefulWidget {
   const HealthDashboard({super.key});
+
+  @override
+  State<HealthDashboard> createState() => _HealthDashboardState();
+}
+
+class _HealthDashboardState extends State<HealthDashboard> {
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +31,8 @@ class HealthDashboard extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
           selectedItemColor: Colors.orange,
           unselectedItemColor: Colors.grey,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.favorite),
@@ -35,221 +51,491 @@ class HealthDashboard extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Sticky header with "Health" text and "+" button
-            SliverAppBar(
-              backgroundColor: Colors.black,
-              expandedHeight:
-                  60, // <-- HEIGHT OF HEADER CONTAINER (Change this value to adjust height)
-              floating: false,
-              pinned: true,
-              automaticallyImplyLeading:
-                  false, // Prevents automatic back button
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(
-                      left: 10,
-                      top: 30, // <-- ADJUST TOP PADDING TO LOWER "Health" TEXT
-                    ), // Move "Health" slightly to the right and lower it
-                    child: Text(
-                      "Health",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: 30, // <-- ADJUST TOP PADDING TO LOWER "+" BUTTON
-                    ),
-                    child: PopupMenuButton<String>(
-                      icon: const Icon(
-                        Icons.add_circle_outline,
-                        color: Colors.white,
-                      ),
-                      color: Colors.grey[800], // Gray background for dropdown
-                      onSelected: (String result) {
-                        // Handle menu item selection
-                      },
-                      itemBuilder: (BuildContext context) =>
-                          <PopupMenuEntry<String>>[
-                            const PopupMenuItem<String>(
-                              value: 'add',
-                              child: Text(
-                                'Add',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                ), // White text
-                              ),
-                            ),
-                          ],
-                    ),
-                  ),
-                ],
-              ),
-              centerTitle: false,
-            ),
-            // Scrollable content
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 10),
-
-                  // Progress arc
-                  Center(
-                    child: Transform.translate(
-                      offset: const Offset(
-                        0,
-                        -20, // Adjust this value to move the semi-circle higher or lower
-                      ), // Move semi-circle higher
-                      child: SemiCircleProgress(
-                        caloriesPercent: 80.8, // 485/600
-                        stepsPercent: 62.3, // 4360/7000
-                        movingPercent: 15.0, // 9/60
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 5), // Reduced space below semi-circle
-                  // Activity summary card
-                  SizedBox(
-                    width: double.infinity,
-                    height: 195, // Fixed height for the card
-                    child: Card(
-                      color: const Color(0xFF191919),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12), // Reduced padding
-                        child: Column(
-                          children: [
-                            const SizedBox(
-                              height: 8,
-                            ), // Symmetrical top padding
-                            // Horizontal row of activity metrics with adjusted spacing
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _MetricItem(
-                                  icon: Icons.local_fire_department,
-                                  iconColor: Colors.orange,
-                                  label: "Calories",
-                                  value: "485",
-                                  goal: "/600 kcal",
-                                ),
-                                const SizedBox(width: 12), // Reduced spacing
-                                _MetricItem(
-                                  icon: Icons.directions_walk,
-                                  iconColor: Colors.yellow,
-                                  label: "Steps",
-                                  value: "4360",
-                                  goal: "/7000 steps",
-                                ),
-                                const SizedBox(width: 12), // Reduced spacing
-                                _MetricItem(
-                                  icon: Icons.directions_run,
-                                  iconColor: Colors.blue,
-                                  label: "Moving",
-                                  value: "9",
-                                  goal: "/60 mins",
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 16,
-                            ), // Adjusted divider spacing
-                            const Divider(
-                              color: Colors.grey,
-                              height: 16,
-                              thickness: 0.2,
-                            ),
-                            const SizedBox(height: 8), // Symmetrical spacing
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.accessibility,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    "Standing: 7 hrs",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(
-                              height: 8,
-                            ), // Symmetrical bottom padding
-                          ],
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            // Health page content
+            CustomScrollView(
+              slivers: [
+                // Sticky header with "Health" text and "+" button
+                SliverAppBar(
+                  backgroundColor: Colors.black,
+                  expandedHeight:
+                      60, // <-- HEIGHT OF HEADER CONTAINER (Change this value to adjust height)
+                  floating: false,
+                  pinned: true,
+                  automaticallyImplyLeading:
+                      false, // Prevents automatic back button
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(
+                          left: 10,
+                          top:
+                              30, // <-- ADJUST TOP PADDING TO LOWER "Health" TEXT
+                        ), // Move "Health" slightly to the right and lower it
+                        child: Text(
+                          "Health",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(
-                    height: 5,
-                  ), // Reduced space below Activity Summary Card
-                  // Grid for cards (Sleep, Weight, BMI) with enlarged cards
-                  GridView.count(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 2, // Increased spacing between columns
-                    mainAxisSpacing: 2, // Increased spacing between rows
-                    childAspectRatio: 0.89, // Increase card height
-                    children: [
-                      const _InfoCard(
-                        title: "Body Fat %",
-                        subtitle: "22.5%\n12 September | Normal",
-                        progressText: "Healthy",
-                        icon: Icons.opacity,
-                        iconColor: Colors.blue,
-                      ),
-                      const _InfoCard(
-                        title: "Weight",
-                        subtitle: "60.00 kg\n9/12 21:11",
-                        progressText: "13/09",
-                        icon: Icons.monitor_weight,
-                        iconColor: Colors.green,
-                      ),
-                      const _InfoCard(
-                        title: "BMI",
-                        subtitle: "80.0",
-                        progressText: "",
-                        icon: Icons.calculate,
-                        iconColor: Colors.blue,
-                      ),
-                      const _InfoCard(
-                        title: "Vitality Score",
-                        subtitle: "80.0",
-                        progressText: "",
-                        icon: Icons.favorite, // Heart icon for vitality
-                        iconColor: Colors.red,
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: 30, // <-- ADJUST TOP PADDING TO LOWER "+" BUTTON
+                        ),
+                        child: PopupMenuButton<String>(
+                          icon: const Icon(
+                            Icons.add_circle_outline,
+                            color: Colors.white,
+                          ),
+                          color:
+                              Colors.grey[800], // Gray background for dropdown
+                          onSelected: (String result) {
+                            // Handle menu item selection
+                          },
+                          itemBuilder: (BuildContext context) =>
+                              <PopupMenuEntry<String>>[
+                                const PopupMenuItem<String>(
+                                  value: 'add',
+                                  child: Text(
+                                    'Add',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ), // White text
+                                  ),
+                                ),
+                              ],
+                        ),
                       ),
                     ],
                   ),
-                ]),
+                  centerTitle: false,
+                ),
+                // Scrollable content
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      const SizedBox(height: 10),
+
+                      // Progress arc
+                      Center(
+                        child: Transform.translate(
+                          offset: const Offset(
+                            0,
+                            -20, // Adjust this value to move the semi-circle higher or lower
+                          ), // Move semi-circle higher
+                          child: SemiCircleProgress(
+                            caloriesPercent: 80.8, // 485/600
+                            stepsPercent: 62.3, // 4360/7000
+                            movingPercent: 15.0, // 9/60
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 5,
+                      ), // Reduced space below semi-circle
+                      // Activity summary card
+                      SizedBox(
+                        width: double.infinity,
+                        height: 195, // Fixed height for the card
+                        child: Card(
+                          color: const Color(0xFF191919),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(
+                              12,
+                            ), // Reduced padding
+                            child: Column(
+                              children: [
+                                const SizedBox(
+                                  height: 8,
+                                ), // Symmetrical top padding
+                                // Horizontal row of activity metrics with adjusted spacing
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _MetricItem(
+                                      icon: Icons.local_fire_department,
+                                      iconColor: Colors.deepOrange,
+                                      label: "Calories",
+                                      value: "485",
+                                      goal: "/600 kcal",
+                                    ),
+                                    const SizedBox(
+                                      width: 12,
+                                    ), // Reduced spacing
+                                    _MetricItem(
+                                      icon: Icons.directions_walk,
+                                      iconColor: Colors.amber,
+                                      label: "Steps",
+                                      value: "4360",
+                                      goal: "/7000 steps",
+                                    ),
+                                    const SizedBox(
+                                      width: 12,
+                                    ), // Reduced spacing
+                                    _MetricItem(
+                                      icon: Icons.directions_run,
+                                      iconColor: Colors.blue,
+                                      label: "Moving",
+                                      value: "9",
+                                      goal: "/60 mins",
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 16,
+                                ), // Adjusted divider spacing
+                                const Divider(
+                                  color: Colors.grey,
+                                  height: 16,
+                                  thickness: 0.2,
+                                ),
+                                const SizedBox(
+                                  height: 8,
+                                ), // Symmetrical spacing
+                                const Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.accessibility,
+                                        color: Colors.green,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Standing: 7 hrs",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 8,
+                                ), // Symmetrical bottom padding
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 5,
+                      ), // Reduced space below Activity Summary Card
+                      // Grid for cards (Sleep, Weight, BMI) with enlarged cards
+                      GridView.count(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        crossAxisCount: 2,
+                        crossAxisSpacing:
+                            2, // Increased spacing between columns
+                        mainAxisSpacing: 2, // Increased spacing between rows
+                        childAspectRatio: 0.8, // Increase card height
+                        children: [
+                          const _BodyFatCard(),
+                          const _WeightCard(),
+                          const _BMICard(),
+                          const _InfoCard(
+                            title: "Vitality Score",
+                            subtitle: "80.0",
+                            progressText: "",
+                            icon: Icons.favorite, // Heart icon for vitality
+                            iconColor: Colors.red,
+                          ),
+                        ],
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+            // Placeholder for Workout page
+            const Center(
+              child: Text(
+                "Workout Page",
+                style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
+            // Placeholder for Community page
+            const Center(
+              child: Text(
+                "Community Page",
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
+            // MyProfile page
+            const MyProfile(),
           ],
         ),
       ),
     );
   }
+}
+
+class _BodyFatCard extends StatelessWidget {
+  const _BodyFatCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to detail screen for Body Fat
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(title: "Body Fat %"),
+          ),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.opacity, color: Colors.blue, size: 28),
+              const SizedBox(height: 6),
+              Text(
+                "Body Fat %",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16, // Reduced font size
+                ),
+              ),
+              // Larger font for the percentage value (no space between label and number)
+              Text(
+                "22.5%", // Latest data
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24, // Increased font size
+                ),
+              ),
+              // Time display below the number
+              Text(
+                "Updated 9:30 AM", // Last updated time
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const Spacer(), // Add flexible space to push graph down
+              // Small line graph with background (no rounded corners)
+              Container(
+                height: 40, // Height for the graph
+                decoration: BoxDecoration(
+                  color: Colors.grey[800], // Dark background for the graph
+                ),
+                child: CustomPaint(
+                  painter: LineChartPainter(),
+                  size: Size(double.infinity, 40),
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Date labels below the graph (only first and last)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "9/10",
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                  Text(
+                    "9/20",
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Custom painter for the line chart
+class LineChartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    // Sample data points for body fat percentage over time
+    // Values: [9/10: 23.8%, 9/20: 22.5%]
+    List<double> values = [23.8, 22.5];
+    double minValue = 2.0;
+    double maxValue = 24.0;
+
+    double xStep = size.width / (values.length - 1);
+
+    List<Offset> points = [];
+    for (int i = 0; i < values.length; i++) {
+      double x = i * xStep;
+      // Invert y-axis (0,0 is top-left in Flutter)
+      double y =
+          size.height -
+          ((values[i] - minValue) / (maxValue - minValue)) * size.height;
+      points.add(Offset(x, y));
+    }
+
+    // Draw the line connecting the points
+    if (points.length > 1) {
+      for (int i = 0; i < points.length - 1; i++) {
+        canvas.drawLine(points[i], points[i + 1], paint);
+      }
+    }
+
+    // Draw the data points
+    for (Offset point in points) {
+      canvas.drawCircle(point, 3, paint..color = Colors.blue);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _WeightCard extends StatelessWidget {
+  const _WeightCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to detail screen for Weight
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(title: "Weight"),
+          ),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.monitor_weight, color: Colors.green, size: 28),
+              const SizedBox(height: 6),
+              Text(
+                "Weight",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16, // Reduced font size
+                ),
+              ),
+              // Larger font for the weight value (no space between label and number)
+              Text(
+                "60.0 kg", // Latest data
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24, // Increased font size
+                ),
+              ),
+              // Time display below the number
+              Text(
+                "Updated 9:30 AM", // Last updated time
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const Spacer(), // Add flexible space to push graph down
+              // Small line graph with background (no rounded corners)
+              Container(
+                height: 40, // Height for the graph
+                decoration: BoxDecoration(
+                  color: Colors.grey[800], // Dark background for the graph
+                ),
+                child: CustomPaint(
+                  painter: WeightLineChartPainter(),
+                  size: Size(double.infinity, 40),
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Date labels below the graph (only first and last)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "9/10",
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                  Text(
+                    "9/20",
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Custom painter for the weight line chart
+class WeightLineChartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.green
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    // Sample data points for weight over time
+    // Values: [9/10: 61.2 kg, 9/20: 60.0 kg]
+    List<double> values = [61.2, 60.0];
+    double minValue = 59.0;
+    double maxValue = 62.0;
+
+    double xStep = size.width / (values.length - 1);
+
+    List<Offset> points = [];
+    for (int i = 0; i < values.length; i++) {
+      double x = i * xStep;
+      // Invert y-axis (0,0 is top-left in Flutter)
+      double y =
+          size.height -
+          ((values[i] - minValue) / (maxValue - minValue)) * size.height;
+      points.add(Offset(x, y));
+    }
+
+    // Draw the line connecting the points
+    if (points.length > 1) {
+      for (int i = 0; i < points.length - 1; i++) {
+        canvas.drawLine(points[i], points[i + 1], paint);
+      }
+    }
+
+    // Draw the data points
+    for (Offset point in points) {
+      canvas.drawCircle(point, 3, paint..color = Colors.green);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
 // ---------------- Reusable Widgets ---------------- //
@@ -290,11 +576,11 @@ class _MetricItem extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(width: 8), // Fixed width instead of Spacer
+            const SizedBox(width: 4), // Reduced width instead of Spacer
             const Icon(
               Icons.arrow_forward_ios,
-              color: Colors.white70,
-              size: 16,
+              color: Colors.grey,
+              size: 12, // Reduced size from 16 to 12
             ),
           ],
         ),
@@ -378,5 +664,181 @@ class _InfoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _BMICard extends StatelessWidget {
+  const _BMICard();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to detail screen for BMI
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DetailScreen(title: "BMI")),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.monitor_heart,
+                color: Colors.orange,
+                size: 28,
+              ), // Changed icon color to orange
+              const SizedBox(height: 10),
+              Text(
+                "BMI",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "22.0", // BMI value
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24, // Larger font size for the value
+                ),
+              ),
+              const SizedBox(height: 4), // Small space above "Normal" text
+              Text(
+                "Normal", // BMI category
+                style: const TextStyle(
+                  color: Colors.green, // Green color for normal range
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(), // Add flexible space to push graph down
+              // BMI Color Graph - Segmented Bar
+              Row(
+                children: [
+                  // Low BMI - Blue with rounded left corner
+                  Expanded(
+                    flex: 24, // Represents the range 0-24% for low BMI range
+                    child: Container(
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(10), // Rounded left corner
+                          right: Radius.circular(
+                            2,
+                          ), // Slightly rounded right corner
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 2), // Small space between segments
+                  // Normal BMI - Green
+                  Expanded(
+                    flex:
+                        25, // Represents the range 25-49% for normal BMI range
+                    child: Container(
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(
+                          2,
+                        ), // Slightly rounded
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 2), // Small space between segments
+                  // High BMI - Orange
+                  Expanded(
+                    flex: 25, // Represents the range 50-74% for high BMI range
+                    child: Container(
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(
+                          2,
+                        ), // Slightly rounded
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 2), // Small space between segments
+                  // Very High BMI - Deep Orange with rounded right corner
+                  Expanded(
+                    flex:
+                        26, // Represents the range 75-100% for very high BMI range
+                    child: Container(
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange,
+                        borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(
+                            2,
+                          ), // Slightly rounded left corner
+                          right: Radius.circular(10), // Rounded right corner
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Arrow indicator for current BMI position
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Calculate position based on BMI value (assuming 22.0 for this example)
+                  // BMI range is 0 to 40, so normalize to 0-1 range
+                  double bmiValue =
+                      22.0; // This would come from actual data in a real app
+                  double normalizedPosition =
+                      bmiValue / 40.0; // Normalize to 0-1 range
+                  if (normalizedPosition > 1.0) normalizedPosition = 1.0;
+
+                  return Stack(
+                    children: [
+                      Container(height: 20), // Placeholder for arrow
+                      Positioned(
+                        left: normalizedPosition * constraints.maxWidth,
+                        child: Transform.translate(
+                          offset: const Offset(
+                            -10,
+                            0,
+                          ), // Center the arrow on the position
+                          child: Icon(
+                            Icons.arrow_drop_up, // Upward arrow
+                            color: Colors.white, // White color for arrow
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to get color based on BMI value
+  static Color _getBMIColor(double bmiValue) {
+    if (bmiValue < 18.5) {
+      return Colors.blue; // Low BMI
+    } else if (bmiValue >= 18.5 && bmiValue <= 24.9) {
+      return Colors.green; // Normal BMI
+    } else if (bmiValue >= 25.0 && bmiValue <= 29.9) {
+      return Colors.orange; // High BMI
+    } else {
+      return Colors.deepOrange; // Very High BMI
+    }
   }
 }

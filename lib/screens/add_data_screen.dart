@@ -194,9 +194,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
 
               const SizedBox(height: 30),
 
-              // Weight input
-              const Text(
-                'Weight (kg)',
+              // Input field that changes based on title
+              Text(
+                widget.title == "Body Fat %" ? 'Body Fat %' : 'Weight (kg)',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -214,10 +214,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   controller: _weightController,
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(color: Colors.white, fontSize: 20),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     contentPadding: EdgeInsets.all(16),
                     border: InputBorder.none,
-                    hintText: 'Enter weight in kg',
+                    hintText: widget.title == "Body Fat %"
+                        ? 'Enter body fat percentage'
+                        : 'Enter weight in kg',
                     hintStyle: TextStyle(color: Colors.white70),
                   ),
                 ),
