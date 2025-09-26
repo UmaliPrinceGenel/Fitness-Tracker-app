@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../widgets/semi_circle_progress.dart';
 import 'detail_screen.dart';
 import 'my_profile.dart'; // Import the new profile page
-import 'workout_screen.dart'; // Import the new workout page
 import 'dart:math' as math;
 
 class HealthDashboard extends StatefulWidget {
@@ -87,7 +86,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
                           "Health",
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 24,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -290,8 +289,13 @@ class _HealthDashboardState extends State<HealthDashboard> {
                 ),
               ],
             ),
-            // Workout page
-            const WorkoutScreen(),
+            // Placeholder for Workout page
+            const Center(
+              child: Text(
+                "Workout Page",
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
             // Placeholder for Community page
             const Center(
               child: Text(

@@ -21,7 +21,7 @@ class MyProfile extends StatelessWidget {
                 "Profile",
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 32,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -40,28 +40,31 @@ class MyProfile extends StatelessWidget {
                     // Profile icon, username, and personal info
                     Row(
                       children: [
-                        // Circular profile icon with placeholder image
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.grey[800],
-                          backgroundImage: const AssetImage(
-                            'assets/lakano.png',
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.orange,
-                                width: 2,
-                              ),
+                        // Circular profile icon with modern styling
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Colors.blue, Colors.purple],
                             ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/lakano.png',
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
                               ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/lakano.png',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
@@ -73,15 +76,15 @@ class MyProfile extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Username in big font
-                              const Text(
+                              Text(
                                 "Lakano",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 4),
 
                               // Gender | Height | Age
                               Row(
@@ -89,35 +92,35 @@ class MyProfile extends StatelessWidget {
                                   Text(
                                     "Male",
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.white60,
                                       fontSize: 14,
                                     ),
                                   ),
                                   Text(
                                     " | ",
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.white60,
                                       fontSize: 14,
                                     ),
                                   ),
                                   Text(
                                     "170 cm",
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.white60,
                                       fontSize: 14,
                                     ),
                                   ),
                                   Text(
                                     " | ",
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.white60,
                                       fontSize: 14,
                                     ),
                                   ),
                                   Text(
                                     "19 yrs",
                                     style: TextStyle(
-                                      color: Colors.white70,
+                                      color: Colors.white60,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -128,42 +131,19 @@ class MyProfile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20), // Add space after profile info
-                    // Progress Tracking card
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF191919),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.bar_chart,
-                                color: Colors.orange,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                "Progress Tracking",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          // This section is intentionally left blank as requested
-                        ],
+                    const SizedBox(height: 10), // Add space after profile info
+                    // Health Stats header
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+                      child: Text(
+                        "Health Stats",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
 
                     // Row of 3 cards: Weight, Height, BMI
                     Row(
@@ -173,10 +153,21 @@ class MyProfile extends StatelessWidget {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(16),
                             child: Column(
                               children: [
                                 // Circular progress with icon inside
@@ -189,7 +180,8 @@ class MyProfile extends StatelessWidget {
                                       child: CircularProgressIndicator(
                                         value: 0.7, // Example value
                                         strokeWidth: 8.0,
-                                        backgroundColor: Colors.grey,
+                                        backgroundColor: Colors.grey
+                                            .withOpacity(0.3),
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
                                               Colors.green,
@@ -238,10 +230,21 @@ class MyProfile extends StatelessWidget {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(16),
                             child: Column(
                               children: [
                                 // Circular progress with icon inside
@@ -254,7 +257,8 @@ class MyProfile extends StatelessWidget {
                                       child: CircularProgressIndicator(
                                         value: 0.6, // Example value
                                         strokeWidth: 8.0,
-                                        backgroundColor: Colors.grey,
+                                        backgroundColor: Colors.grey
+                                            .withOpacity(0.3),
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
                                               Colors.blue,
@@ -303,10 +307,21 @@ class MyProfile extends StatelessWidget {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(12),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(16),
                             child: Column(
                               children: [
                                 // Circular progress with icon inside
@@ -319,7 +334,8 @@ class MyProfile extends StatelessWidget {
                                       child: CircularProgressIndicator(
                                         value: 0.5, // Example value
                                         strokeWidth: 8.0,
-                                        backgroundColor: Colors.grey,
+                                        backgroundColor: Colors.grey
+                                            .withOpacity(0.3),
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
                                               Colors.orange,
@@ -370,8 +386,19 @@ class MyProfile extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF191919),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -382,12 +409,19 @@ class MyProfile extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  Icon(
-                                    Icons.image,
-                                    color: Colors.blue,
-                                    size: 20,
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.image,
+                                      color: Colors.blue,
+                                      size: 24,
+                                    ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 12),
                                   Text(
                                     "Progress Album",
                                     style: TextStyle(
@@ -398,17 +432,16 @@ class MyProfile extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              ElevatedButton(
-                                onPressed: () {},
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.blue, Colors.lightBlue],
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
                                   "View",
@@ -420,7 +453,7 @@ class MyProfile extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           const Text(
                             "Recently Added",
                             style: TextStyle(
@@ -428,16 +461,23 @@ class MyProfile extends StatelessWidget {
                               fontSize: 14,
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           Container(
-                            width: 400,
-                            height: 300,
+                            width: double.infinity,
+                            height: 200,
                             decoration: BoxDecoration(
                               color: Colors.grey[800],
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                               child: Image.asset(
                                 'assets/album.jpg',
                                 fit: BoxFit
@@ -454,8 +494,19 @@ class MyProfile extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF191919),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -472,16 +523,36 @@ class MyProfile extends StatelessWidget {
                           const SizedBox(height: 16),
                           // App Settings
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.settings,
-                                  color: const Color.fromARGB(
-                                    255,
-                                    148,
-                                    67,
-                                    220,
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      112,
+                                      90,
+                                      221,
+                                    ).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.settings,
+                                    color: const Color.fromARGB(
+                                      255,
+                                      112,
+                                      90,
+                                      221,
+                                    ),
+                                    size: 24,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -501,19 +572,39 @@ class MyProfile extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const Divider(color: Color(0xFF33333), height: 16),
+                          const SizedBox(height: 12),
                           // Version
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.info,
-                                  color: const Color.fromARGB(
-                                    255,
-                                    105,
-                                    29,
-                                    180,
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      112,
+                                      90,
+                                      221,
+                                    ).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.info,
+                                    color: const Color.fromARGB(
+                                      255,
+                                      112,
+                                      90,
+                                      221,
+                                    ),
+                                    size: 24,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -527,7 +618,7 @@ class MyProfile extends StatelessWidget {
                                 const Spacer(),
                                 // TODO: Update version number here as needed
                                 const Text(
-                                  "DEV0.0.3", // Change this version number as needed
+                                  "DEV0.0.4", // Change this version number as needed
                                   style: TextStyle(
                                     color: Colors.grey,
                                     fontSize: 16,
@@ -542,13 +633,31 @@ class MyProfile extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const Divider(color: Color(0xFF33333), height: 16),
+                          const SizedBox(height: 12),
                           // Feedback
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Row(
                               children: [
-                                Icon(Icons.feedback, color: Colors.yellow),
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepOrange.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.feedback,
+                                    color: Colors.deepOrange,
+                                    size: 24,
+                                  ),
+                                ),
                                 const SizedBox(width: 16),
                                 const Text(
                                   "Feedback",
@@ -566,13 +675,31 @@ class MyProfile extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const Divider(color: Color(0xFF33333), height: 16),
+                          const SizedBox(height: 12),
                           // About this app
                           Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: Colors.blue),
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.lightBlue.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    color: Colors.lightBlue,
+                                    size: 24,
+                                  ),
+                                ),
                                 const SizedBox(width: 16),
                                 const Text(
                                   "About this app",
