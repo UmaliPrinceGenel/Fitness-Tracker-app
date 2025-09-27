@@ -4,6 +4,8 @@ import 'add_data_screen.dart'; // Add data screen
 import 'vitality_info_screen.dart'; // Vitality info screen
 import 'calories_info_screen.dart'; // Calories info screen
 import 'moving_info_screen.dart'; // Moving info screen
+import 'steps_info_screen.dart'; // Steps info screen
+import 'body_composition_info_screen.dart'; // Body composition info screen
 import 'dart:ui' as ui;
 
 class DetailScreen extends StatefulWidget {
@@ -422,8 +424,14 @@ class _DetailScreenState extends State<DetailScreen> {
                                   size: 20,
                                 ),
                                 onPressed: () {
-                                  // Show information about body composition
-                                  _showBodyCompositionInfo(context);
+                                  // Navigate to body composition info screen
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const BodyCompositionInfoScreen(),
+                                    ),
+                                  );
                                 },
                               ),
                             ],
@@ -481,13 +489,19 @@ class _DetailScreenState extends State<DetailScreen> {
                                 flex: 1,
                                 child: GestureDetector(
                                   onTap: () {
-                                    // Show BMI graph popup
-                                    _showBMIPopup(context);
+                                    // Navigate to BMI detail screen
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            DetailScreen(title: "BMI"),
+                                      ),
+                                    );
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF252525),
+                                      color: const Color(0xFF2525),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(color: Colors.white10),
                                     ),
@@ -2364,13 +2378,15 @@ class _DetailScreenState extends State<DetailScreen> {
         context,
         MaterialPageRoute(builder: (context) => const MovingInfoScreen()),
       );
+    } else if (widget.title == "Steps") {
+      // Navigate to the new dedicated Steps info screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const StepsInfoScreen()),
+      );
     } else {
-      // For Steps and other metrics, keep the original popup behavior
+      // For other metrics, keep the original popup behavior
       String aboutText = "";
-      if (widget.title == "Steps") {
-        aboutText =
-            "Steps track your daily walking activity. Walking is a simple, low-impact exercise that can improve cardiovascular health, strengthen bones, and boost mood. The average person takes about 3,000-4,000 steps per day.";
-      }
 
       showGeneralDialog(
         context: context,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'progress_album_screen.dart'; // Import the new progress album screen
 
 class MyProfile extends StatelessWidget {
   const MyProfile({super.key});
@@ -153,11 +154,7 @@ class MyProfile extends StatelessWidget {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
-                              ),
+                              color: const Color(0xFF191919),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
@@ -230,11 +227,7 @@ class MyProfile extends StatelessWidget {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
-                              ),
+                              color: const Color(0xFF191919),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
@@ -307,11 +300,7 @@ class MyProfile extends StatelessWidget {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
-                              ),
+                              color: const Color(0xFF191919),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
@@ -386,11 +375,7 @@ class MyProfile extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
-                        ),
+                        color: const Color(0xFF191919),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -432,22 +417,34 @@ class MyProfile extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Colors.blue, Colors.lightBlue],
+                              GestureDetector(
+                                onTap: () {
+                                  // Navigate to Progress Album screen
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ProgressAlbumScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
                                   ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  "View",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [Colors.blue, Colors.lightBlue],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    "View",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -494,11 +491,7 @@ class MyProfile extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF2A2A2A), Color(0xFF1E1E1E)],
-                        ),
+                        color: const Color(0xFF191919),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
@@ -526,10 +519,6 @@ class MyProfile extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
                               horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [
@@ -579,10 +568,6 @@ class MyProfile extends StatelessWidget {
                               vertical: 12,
                               horizontal: 16,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
                             child: Row(
                               children: [
                                 Container(
@@ -618,7 +603,7 @@ class MyProfile extends StatelessWidget {
                                 const Spacer(),
                                 // TODO: Update version number here as needed
                                 const Text(
-                                  "DEV0.0.4", // Change this version number as needed
+                                  "DEV0.0.5", // Change this version number as needed
                                   style: TextStyle(
                                     color: Colors.grey,
                                     fontSize: 16,
@@ -639,10 +624,6 @@ class MyProfile extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
                               horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [
@@ -681,10 +662,6 @@ class MyProfile extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
                               horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [

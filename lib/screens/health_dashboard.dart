@@ -3,7 +3,6 @@ import '../widgets/semi_circle_progress.dart';
 import 'detail_screen.dart';
 import 'my_profile.dart'; // Import the new profile page
 import 'workout_screen.dart'; // Import the new workout page
-import 'dart:math' as math;
 
 class HealthDashboard extends StatefulWidget {
   const HealthDashboard({super.key});
@@ -140,12 +139,12 @@ class _HealthDashboardState extends State<HealthDashboard> {
                           ), // Move semi-circle higher
                           child: SemiCircleProgress(
                             caloriesPercent: 80.8, // 485/60
-                            stepsPercent: 62.3, // 4360/7000
+                            stepsPercent: 62.3, // 4360/700
                             movingPercent: 15.0, // 9/60
                             caloriesValue: "485",
                             caloriesGoal: "/600 kcal",
                             stepsValue: "4360",
-                            stepsGoal: "/7000 steps",
+                            stepsGoal: "/700 steps",
                             movingValue: "9",
                             movingGoal: "/60 mins",
                           ),
@@ -158,6 +157,8 @@ class _HealthDashboardState extends State<HealthDashboard> {
                       // Modern Activity summary card
                       Container(
                         width: double.infinity,
+                        height:
+                            199, // Reduced height to prevent bottom overflow
                         decoration: BoxDecoration(
                           color: const Color(0xFF191919),
                           borderRadius: BorderRadius.circular(20),
@@ -235,32 +236,8 @@ class _HealthDashboardState extends State<HealthDashboard> {
                                 ],
                               ),
                               const SizedBox(
-                                height: 16,
-                              ), // Spacing before divider
-                              Container(height: 1, color: Colors.white24),
-                              const SizedBox(
-                                height: 12,
-                              ), // Spacing after divider
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.accessibility,
-                                      color: Color(0xFF4CAF50), // Modern green
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Standing: 7 hrs",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                height: 8, // Reduced spacing to save space
+                              ), // Spacing before where divider was
                             ],
                           ),
                         ),
@@ -269,22 +246,8 @@ class _HealthDashboardState extends State<HealthDashboard> {
                       const SizedBox(
                         height: 5,
                       ), // Reduced space below Activity Summary Card
-                      // Grid for cards (Sleep, Weight, BMI) with enlarged cards
-                      GridView.count(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        crossAxisCount: 2,
-                        crossAxisSpacing:
-                            2, // Increased spacing between columns
-                        mainAxisSpacing: 2, // Increased spacing between rows
-                        childAspectRatio: 0.8, // Increase card height
-                        children: [
-                          const _BodyFatCard(),
-                          const _WeightCard(),
-                          const _BMICard(),
-                          const _VitalityCard(),
-                        ],
-                      ),
+                      // Grid for cards with drag-and-drop functionality
+                      _DraggableCardGrid(),
                     ]),
                   ),
                 ),
@@ -697,14 +660,16 @@ class _ModernMetricItem extends StatelessWidget {
           crossAxisAlignment:
               CrossAxisAlignment.center, // Center align for modern look
           children: [
-            // Icon with modern styling
+            // Icon with modern styling - square with rounded corners
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: iconColor!.withOpacity(0.2),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(
+                  14,
+                ), // Square with rounded corners
               ),
-              child: Icon(icon, color: iconColor, size: 20),
+              child: Icon(icon, color: iconColor, size: 28), // Increased size
             ),
             const SizedBox(height: 6),
             // Label
@@ -712,7 +677,7 @@ class _ModernMetricItem extends StatelessWidget {
               label,
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -722,7 +687,7 @@ class _ModernMetricItem extends StatelessWidget {
               value,
               style: TextStyle(
                 color: iconColor, // Use the icon color for the value
-                fontSize: 20, // Slightly smaller but cleaner font size
+                fontSize: 24, // Increased font size
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -732,7 +697,7 @@ class _ModernMetricItem extends StatelessWidget {
               goal,
               style: const TextStyle(
                 color: Colors.white54,
-                fontSize: 11, // Smaller font size for goal
+                fontSize: 13, // Increased font size for goal
               ),
             ),
           ],
@@ -1095,4 +1060,87 @@ class VitalityGraphPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// Draggable card grid widget
+class _DraggableCardGrid extends StatefulWidget {
+  const _DraggableCardGrid();
+
+  @override
+  State<_DraggableCardGrid> createState() => _DraggableCardGridState();
+}
+
+class _DraggableCardGridState extends State<_DraggableCardGrid> {
+  List<Widget> cards = [
+    const _BodyFatCard(),
+    const _WeightCard(),
+    const _BMICard(),
+    const _VitalityCard(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, // 2 columns to maintain grid layout
+        crossAxisSpacing: 2, // Horizontal spacing
+        mainAxisSpacing: 2, // Vertical spacing
+        childAspectRatio: 0.8, // Adjusted aspect ratio to make cards wider
+      ),
+      itemCount: cards.length,
+      itemBuilder: (BuildContext context, int index) {
+        return LongPressDraggable<int>(
+          data: index,
+          feedback: Material(
+            elevation: 8,
+            child: Container(
+              width: 155,
+              height: 180,
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(child: Opacity(opacity: 0.8, child: cards[index])),
+            ),
+          ),
+          childWhenDragging: Container(
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Card(
+              color: const Color(0xFF191919),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(child: const Center(child: SizedBox.shrink())),
+            ),
+          ),
+          onDragStarted: () {
+            // Optional: Add visual feedback when drag starts
+          },
+          onDragEnd: (details) {
+            // Optional: Add visual feedback when drag ends
+          },
+          child: DragTarget<int>(
+            onAccept: (int oldIndex) {
+              if (oldIndex != index) {
+                setState(() {
+                  Widget card = cards.removeAt(oldIndex);
+                  // If the new index is after the old index, we need to adjust for the removed item
+                  int adjustedNewIndex = oldIndex < index ? index - 1 : index;
+                  cards.insert(adjustedNewIndex, card);
+                });
+              }
+            },
+            builder: (context, candidateData, rejectedData) {
+              return cards[index];
+            },
+          ),
+        );
+      },
+    );
+  }
 }
