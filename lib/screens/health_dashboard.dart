@@ -3,6 +3,7 @@ import '../widgets/semi_circle_progress.dart';
 import 'detail_screen.dart';
 import 'my_profile.dart'; // Import the new profile page
 import 'workout_screen.dart'; // Import the new workout page
+import 'community_screen.dart'; // Import the new community page
 
 class HealthDashboard extends StatefulWidget {
   const HealthDashboard({super.key});
@@ -255,13 +256,8 @@ class _HealthDashboardState extends State<HealthDashboard> {
             ),
             // Workout page
             const WorkoutScreen(),
-            // Placeholder for Community page
-            const Center(
-              child: Text(
-                "Community Page",
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
+            // Community page
+            const CommunityScreen(),
             // MyProfile page
             const MyProfile(),
           ],

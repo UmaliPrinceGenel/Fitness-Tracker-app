@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'progress_tracking_screen.dart'; // Import the new progress tracking screen
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -94,7 +95,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 // Progress Tracking Card
                 GestureDetector(
                   onTap: () {
-                    // Handle progress tracking tap
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProgressTrackingScreen(),
+                      ),
+                    );
                   },
                   child: Container(
                     width: double.infinity,
@@ -114,25 +120,50 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Progress Tracking",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "Progress Tracking",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ProgressTrackingScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  "More",
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 10),
-                          // Graph visualization
+                          // Bar chart visualization
                           Container(
                             height: 150,
-                            child: LineChart(
-                              LineChartData(
+                            child: BarChart(
+                              BarChartData(
+                                alignment: BarChartAlignment.spaceAround,
+                                maxY: 8,
                                 gridData: FlGridData(
                                   show: true,
                                   drawVerticalLine: false,
                                   horizontalInterval: 1,
-                                  verticalInterval: 1,
                                   getDrawingHorizontalLine: (value) {
                                     return FlLine(
                                       color: Colors.grey.withOpacity(0.3),
@@ -142,12 +173,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 ),
                                 titlesData: FlTitlesData(
                                   show: true,
-                                  rightTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  topTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
@@ -213,6 +238,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                             return Text('');
                                         }
                                       },
+                                      reservedSize: 30,
                                     ),
                                   ),
                                   leftTitles: AxisTitles(
@@ -227,36 +253,108 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                           ),
                                         );
                                       },
+                                      reservedSize: 25,
                                     ),
+                                  ),
+                                  topTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  rightTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
                                   ),
                                 ),
                                 borderData: FlBorderData(show: false),
-                                minX: 0,
-                                maxX: 6,
-                                minY: 0,
-                                maxY: 8,
-                                lineBarsData: [
-                                  LineChartBarData(
-                                    spots: [
-                                      FlSpot(0, 3),
-                                      FlSpot(1, 4),
-                                      FlSpot(2, 3),
-                                      FlSpot(3, 5),
-                                      FlSpot(4, 6),
-                                      FlSpot(5, 4),
-                                      FlSpot(6, 7),
+                                barGroups: [
+                                  BarChartGroupData(
+                                    x: 0,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 3,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ), // Orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
                                     ],
-                                    isCurved: true,
-                                    color: const Color(0xFFFF6B35),
-                                    barWidth: 3,
-                                    isStrokeCapRound: true,
-                                    dotData: FlDotData(show: false),
-                                    belowBarData: BarAreaData(
-                                      show: true,
-                                      color: const Color(
-                                        0xFFFF6B35,
-                                      ).withOpacity(0.3),
-                                    ),
+                                  ),
+                                  BarChartGroupData(
+                                    x: 1,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 4,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ), // Orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
+                                  ),
+                                  BarChartGroupData(
+                                    x: 2,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 3,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ).withOpacity(0.5), // Faded orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
+                                  ),
+                                  BarChartGroupData(
+                                    x: 3,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 5,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ), // Orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
+                                  ),
+                                  BarChartGroupData(
+                                    x: 4,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 6,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ).withOpacity(0.5), // Faded orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
+                                  ),
+                                  BarChartGroupData(
+                                    x: 5,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 4,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ), // Orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
+                                  ),
+                                  BarChartGroupData(
+                                    x: 6,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: 7,
+                                        color: const Color(
+                                          0xFFFF6B35,
+                                        ).withOpacity(0.5), // Faded orange
+                                        width: 10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
