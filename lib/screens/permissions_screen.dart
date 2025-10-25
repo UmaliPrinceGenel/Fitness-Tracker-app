@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import '../screens/profile_screen.dart';
 
 class PermissionsScreen extends StatefulWidget {
@@ -11,6 +13,54 @@ class PermissionsScreen extends StatefulWidget {
 class _PermissionsScreenState extends State<PermissionsScreen> {
   bool agreePolicy = false;
   bool joinProgram = false;
+  bool _isLoading = false;
+
+  final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// ✅ Save permission data to Firestore
+  Future<void> _savePermissionData() async {
+    if (!agreePolicy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You must agree to the User Agreement first."),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        // Save permission data to user document
+        await _firestore.collection('users').doc(user.uid).update({
+          'permissions': {
+            'agreedToPolicy': agreePolicy,
+            'joinedUserExperienceProgram': joinProgram,
+            'permissionsAcceptedAt': FieldValue.serverTimestamp(),
+          },
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        print('✅ Permission data saved for user: ${user.uid}');
+
+        // Navigate to profile screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MyProfileScreen()),
+        );
+      }
+    } catch (e) {
+      print('❌ Error saving permission data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving data: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,9 +147,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                 children: [
                   Checkbox(
                     value: agreePolicy,
-                    onChanged: (value) {
-                      setState(() => agreePolicy = value ?? false);
-                    },
+                    onChanged: _isLoading
+                        ? null
+                        : (value) {
+                            setState(() => agreePolicy = value ?? false);
+                          },
                     activeColor: Colors.orange,
                   ),
                   const Expanded(
@@ -114,9 +166,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                 children: [
                   Checkbox(
                     value: joinProgram,
-                    onChanged: (value) {
-                      setState(() => joinProgram = value ?? false);
-                    },
+                    onChanged: _isLoading
+                        ? null
+                        : (value) {
+                            setState(() => joinProgram = value ?? false);
+                          },
                     activeColor: Colors.orange,
                   ),
                   const Expanded(
@@ -143,32 +197,24 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: () {
-                        if (agreePolicy) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MyProfileScreen(),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "You must agree to the User Agreement first.",
+                      onPressed: _isLoading ? null : _savePermissionData,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text(
+                              "Agree",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          );
-                        }
-                      },
-                      child: const Text(
-                        "Agree",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -182,9 +228,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                            },
                       child: const Text(
                         "Exit",
                         style: TextStyle(

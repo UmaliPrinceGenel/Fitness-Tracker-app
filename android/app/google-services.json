@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "431719920653",
+    "project_id": "fitnesstracker-66a25",
+    "storage_bucket": "fitnesstracker-66a25.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:431719920653:android:f2721d154712504f9a5144",
+        "android_client_info": {
+          "package_name": "com.example.rockies_fitness_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdPrWil1tIOrUWmziG8Hpl5sS_BGcaotU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
