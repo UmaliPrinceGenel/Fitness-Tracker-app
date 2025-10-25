@@ -7,7 +7,9 @@ import '../screens/permissions_screen.dart';
 import '../screens/health_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? prefilledEmail;
+  
+  const LoginScreen({super.key, this.prefilledEmail});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -27,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    // ✅ Pre-fill email if provided
+    if (widget.prefilledEmail != null) {
+      _emailController.text = widget.prefilledEmail!;
+    }
     _loadRememberedCredentials();
     _checkExistingSession();
   }
@@ -46,7 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final rememberedPassword = prefs.getString('remembered_password');
       final shouldRemember = prefs.getBool('should_remember') ?? false;
 
-      if (rememberedEmail != null && rememberedPassword != null) {
+      // Only load remembered credentials if no email was pre-filled
+      if (widget.prefilledEmail == null && rememberedEmail != null && rememberedPassword != null) {
         setState(() {
           _emailController.text = rememberedEmail;
           _passwordController.text = rememberedPassword;
@@ -240,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// ✅ Login with Email and Password
+  /// ✅ Login with Email and Password - FIXED VERSION
   Future<void> _loginWithEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -254,8 +261,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final user = credential.user;
       if (user != null) {
+        // ✅ CHECK IF EMAIL IS VERIFIED
+        if (!user.emailVerified) {
+          // User is not verified - sign them out and show message
+          await _firebaseAuth.signOut();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Please verify your email before logging in. Check your inbox for the verification link.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
+          
+          return;
+        }
+
+        // ✅ EMAIL IS VERIFIED - PROCEED WITH LOGIN
         // Save credentials if "Remember Me" is checked
         await _saveCredentials();
+        
+        // Handle post-login navigation
         await _handlePostLogin(user);
       }
     } on fbAuth.FirebaseAuthException catch (e) {
@@ -383,6 +411,31 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
+                      // // ✅ Show pre-filled email indicator if applicable
+                      // if (widget.prefilledEmail != null) ...[
+                      //   const SizedBox(height: 10),
+                      //   Container(
+                      //     padding: const EdgeInsets.all(8),
+                      //     decoration: BoxDecoration(
+                      //       color: Colors.blue[900],
+                      //       borderRadius: BorderRadius.circular(8),
+                      //     ),
+                      //     child: Row(
+                      //       mainAxisSize: MainAxisSize.min,
+                      //       children: [
+                      //         Icon(Icons.info, color: Colors.blue[100], size: 16),
+                      //         const SizedBox(width: 8),
+                      //         Text(
+                      //           'Email pre-filled for verification check',
+                      //           style: TextStyle(
+                      //             color: Colors.blue[100],
+                      //             fontSize: 12,
+                      //           ),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //   ),
+                      // ],
                       const SizedBox(height: 30),
                       Expanded(
                         child: Center(
