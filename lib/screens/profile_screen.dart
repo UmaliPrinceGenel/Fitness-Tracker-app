@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'health_dashboard.dart';
 
 class MyProfileScreen extends StatefulWidget {
@@ -13,8 +15,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   double height = 170;
   int weight = 60;
   DateTime dob = DateTime(2005, 1, 1);
+  bool _isLoading = false;
   late TextEditingController heightController;
   late TextEditingController weightController;
+
+  final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -44,11 +50,55 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     }
   }
 
+  /// ✅ Save profile data to Firestore and mark profile as completed
+  Future<void> _saveProfileData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        // Calculate BMI
+        double heightInMeters = height / 100;
+        double bmi = weight / (heightInMeters * heightInMeters);
+
+        // Save profile data to user document
+        await _firestore.collection('users').doc(user.uid).update({
+          'profile': {
+            'gender': gender,
+            'height': height,
+            'weight': weight,
+            'dateOfBirth': dob,
+            'bmi': double.parse(bmi.toStringAsFixed(1)),
+            'profileCompletedAt': FieldValue.serverTimestamp(),
+          },
+          'hasCompletedProfile': true, // Mark profile as completed
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        print('✅ Profile data saved for user: ${user.uid}');
+        print('📊 BMI calculated: ${bmi.toStringAsFixed(1)}');
+
+        // Navigate to main app (Health Dashboard)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HealthDashboard()),
+        );
+      }
+    } catch (e) {
+      print('❌ Error saving profile data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving data: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: true, // Enable keyboard handling
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Stack(
           children: [
@@ -64,15 +114,17 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            Navigator.pop(context);
+                          },
                   ),
                 ),
               ),
             ),
 
-            // Grey card container with flexible height and rounded corners on both top and bottom
+            // Grey card container
             Center(
               child: Container(
                 width: double.infinity,
@@ -103,10 +155,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Description text aligned to the left
+                      // Description text
                       const Text(
                         "Before you get started, fill out the following information to get more accurate body composition and calorie information.",
-                        textAlign: TextAlign.left, // Left aligned
+                        textAlign: TextAlign.left,
                         style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
 
@@ -138,9 +190,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                             selected: gender == "Male",
                             selectedColor: Colors.blue,
                             backgroundColor: Colors.grey[800],
-                            onSelected: (selected) {
-                              setState(() => gender = "Male");
-                            },
+                            onSelected: _isLoading
+                                ? null
+                                : (selected) {
+                                    setState(() => gender = "Male");
+                                  },
                           ),
                           const SizedBox(width: 15),
                           ChoiceChip(
@@ -157,9 +211,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                             selected: gender == "Female",
                             selectedColor: Colors.pink,
                             backgroundColor: Colors.grey[800],
-                            onSelected: (selected) {
-                              setState(() => gender = "Female");
-                            },
+                            onSelected: _isLoading
+                                ? null
+                                : (selected) {
+                                    setState(() => gender = "Female");
+                                  },
                           ),
                         ],
                       ),
@@ -181,6 +237,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           SizedBox(
                             width: 100,
                             child: TextField(
+                              enabled: !_isLoading,
                               keyboardType: TextInputType.number,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
@@ -231,6 +288,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           SizedBox(
                             width: 100,
                             child: TextField(
+                              enabled: !_isLoading,
                               keyboardType: TextInputType.number,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
@@ -253,27 +311,23 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   if (value.isNotEmpty) {
-                                    // Try to parse the value as integer
                                     int? parsedValue = int.tryParse(value);
                                     if (parsedValue != null) {
                                       weight = parsedValue;
                                     }
                                   } else {
-                                    weight = 0; // Allow clearing the field
+                                    weight = 0;
                                   }
-                                  // Only format if value is not empty and is a valid number
                                   if (value.isNotEmpty) {
                                     int? parsedValue = int.tryParse(value);
                                     if (parsedValue != null) {
                                       weightController.text = weight.toString();
-                                      // Move cursor to end to prevent cursor jumping
                                       weightController.selection =
                                           TextSelection.fromPosition(
-                                            TextPosition(
-                                              offset:
-                                                  weightController.text.length,
-                                            ),
-                                          );
+                                        TextPosition(
+                                          offset: weightController.text.length,
+                                        ),
+                                      );
                                     }
                                   }
                                 });
@@ -298,7 +352,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => _selectDate(context),
+                            onPressed: _isLoading
+                                ? null
+                                : () => _selectDate(context),
                             child: Text(
                               "${dob.year}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}",
                               style: const TextStyle(color: Colors.white),
@@ -320,22 +376,24 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const HealthDashboard(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "Next",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          onPressed: _isLoading ? null : _saveProfileData,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                  ),
+                                )
+                              : const Text(
+                                  "Next",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
