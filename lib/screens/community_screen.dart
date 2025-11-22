@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'photo_editing_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -13,12 +14,50 @@ class CommunityScreen extends StatefulWidget {
 class _CommunityScreenState extends State<CommunityScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
   final TextEditingController _commentController = TextEditingController();
+
+  // Add user data state
+  Map<String, dynamic>? _userData;
+  String? _profileImageUrl;
+  bool _isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserData();
+  }
 
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  /// ✅ Load current user data for the avatar
+  Future<void> _loadCurrentUserData() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _userData = userDoc.data();
+            _profileImageUrl = _userData?['photoURL'];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading current user data: $e');
+    } finally {
+      setState(() {
+        _isLoadingUser = false;
+      });
+    }
   }
 
   Future<void> _likePost(String postId, bool isLiking) async {
@@ -76,6 +115,128 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
+  /// ✅ Delete post and associated images
+  Future<void> _deletePost(String postId, List<String> imageUrls) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) return;
+
+      // Show confirmation dialog
+      final shouldDelete = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: const Text(
+              "Delete Post",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              "Are you sure you want to delete this post? This action cannot be undone.",
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(
+                  "CANCEL",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text(
+                  "DELETE",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldDelete != true) return;
+
+      // Delete images from Supabase storage
+      for (final imageUrl in imageUrls) {
+        try {
+          final uri = Uri.parse(imageUrl);
+          final pathSegments = uri.path.split('/');
+          final bucketIndex = pathSegments.indexOf('community-posts');
+
+          if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
+            final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+            await _supabase.storage.from('community-posts').remove([filePath]);
+            print('🗑️ Deleted image from Supabase: $filePath');
+          }
+        } catch (e) {
+          print('❌ Error deleting image from storage: $e');
+        }
+      }
+
+      // Delete comments subcollection
+      final commentsSnapshot = await _firestore
+          .collection('community_posts')
+          .doc(postId)
+          .collection('comments')
+          .get();
+
+      final batch = _firestore.batch();
+      for (final commentDoc in commentsSnapshot.docs) {
+        batch.delete(commentDoc.reference);
+      }
+      await batch.commit();
+
+      // Delete the main post document
+      await _firestore.collection('community_posts').doc(postId).delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Post deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error deleting post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete post: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// ✅ Show image zoom overlay
+  void _showImageZoom(List<String> imageUrls, int initialIndex) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ImageZoomOverlay(imageUrls: imageUrls, initialIndex: initialIndex),
+      ),
+    );
+  }
+
+  /// ✅ NEW: Show likes bottom sheet
+  void _showLikesBottomSheet(BuildContext context, String postId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return LikesBottomSheet(postId: postId);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,7 +283,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     children: [
                       Row(
                         children: [
-                          // Profile icon
+                          // ✅ Profile avatar with user's photoURL
                           Container(
                             width: 40,
                             height: 40,
@@ -130,11 +291,63 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               shape: BoxShape.circle,
                               color: Colors.grey[700],
                             ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            child: _isLoadingUser
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    ),
+                                  )
+                                : _profileImageUrl != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      _profileImageUrl!,
+                                      fit: BoxFit.cover,
+                                      width: 40,
+                                      height: 40,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            value:
+                                                loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                : null,
+                                            valueColor:
+                                                const AlwaysStoppedAnimation<
+                                                  Color
+                                                >(Colors.blue),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.person,
+                                              color: Colors.white,
+                                              size: 20,
+                                            );
+                                          },
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           // Text input with gallery icon inside
@@ -234,6 +447,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         postData: postData,
                         onLike: _likePost,
                         onComment: _showCommentsBottomSheet,
+                        onDelete: _deletePost,
+                        onImageTap: _showImageZoom,
+                        onShowLikes:
+                            _showLikesBottomSheet, // NEW: Add this callback
                       );
                     },
                   );
@@ -265,12 +482,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 }
 
-// REMOVED THE DUPLICATE CLASS DEFINITION - ONLY KEEP THIS ONE
 class PostCard extends StatefulWidget {
   final String postId;
   final Map<String, dynamic> postData;
   final Function(String, bool) onLike;
   final Function(BuildContext, String) onComment;
+  final Function(String, List<String>) onDelete;
+  final Function(List<String>, int) onImageTap;
+  final Function(BuildContext, String) onShowLikes; // NEW: Add this callback
 
   const PostCard({
     super.key,
@@ -278,6 +497,9 @@ class PostCard extends StatefulWidget {
     required this.postData,
     required this.onLike,
     required this.onComment,
+    required this.onDelete,
+    required this.onImageTap,
+    required this.onShowLikes, // NEW: Add this parameter
   });
 
   @override
@@ -285,12 +507,10 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
-  // Don't store local state for likes - use the data from Firestore directly
-  // This prevents the flickering issue
+  int _currentImageIndex = 0;
 
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
-
     final DateTime postTime = timestamp is Timestamp
         ? timestamp.toDate()
         : DateTime.parse(timestamp.toString());
@@ -306,7 +526,6 @@ class _PostCardState extends State<PostCard> {
   bool _getIsLiked() {
     final user = fbAuth.FirebaseAuth.instance.currentUser;
     if (user == null) return false;
-
     final likedBy = widget.postData['likedBy'] as List<dynamic>? ?? [];
     return likedBy.contains(user.uid);
   }
@@ -315,11 +534,27 @@ class _PostCardState extends State<PostCard> {
     return widget.postData['likes'] ?? 0;
   }
 
+  List<String> _getPostImages() {
+    final postImages = widget.postData['postImages'];
+    if (postImages is List) {
+      return postImages.cast<String>();
+    }
+    final singleImage = widget.postData['postImage'];
+    return singleImage != null ? [singleImage] : [];
+  }
+
+  bool _isCurrentUserPost() {
+    final user = fbAuth.FirebaseAuth.instance.currentUser;
+    return user != null && widget.postData['userId'] == user.uid;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = fbAuth.FirebaseAuth.instance.currentUser;
     final isLiked = _getIsLiked();
     final likesCount = _getLikesCount();
+    final postImages = _getPostImages();
+    final isCurrentUserPost = _isCurrentUserPost();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -371,6 +606,33 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
                 ),
+                // Delete button for post owner
+                if (isCurrentUserPost)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: Colors.white70),
+                    color: Colors.grey[800],
+                    onSelected: (String result) {
+                      if (result == 'delete') {
+                        widget.onDelete(widget.postId, postImages);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                          PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red[300]),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Delete Post',
+                                  style: TextStyle(color: Colors.red[300]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                  ),
                 Text(
                   _formatTimestamp(widget.postData['timePosted']),
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
@@ -391,8 +653,8 @@ class _PostCardState extends State<PostCard> {
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ),
-          // Post image
-          if (widget.postData['postImage'] != null)
+          // Post images
+          if (postImages.isNotEmpty)
             Container(
               margin: const EdgeInsets.all(16.0),
               width: double.infinity,
@@ -401,31 +663,83 @@ class _PostCardState extends State<PostCard> {
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.grey[800],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  widget.postData['postImage'],
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                            : null,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.blue,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: PageView.builder(
+                      itemCount: postImages.length,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentImageIndex = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () {
+                            widget.onImageTap(postImages, index);
+                          },
+                          child: Image.network(
+                            postImages[index],
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: 250,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value:
+                                      loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                        Colors.blue,
+                                      ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(
+                                  Icons.error,
+                                  color: Colors.grey,
+                                  size: 50,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Image counter for multiple images
+                  if (postImages.length > 1)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_currentImageIndex + 1}/${postImages.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(
-                      child: Icon(Icons.error, color: Colors.grey, size: 50),
-                    );
-                  },
-                ),
+                    ),
+                ],
               ),
             ),
           // Engagement metrics
@@ -436,17 +750,20 @@ class _PostCardState extends State<PostCard> {
             ),
             child: Row(
               children: [
+                // Like button with long press
                 Row(
                   children: [
                     GestureDetector(
                       onTap: () {
                         if (user == null) return;
-
                         final newLikeStatus = !isLiked;
                         widget.onLike(widget.postId, newLikeStatus);
-
-                        // Optional: Show immediate feedback without state change
-                        // The Firestore stream will update the UI automatically
+                      },
+                      onLongPress: () {
+                        // NEW: Show likes bottom sheet on long press
+                        if (_getLikesCount() > 0) {
+                          widget.onShowLikes(context, widget.postId);
+                        }
                       },
                       child: Icon(
                         isLiked ? Icons.favorite : Icons.favorite_border,
@@ -455,9 +772,20 @@ class _PostCardState extends State<PostCard> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      likesCount.toString(),
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    GestureDetector(
+                      onTap: () {
+                        // NEW: Also show likes on tap of the count
+                        if (_getLikesCount() > 0) {
+                          widget.onShowLikes(context, widget.postId);
+                        }
+                      },
+                      child: Text(
+                        likesCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -487,6 +815,220 @@ class _PostCardState extends State<PostCard> {
         ],
       ),
     );
+  }
+}
+
+// ✅ NEW: Likes Bottom Sheet (same UI as comments)
+class LikesBottomSheet extends StatefulWidget {
+  final String postId;
+
+  const LikesBottomSheet({super.key, required this.postId});
+
+  @override
+  State<LikesBottomSheet> createState() => _LikesBottomSheetState();
+}
+
+class _LikesBottomSheetState extends State<LikesBottomSheet> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      height: MediaQuery.of(context).size.height * 0.8,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Likes",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: _firestore
+                  .collection('community_posts')
+                  .doc(widget.postId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return const Center(
+                    child: Text(
+                      "No likes yet",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  );
+                }
+
+                final postData = snapshot.data!.data() as Map<String, dynamic>;
+                final likedBy = postData['likedBy'] as List<dynamic>? ?? [];
+
+                if (likedBy.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No likes yet",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  );
+                }
+
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _getUsersData(likedBy.cast<String>()),
+                  builder: (context, usersSnapshot) {
+                    if (usersSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.orange,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (!usersSnapshot.hasData || usersSnapshot.data!.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          "No likes yet",
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                        ),
+                      );
+                    }
+
+                    final users = usersSnapshot.data!;
+
+                    return ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final userData = users[index];
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8.0),
+                          padding: const EdgeInsets.all(12.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF191919),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.grey[700],
+                                ),
+                                child: userData['profileImage'] != null
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          userData['profileImage'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                );
+                                              },
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      userData['username'] ?? 'User',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Liked this post",
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _getUsersData(List<String> userIds) async {
+    final usersData = <Map<String, dynamic>>[];
+
+    for (final userId in userIds) {
+      try {
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          usersData.add({
+            'username': userData['displayName'] ?? 'User',
+            'profileImage': userData['photoURL'],
+          });
+        }
+      } catch (e) {
+        print('Error fetching user data for $userId: $e');
+      }
+    }
+
+    return usersData;
   }
 }
 
@@ -700,6 +1242,160 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             ],
           ),
           const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ✅ NEW: Image Zoom Overlay
+class ImageZoomOverlay extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const ImageZoomOverlay({
+    super.key,
+    required this.imageUrls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<ImageZoomOverlay> createState() => _ImageZoomOverlayState();
+}
+
+class _ImageZoomOverlayState extends State<ImageZoomOverlay> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black.withOpacity(0.95),
+      body: Stack(
+        children: [
+          // PageView for multiple images
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                panEnabled: true,
+                minScale: 0.5,
+                maxScale: 3.0,
+                child: Center(
+                  child: Image.network(
+                    widget.imageUrls[index],
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(Icons.error, color: Colors.red, size: 50),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Close button
+          Positioned(
+            top: 50,
+            right: 20,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+
+          // Image counter for multiple images
+          if (widget.imageUrls.length > 1)
+            Positioned(
+              top: 50,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_currentIndex + 1}/${widget.imageUrls.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Swipe instructions hint
+          if (widget.imageUrls.length > 1)
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Swipe to view more images',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

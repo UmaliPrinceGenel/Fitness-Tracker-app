@@ -7,37 +7,21 @@ import 'dart:io';
 import 'dart:typed_data';
 
 class PhotoEditingScreen extends StatefulWidget {
-  final String? initialImagePath;
-  final String? initialCaption;
-
-  const PhotoEditingScreen({
-    super.key,
-    this.initialImagePath,
-    this.initialCaption,
-  });
+  const PhotoEditingScreen({super.key});
 
   @override
   State<PhotoEditingScreen> createState() => _PhotoEditingScreenState();
 }
 
 class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
-  Uint8List? _selectedImageBytes;
-  String? _selectedImagePath;
-  String _caption = '';
-  TextEditingController _captionController = TextEditingController();
+  final List<Uint8List> _selectedImages = [];
+  final TextEditingController _captionController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   final SupabaseClient _supabase = Supabase.instance.client;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   bool _isUploading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedImagePath = widget.initialImagePath;
-    _caption = widget.initialCaption ?? '';
-    _captionController.text = _caption;
-  }
+  int _currentPage = 0;
 
   @override
   void dispose() {
@@ -45,26 +29,24 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     super.dispose();
   }
 
-  Future<void> _selectImageFromGallery() async {
+  Future<void> _selectImagesFromGallery() async {
     try {
-      final XFile? pickedFile = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+      final List<XFile> pickedFiles = await _imagePicker.pickMultiImage(
         maxWidth: 1200,
         maxHeight: 1200,
         imageQuality: 85,
       );
 
-      if (pickedFile != null) {
-        // Read as bytes for web compatibility
-        final Uint8List imageBytes = await pickedFile.readAsBytes();
-        setState(() {
-          _selectedImageBytes = imageBytes;
-          _selectedImagePath = pickedFile.path;
-        });
+      if (pickedFiles.isNotEmpty) {
+        for (final pickedFile in pickedFiles) {
+          final Uint8List imageBytes = await pickedFile.readAsBytes();
+          _selectedImages.add(imageBytes);
+        }
+        setState(() {});
       }
     } catch (e) {
-      print('Error picking image: $e');
-      _showErrorSnackBar('Failed to pick image');
+      print('Error picking images: $e');
+      _showErrorSnackBar('Failed to pick images');
     }
   }
 
@@ -78,12 +60,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
       );
 
       if (pickedFile != null) {
-        // Read as bytes for web compatibility
         final Uint8List imageBytes = await pickedFile.readAsBytes();
-        setState(() {
-          _selectedImageBytes = imageBytes;
-          _selectedImagePath = pickedFile.path;
-        });
+        _selectedImages.add(imageBytes);
+        setState(() {});
       }
     } catch (e) {
       print('Error taking photo: $e');
@@ -91,85 +70,58 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     }
   }
 
-  /// ✅ USE THE SAME APPROACH AS MY_PROFILE.DART - Uint8List upload
-  Future<String> _uploadImageToSupabase(Uint8List imageBytes) async {
+  Future<List<String>> _uploadImagesToSupabase() async {
     try {
       final user = _firebaseAuth.currentUser;
       if (user == null) throw Exception('User not logged in');
 
-      final String fileName =
-          'post_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final String filePath = 'community-posts/${user.uid}/$fileName';
+      List<String> imageUrls = [];
 
-      print('📤 Uploading post image bytes: $filePath');
+      for (int i = 0; i < _selectedImages.length; i++) {
+        final String fileName =
+            'post_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final String filePath = 'community-posts/${user.uid}/$fileName';
 
-      // ✅ USE THE SAME METHOD AS YOUR WORKING MY_PROFILE SCREEN
-      // Try direct upload with bytes first
-      try {
-        await _supabase.storage
-            .from('community-posts')
-            .uploadBinary(filePath, imageBytes);
-
-        final String publicURL = _supabase.storage
-            .from('community-posts')
-            .getPublicUrl(filePath);
-
-        print('✅ Post image uploaded successfully with bytes: $publicURL');
-        return publicURL;
-      } catch (e) {
-        print('❌ Binary upload failed, trying alternative: $e');
-
-        // Fallback for mobile
         try {
-          final tempDir = Directory.systemTemp;
-          final tempFile = File('${tempDir.path}/$fileName');
-          await tempFile.writeAsBytes(imageBytes);
-
           await _supabase.storage
               .from('community-posts')
-              .upload(filePath, tempFile);
+              .uploadBinary(filePath, _selectedImages[i]);
 
           final String publicURL = _supabase.storage
               .from('community-posts')
               .getPublicUrl(filePath);
 
-          // Clean up temp file
-          if (tempFile.existsSync()) {
-            await tempFile.delete();
-          }
-
-          print('✅ Post image uploaded successfully with file: $publicURL');
-          return publicURL;
-        } catch (e2) {
-          print('❌ All upload methods failed: $e2');
+          imageUrls.add(publicURL);
+        } catch (e) {
+          print('❌ Binary upload failed for image $i: $e');
           throw e;
         }
       }
+
+      return imageUrls;
     } catch (e) {
-      print('❌ Error uploading post image: $e');
+      print('❌ Error uploading images: $e');
       throw e;
     }
   }
 
-  Future<void> _createPostInFirestore(String imageUrl) async {
+  Future<void> _createPostInFirestore(List<String> imageUrls) async {
     try {
       final user = _firebaseAuth.currentUser;
       if (user == null) throw Exception('User not logged in');
 
-      // Get user data
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       final userData = userDoc.data();
 
-      // Create post document
       final postData = {
         'userId': user.uid,
         'username': userData?['displayName'] ?? 'User',
         'profileImage': userData?['photoURL'],
         'caption': _captionController.text.trim(),
-        'postImage': imageUrl,
+        'postImages': imageUrls,
         'timePosted': FieldValue.serverTimestamp(),
         'likes': 0,
-        'comments': 0,
+        'commentCount': 0,
         'likedBy': [],
       };
 
@@ -181,8 +133,8 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
   }
 
   Future<void> _handlePost() async {
-    if (_selectedImageBytes == null || _captionController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please add an image and caption');
+    if (_selectedImages.isEmpty || _captionController.text.trim().isEmpty) {
+      _showErrorSnackBar('Please add images and caption');
       return;
     }
 
@@ -191,20 +143,10 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     });
 
     try {
-      // Upload image to Supabase using bytes (like my_profile.dart)
-      final String imageUrl = await _uploadImageToSupabase(
-        _selectedImageBytes!,
-      );
+      final List<String> imageUrls = await _uploadImagesToSupabase();
+      await _createPostInFirestore(imageUrls);
 
-      // Create post in Firestore
-      await _createPostInFirestore(imageUrl);
-
-      // Return success
-      Navigator.pop(context, {
-        'image': _selectedImagePath,
-        'caption': _captionController.text.trim(),
-        'success': true,
-      });
+      Navigator.pop(context, {'success': true});
 
       _showSuccessSnackBar('Post created successfully!');
     } catch (e) {
@@ -213,6 +155,20 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     } finally {
       setState(() {
         _isUploading = false;
+      });
+    }
+  }
+
+  void _removeCurrentImage() {
+    if (_selectedImages.isNotEmpty) {
+      setState(() {
+        _selectedImages.removeAt(_currentPage);
+        if (_currentPage >= _selectedImages.length &&
+            _selectedImages.isNotEmpty) {
+          _currentPage = _selectedImages.length - 1;
+        } else if (_selectedImages.isEmpty) {
+          _currentPage = 0;
+        }
       });
     }
   }
@@ -229,22 +185,8 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     );
   }
 
-  /// ✅ FIXED: Web-compatible image display
   Widget _buildImagePreview() {
-    if (_selectedImageBytes != null) {
-      // Use MemoryImage for web compatibility
-      return Image.memory(
-        _selectedImageBytes!,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: 300,
-        errorBuilder: (context, error, stackTrace) {
-          return Center(
-            child: Icon(Icons.error, color: Colors.grey[600], size: 60),
-          );
-        },
-      );
-    } else {
+    if (_selectedImages.isEmpty) {
       return Container(
         width: double.infinity,
         height: 300,
@@ -256,16 +198,94 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.image, color: Colors.grey[600], size: 60),
+            Icon(Icons.photo_library, color: Colors.grey[600], size: 60),
             const SizedBox(height: 16),
             Text(
-              "No image selected",
+              "No images selected",
               style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
           ],
         ),
       );
     }
+
+    return Container(
+      width: double.infinity,
+      height: 300,
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        color: Colors.grey[800],
+      ),
+      child: Stack(
+        children: [
+          PageView.builder(
+            itemCount: _selectedImages.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Image.memory(
+                _selectedImages[index],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 300,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: Icon(Icons.error, color: Colors.grey[600], size: 60),
+                  );
+                },
+              );
+            },
+          ),
+
+          // Image counter
+          if (_selectedImages.length > 1)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_currentPage + 1}/${_selectedImages.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
+          // Single close button for current image
+          if (_selectedImages.isNotEmpty)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: GestureDetector(
+                onTap: _removeCurrentImage,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close, color: Colors.white, size: 18),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -322,7 +342,6 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image selection area
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -331,23 +350,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                   ),
                   child: Column(
                     children: [
-                      // ✅ FIXED: Use web-compatible image display
-                      Container(
-                        width: double.infinity,
-                        height: 300,
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(16),
-                          ),
-                          color: Colors.grey[800],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(16),
-                          ),
-                          child: _buildImagePreview(),
-                        ),
-                      ),
+                      _buildImagePreview(),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: const BoxDecoration(
@@ -360,9 +363,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             _buildEditButton(
-                              icon: Icons.image,
+                              icon: Icons.photo_library,
                               label: "Gallery",
-                              onTap: _selectImageFromGallery,
+                              onTap: _selectImagesFromGallery,
                             ),
                             _buildEditButton(
                               icon: Icons.camera_alt,
@@ -376,7 +379,6 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Caption input
                 const Text(
                   "Caption",
                   style: TextStyle(
@@ -402,11 +404,6 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                     ),
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     maxLines: null,
-                    onChanged: (value) {
-                      setState(() {
-                        _caption = value;
-                      });
-                    },
                   ),
                 ),
               ],
@@ -459,7 +456,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
               child: const Text(
                 "Continue Editing",
@@ -468,8 +465,8 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-                Navigator.of(context).pop(); // Go back to previous screen
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
               },
               child: const Text("Discard", style: TextStyle(color: Colors.red)),
             ),

@@ -5,6 +5,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http; // Add this import
+import 'photo_editing_screen.dart'; // Add this import
 
 class ProgressAlbumScreen extends StatefulWidget {
   const ProgressAlbumScreen({super.key});
@@ -375,6 +377,75 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     }
   }
 
+  /// ✅ NEW: Handle share to community - navigate to PhotoEditingScreen with selected images
+  Future<void> _handleShareToCommunity(String date) async {
+    final images = _progressImages[date] ?? [];
+
+    if (images.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No images to share from this date'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Convert image URLs to Uint8List for the photo editor
+      List<Uint8List> imageBytesList = [];
+
+      for (final imageUrl in images) {
+        try {
+          final response = await http.get(Uri.parse(imageUrl));
+          if (response.statusCode == 200) {
+            imageBytesList.add(response.bodyBytes);
+          }
+        } catch (e) {
+          print('Error loading image: $e');
+        }
+      }
+
+      if (imageBytesList.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to load images for sharing'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Navigate to PhotoEditingScreen with the images
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProgressPhotoEditingScreen(
+            progressImages: imageBytesList,
+            initialCaption: "My progress from $date 💪",
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error sharing to community: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to share: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -640,14 +711,25 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                       color: Colors.blue,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      "Share",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            "Share",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                   ),
                   color: Colors.grey[800],
                   onSelected: (String result) {
@@ -780,15 +862,6 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       ),
     );
   }
-
-  void _handleShareToCommunity(String date) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Sharing $date progress to community'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 }
 
 class _ImageZoomOverlay extends StatelessWidget {
@@ -840,6 +913,362 @@ class _ImageZoomOverlay extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// NEW: Custom PhotoEditingScreen for progress images
+class ProgressPhotoEditingScreen extends StatefulWidget {
+  final List<Uint8List> progressImages;
+  final String initialCaption;
+
+  const ProgressPhotoEditingScreen({
+    super.key,
+    required this.progressImages,
+    this.initialCaption = '',
+  });
+
+  @override
+  State<ProgressPhotoEditingScreen> createState() =>
+      _ProgressPhotoEditingScreenState();
+}
+
+class _ProgressPhotoEditingScreenState
+    extends State<ProgressPhotoEditingScreen> {
+  final List<Uint8List> _selectedImages = [];
+  final TextEditingController _captionController = TextEditingController();
+  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
+  bool _isUploading = false;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _captionController.text = widget.initialCaption;
+    _selectedImages.addAll(widget.progressImages);
+  }
+
+  @override
+  void dispose() {
+    _captionController.dispose();
+    super.dispose();
+  }
+
+  Future<List<String>> _uploadImagesToSupabase() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      List<String> imageUrls = [];
+
+      for (int i = 0; i < _selectedImages.length; i++) {
+        final String fileName =
+            'post_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final String filePath = 'community-posts/${user.uid}/$fileName';
+
+        try {
+          await _supabase.storage
+              .from('community-posts')
+              .uploadBinary(filePath, _selectedImages[i]);
+
+          final String publicURL = _supabase.storage
+              .from('community-posts')
+              .getPublicUrl(filePath);
+
+          imageUrls.add(publicURL);
+        } catch (e) {
+          print('❌ Binary upload failed for image $i: $e');
+          throw e;
+        }
+      }
+
+      return imageUrls;
+    } catch (e) {
+      print('❌ Error uploading images: $e');
+      throw e;
+    }
+  }
+
+  Future<void> _createPostInFirestore(List<String> imageUrls) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final userData = userDoc.data();
+
+      final postData = {
+        'userId': user.uid,
+        'username': userData?['displayName'] ?? 'User',
+        'profileImage': userData?['photoURL'],
+        'caption': _captionController.text.trim(),
+        'postImages': imageUrls,
+        'timePosted': FieldValue.serverTimestamp(),
+        'likes': 0,
+        'commentCount': 0,
+        'likedBy': [],
+      };
+
+      await _firestore.collection('community_posts').add(postData);
+    } catch (e) {
+      print('Error creating post in Firestore: $e');
+      throw e;
+    }
+  }
+
+  Future<void> _handlePost() async {
+    if (_selectedImages.isEmpty || _captionController.text.trim().isEmpty) {
+      _showErrorSnackBar('Please add images and caption');
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final List<String> imageUrls = await _uploadImagesToSupabase();
+      await _createPostInFirestore(imageUrls);
+
+      Navigator.pop(context, {'success': true});
+
+      _showSuccessSnackBar('Progress shared to community successfully!');
+    } catch (e) {
+      print('Error creating post: $e');
+      _showErrorSnackBar('Failed to share progress: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  void _removeCurrentImage() {
+    if (_selectedImages.isNotEmpty) {
+      setState(() {
+        _selectedImages.removeAt(_currentPage);
+        if (_currentPage >= _selectedImages.length &&
+            _selectedImages.isNotEmpty) {
+          _currentPage = _selectedImages.length - 1;
+        } else if (_selectedImages.isEmpty) {
+          _currentPage = 0;
+        }
+      });
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  Widget _buildImagePreview() {
+    if (_selectedImages.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 300,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.grey[800],
+          border: Border.all(color: Colors.grey[700]!, width: 1),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_library, color: Colors.grey[600], size: 60),
+            const SizedBox(height: 16),
+            Text(
+              "No images selected",
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      height: 300,
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        color: Colors.grey[800],
+      ),
+      child: Stack(
+        children: [
+          PageView.builder(
+            itemCount: _selectedImages.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Image.memory(
+                _selectedImages[index],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 300,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: Icon(Icons.error, color: Colors.grey[600], size: 60),
+                  );
+                },
+              );
+            },
+          ),
+
+          // Image counter
+          if (_selectedImages.length > 1)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_currentPage + 1}/${_selectedImages.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
+          // Single close button for current image
+          if (_selectedImages.isNotEmpty)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: GestureDetector(
+                onTap: _removeCurrentImage,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close, color: Colors.white, size: 18),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: const Text(
+          "Share Progress",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        actions: [
+          _isUploading
+              ? const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                    ),
+                  ),
+                )
+              : TextButton(
+                  onPressed: _handlePost,
+                  child: const Text(
+                    "Post",
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(children: [_buildImagePreview()]),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Caption",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _captionController,
+                    decoration: const InputDecoration(
+                      hintText: "Share your progress story...",
+                      hintStyle: TextStyle(color: Colors.white70),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    maxLines: null,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
