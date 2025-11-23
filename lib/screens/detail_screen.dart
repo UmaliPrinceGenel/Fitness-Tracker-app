@@ -3,23 +3,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'add_data_screen.dart';
-import 'vitality_info_screen.dart';
+import 'sleep_info_screen.dart';
 import 'calories_info_screen.dart';
 import 'moving_info_screen.dart';
 import 'steps_info_screen.dart';
-import 'body_composition_info_screen.dart';
+import 'waist_measurement_info_screen.dart';
 import 'dart:ui' as ui;
 
 class DetailScreen extends StatefulWidget {
   final String title;
   final double? currentValue;
   final double? goalValue;
-
+  final VoidCallback? onDataSaved; // Add this
   const DetailScreen({
     super.key,
     required this.title,
     this.currentValue,
     this.goalValue,
+    this.onDataSaved, // Add this
   });
 
   @override
@@ -77,6 +78,24 @@ class _DetailScreenState extends State<DetailScreen> {
             .doc('current')
             .get();
 
+        // Load weight history with real dates
+        final weightHistorySnapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('weight_history')
+            .orderBy('timestamp', descending: true)
+            .limit(30)
+            .get();
+
+        // Load sleep history with real dates
+        final sleepHistorySnapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('sleep_history')
+            .orderBy('timestamp', descending: true)
+            .limit(30)
+            .get();
+
         // Load daily activity history
         final dailyActivitySnapshot = await _firestore
             .collection('users')
@@ -106,42 +125,65 @@ class _DetailScreenState extends State<DetailScreen> {
                 _goalData = 60.0;
                 _loadTimeBasedData('movingMinutes');
                 break;
-              case "Body Fat %":
-                _currentData = (healthData['bodyFat'] ?? 0.0).toDouble();
-                _goalData = 20.0;
+              case "Waist Measurement":
+                _currentData = (healthData['waistMeasurement'] ?? 0.0)
+                    .toDouble();
+                _goalData = 80.0;
                 _historicalData = List<double>.from(
-                  healthData['bodyFatHistory'] ?? [],
+                  healthData['waistHistory'] ?? [],
                 );
                 _historicalDates = _generateDatesForHistory(
                   _historicalData.length,
                 );
                 break;
               case "Weight":
-                _currentData = _weight;
+                _currentData = (healthData['weight'] ?? _weight).toDouble();
                 _goalData = 62.0;
-                _historicalData = List<double>.from(
-                  healthData['weightHistory'] ?? [],
-                );
-                _historicalDates = _generateDatesForHistory(
-                  _historicalData.length,
-                );
+                _historicalData = [];
+                _historicalDates = [];
+
+                for (var doc in weightHistorySnapshot.docs) {
+                  final data = doc.data();
+                  _historicalData.add((data['weight'] ?? 0.0).toDouble());
+                  _historicalDates.add((data['date'] as Timestamp).toDate());
+                }
+                _historicalData = _historicalData.reversed.toList();
+                _historicalDates = _historicalDates.reversed.toList();
                 break;
               case "BMI":
                 _calculateBMI();
                 _goalData = 22.0;
-                // No need to load historical data since we removed the trend graph
                 _historicalData = [];
                 _historicalDates = [];
                 break;
-              case "Vitality Score":
-                _currentData = (healthData['vitalityScore'] ?? 0.0).toDouble();
-                _goalData = 100.0;
-                _historicalData = List<double>.from(
-                  healthData['vitalityHistory'] ?? [],
-                );
-                _historicalDates = _generateDatesForHistory(
-                  _historicalData.length,
-                );
+              case "Sleep Hours":
+                // First try to get the latest sleep entry from sleep_history
+                double latestSleepHours = 0.0;
+                if (sleepHistorySnapshot.docs.isNotEmpty) {
+                  // The first document is the latest one due to descending order
+                  final latestSleepDoc = sleepHistorySnapshot.docs.first;
+                  final latestData = latestSleepDoc.data();
+                  latestSleepHours = (latestData['sleepHours'] ?? 0.0)
+                      .toDouble();
+                }
+
+                _currentData =
+                    latestSleepHours; // Use latest sleep hours instead of current
+                _goalData = 8.0;
+
+                // Load sleep history with actual dates
+                _historicalData = [];
+                _historicalDates = [];
+
+                for (var doc in sleepHistorySnapshot.docs) {
+                  final data = doc.data();
+                  _historicalData.add((data['sleepHours'] ?? 0.0).toDouble());
+                  _historicalDates.add((data['date'] as Timestamp).toDate());
+                }
+
+                // Reverse to show chronological order (oldest to newest)
+                _historicalData = _historicalData.reversed.toList();
+                _historicalDates = _historicalDates.reversed.toList();
                 break;
             }
 
@@ -216,11 +258,25 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _calculateBMI() {
     if (_height > 0 && _weight > 0) {
+      // Use _weight and _height from user profile
       double bmi = _weight / ((_height / 100) * (_height / 100));
       setState(() {
         _currentData = double.parse(bmi.toStringAsFixed(1));
       });
+    } else {
+      // If no valid data, set to 0.0
+      setState(() {
+        _currentData = 0.0;
+      });
     }
+  }
+
+  double _calculateCurrentBMI() {
+    if (_height > 0 && _weight > 0) {
+      // Use _weight and _height from user profile
+      return _weight / ((_height / 100) * (_height / 100));
+    }
+    return 0.0;
   }
 
   double _getDefaultGoal() {
@@ -231,14 +287,14 @@ class _DetailScreenState extends State<DetailScreen> {
         return 7000.0;
       case "Moving":
         return 60.0;
-      case "Body Fat %":
-        return 20.0;
+      case "Waist Measurement": // UPDATED
+        return 80.0;
       case "Weight":
         return 62.0;
       case "BMI":
         return 22.0;
-      case "Vitality Score":
-        return 100.0;
+      case "Sleep Hours": // UPDATED
+        return 8.0;
       default:
         return 0.0;
     }
@@ -248,14 +304,14 @@ class _DetailScreenState extends State<DetailScreen> {
     if (_isLoading) return "Loading...";
 
     switch (widget.title) {
-      case "Body Fat %":
-        return "${_currentData.toStringAsFixed(1)}%";
+      case "Waist Measurement": // UPDATED
+        return "${_currentData.toStringAsFixed(1)} cm";
       case "Weight":
         return "${_currentData.toStringAsFixed(1)} kg";
       case "BMI":
         return _currentData.toStringAsFixed(1);
-      case "Vitality Score":
-        return _currentData.toStringAsFixed(1);
+      case "Sleep Hours": // UPDATED
+        return "${_currentData.toStringAsFixed(1)} hrs";
       case "Calories":
       case "Steps":
       case "Moving":
@@ -270,14 +326,14 @@ class _DetailScreenState extends State<DetailScreen> {
     double average =
         _historicalData.reduce((a, b) => a + b) / _historicalData.length;
     switch (widget.title) {
-      case "Body Fat %":
-        return "${average.toStringAsFixed(1)}%";
+      case "Waist Measurement": // UPDATED
+        return "${average.toStringAsFixed(1)} cm";
       case "Weight":
         return "${average.toStringAsFixed(1)} kg";
       case "BMI":
         return average.toStringAsFixed(1);
-      case "Vitality Score":
-        return average.toStringAsFixed(1);
+      case "Sleep Hours": // UPDATED
+        return "${average.toStringAsFixed(1)} hrs";
       case "Calories":
       case "Steps":
       case "Moving":
@@ -299,14 +355,14 @@ class _DetailScreenState extends State<DetailScreen> {
 
   String _getGoal() {
     switch (widget.title) {
-      case "Body Fat %":
-        return "${_goalData.toStringAsFixed(1)}%";
+      case "Waist Measurement": // UPDATED
+        return "${_goalData.toStringAsFixed(1)} cm";
       case "Weight":
         return "${_goalData.toStringAsFixed(1)} kg";
       case "BMI":
         return _goalData.toStringAsFixed(1);
-      case "Vitality Score":
-        return _goalData.toStringAsFixed(1);
+      case "Sleep Hours": // UPDATED
+        return "${_goalData.toStringAsFixed(1)} hrs";
       case "Calories":
         return "${_goalData.toInt()} kcal";
       case "Steps":
@@ -341,10 +397,12 @@ class _DetailScreenState extends State<DetailScreen> {
         return "steps";
       case "Moving":
         return "min";
-      case "Body Fat %":
-        return "%";
+      case "Waist Measurement": // UPDATED
+        return "cm";
       case "Weight":
         return "kg";
+      case "Sleep Hours": // UPDATED
+        return "hrs";
       default:
         return "";
     }
@@ -358,8 +416,10 @@ class _DetailScreenState extends State<DetailScreen> {
         return const Color(0xFFFF9800);
       case "Moving":
         return const Color(0xFF2196F3);
-      case "Body Fat %":
+      case "Waist Measurement": // UPDATED: Changed to blue
         return Colors.blue;
+      case "Sleep Hours": // UPDATED: Changed to purple
+        return Colors.purple;
       default:
         return Colors.orange;
     }
@@ -411,6 +471,10 @@ class _DetailScreenState extends State<DetailScreen> {
         return Icons.directions_walk;
       case "Moving":
         return Icons.directions_run;
+      case "Waist Measurement": // UPDATED
+        return Icons.straighten;
+      case "Sleep Hours": // UPDATED
+        return Icons.bedtime;
       default:
         return Icons.visibility;
     }
@@ -446,7 +510,10 @@ class _DetailScreenState extends State<DetailScreen> {
         backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            widget.onDataSaved?.call();
+            Navigator.pop(context);
+          },
         ),
         title: Text(
           widget.title,
@@ -475,21 +542,42 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
+  // In the _buildAppBarActions method in details_screen.dart
+  // In the _buildAppBarActions method
   List<Widget> _buildAppBarActions() {
-    if (widget.title == "Weight") {
+    if (widget.title == "Weight" ||
+        widget.title == "Waist Measurement" ||
+        widget.title == "Sleep Hours") {
       return [
         IconButton(
           icon: const Icon(Icons.add, color: Colors.white),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddDataScreen(title: widget.title),
-            ),
-          ),
+          onPressed: () => _navigateToAddDataScreen(),
         ),
       ];
     }
     return [];
+  }
+
+  // Add this new method
+  void _navigateToAddDataScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            AddDataScreen(title: widget.title, onDataSaved: _refreshData),
+      ),
+    ).then((value) {
+      // This will be called when the AddDataScreen is popped (by back button or save)
+      _refreshData();
+    });
+  }
+
+  // Add refresh method
+  void _refreshData() {
+    setState(() {
+      _isLoading = true;
+    });
+    _loadDataFromFirebase();
   }
 
   Widget _buildContent() {
@@ -498,40 +586,197 @@ class _DetailScreenState extends State<DetailScreen> {
         return _buildWeightContent();
       case "BMI":
         return _buildBMIContent();
-      case "Vitality Score":
-        return _buildVitalityContent();
+      case "Sleep Hours": // UPDATED
+        return _buildSleepContent();
       case "Calories":
       case "Steps":
       case "Moving":
         return _buildMetricContent();
-      case "Body Fat %":
-        return _buildBodyFatContent();
+      case "Waist Measurement": // UPDATED
+        return _buildWaistContent();
       default:
         return _buildDefaultContent();
     }
   }
 
   Widget _buildWeightContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF191919),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _currentData.toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: Colors.green, // Changed to green for weight
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Weight",
+                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              _buildTabButton('Latest', 0),
-              _buildTabButton('Trend', 1),
-            ],
+          const SizedBox(height: 20),
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              color: const Color(0xFF191919),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: CustomPaint(
+                painter: RealDataChartPainter(
+                  data: _historicalData,
+                  dates: _historicalDates,
+                  color: Colors.green, // Changed to green for weight
+                  goal: _goalData,
+                  timeTab: 2, // Always show full history for weight
+                ),
+                size: const Size(double.infinity, 180),
+              ),
+            ),
           ),
+          const SizedBox(height: 20),
+          _buildWeightHistorySection(), // New method for weight history
+          const SizedBox(height: 20),
+          _buildBodyCompositionCard(), // Keep the BMI card
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightHistorySection() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Centered header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.history, color: Colors.green, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  "Weight History",
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            if (_historicalData.isNotEmpty)
+              ..._historicalData.asMap().entries.map((entry) {
+                int index = entry.key;
+                double value = entry.value;
+                DateTime date = _historicalDates[index];
+                return _buildWeightHistoryItem(date, value);
+              }).toList(),
+            if (_historicalData.isEmpty)
+              const Center(
+                child: Text(
+                  "No weight history available",
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 20),
-        if (_currentIndex == 0) ..._buildLatestWeightContent(),
-        if (_currentIndex == 1) ..._buildTrendWeightContent(),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildWeightHistoryItem(DateTime date, double value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151515),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('MMMM d, yyyy').format(date),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('HH:mm').format(date),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.green.withOpacity(0.4)),
+            ),
+            child: Text(
+              "${value.toStringAsFixed(1)} kg",
+              style: const TextStyle(
+                color: Colors.green,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -986,46 +1231,184 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildVitalityContent() {
+  // UPDATED: Changed from _buildVitalityContent to _buildSleepContent
+  // UPDATED: Changed from _buildVitalityContent to _buildSleepContent
+  Widget _buildSleepContent() {
     return SingleChildScrollView(
       child: Column(
         children: [
           Container(
             width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _currentData.toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: Colors.purple,
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Sleep Hours",
+                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              color: const Color(0xFF191919),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        _currentData.toStringAsFixed(1),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        "7-day Vitality Score",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ],
+              child: CustomPaint(
+                painter: RealDataChartPainter(
+                  data: _historicalData,
+                  dates: _historicalDates,
+                  color: Colors.purple,
+                  goal: _goalData,
+                  timeTab: 2, // Always show full history for sleep
+                ),
+                size: const Size(double.infinity, 180),
               ),
             ),
           ),
           const SizedBox(height: 20),
-          _buildVitalityPointsSystem(),
+          _buildSleepHistorySection(), // New method for sleep history
           const SizedBox(height: 20),
-          _buildAboutVitalityCard(),
+          _buildAboutSleepCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSleepHistorySection() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Centered header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.history, color: Colors.purple, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  "Sleep History",
+                  style: TextStyle(
+                    color: Colors.purple,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            if (_historicalData.isNotEmpty)
+              ..._historicalData.asMap().entries.map((entry) {
+                int index = entry.key;
+                double value = entry.value;
+                DateTime date = _historicalDates[index];
+                return _buildSleepHistoryItem(date, value);
+              }).toList(),
+            if (_historicalData.isEmpty)
+              const Center(
+                child: Text(
+                  "No sleep history available",
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSleepHistoryItem(DateTime date, double value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151515),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('MMMM d, yyyy').format(date),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('HH:mm').format(date),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.purple.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.purple.withOpacity(0.4)),
+            ),
+            child: Text(
+              "${value.toStringAsFixed(1)} hrs",
+              style: const TextStyle(
+                color: Colors.purple,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1268,7 +1651,8 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildBodyFatContent() {
+  // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent
+  Widget _buildWaistContent() {
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -1285,14 +1669,14 @@ class _DetailScreenState extends State<DetailScreen> {
                 Text(
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
-                    color: Colors.blue,
+                    color: Colors.blue, // UPDATED: Changed color
                     fontSize: 56,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Body Fat %",
+                  "Waist Measurement", // UPDATED: Changed text
                   style: TextStyle(color: Colors.white70, fontSize: 18),
                 ),
               ],
@@ -1318,16 +1702,16 @@ class _DetailScreenState extends State<DetailScreen> {
                 painter: RealDataChartPainter(
                   data: _historicalData,
                   dates: _historicalDates,
-                  color: Colors.blue,
+                  color: Colors.blue, // UPDATED: Changed color
                   goal: _goalData,
-                  timeTab: 2, // Always show full history for body fat
+                  timeTab: 2, // Always show full history for waist measurement
                 ),
                 size: const Size(double.infinity, 180),
               ),
             ),
           ),
           const SizedBox(height: 20),
-          _buildBodyFatHistorySection(),
+          _buildWaistHistorySection(), // UPDATED: Changed method name
         ],
       ),
     );
@@ -1417,7 +1801,8 @@ class _DetailScreenState extends State<DetailScreen> {
   // Graph implementations with real data
   Widget _buildWeightGraph() => _buildRealGraph(_historicalData, Colors.green);
   Widget _buildTrendGraph() => _buildRealGraph(_historicalData, Colors.green);
-  Widget _buildVitalityGraph() => _buildRealGraph(_historicalData, Colors.cyan);
+  Widget _buildSleepGraph() =>
+      _buildRealGraph(_historicalData, Colors.purple); // UPDATED: Changed color
 
   Widget _buildRealGraph(List<double> data, Color color) {
     return Container(
@@ -1459,9 +1844,10 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center, // Changed to center
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.center, // Center the header
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -1484,188 +1870,126 @@ class _DetailScreenState extends State<DetailScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(
-                    Icons.info_outline,
-                    color: Colors.white70,
-                    size: 20,
-                  ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BodyCompositionInfoScreen(),
-                    ),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Weight",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "${_currentData.toStringAsFixed(1)} kg",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+
+            // CENTERED: Weight and BMI section
+            Container(
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceEvenly, // Evenly space items
+                children: [
+                  // Weight Column - Centered content
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.center, // Center align
+                      children: [
+                        const Text(
+                          "Weight",
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${_currentData.toStringAsFixed(1)} kg",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          "Current",
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Vertical divider
+                  Container(
+                    width: 1,
+                    height: 60,
+                    color: Colors.white38,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+
+                  // BMI Column - Centered content
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const DetailScreen(title: "BMI"),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "Suggested",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 60,
-                  color: Colors.white38,
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DetailScreen(title: "BMI"),
-                      ),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2525),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "BMI",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _calculateCurrentBMI().toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    _getBMICategory(_calculateCurrentBMI()),
-                                    style: TextStyle(
-                                      color: _getBMIColor(
-                                        _calculateCurrentBMI(),
-                                      ),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Icon(
-                                Icons.arrow_forward_ios,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF252525),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.center, // Center align
+                          children: [
+                            const Text(
+                              "BMI",
+                              style: TextStyle(
                                 color: Colors.white70,
-                                size: 16,
+                                fontSize: 14,
                               ),
-                            ],
-                          ),
-                        ],
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _calculateCurrentBMI().toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                Text(
+                                  _getBMICategory(_calculateCurrentBMI()),
+                                  style: TextStyle(
+                                    color: _getBMIColor(_calculateCurrentBMI()),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Weight Progress",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Colors.grey,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: (_currentData / _goalData * 100).clamp(
-                          0.0,
-                          100.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Goal: ${_goalData.toStringAsFixed(1)} kg",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      "Remaining: ${(_goalData - _currentData).toStringAsFixed(1)} kg",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+
+            // Progress section - Centered
           ],
         ),
       ),
     );
-  }
-
-  double _calculateCurrentBMI() {
-    if (_height > 0 && _weight > 0) {
-      return _weight / ((_height / 100) * (_height / 100));
-    }
-    return 0.0;
   }
 
   Widget _buildChangesCard() {
@@ -1787,11 +2111,9 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildVitalityPointsSystem() {
-    double vitalityPercentage = (_currentData / _goalData * 100).clamp(
-      0.0,
-      100.0,
-    );
+  // UPDATED: Changed from _buildVitalityPointsSystem to _buildSleepQualitySystem
+  Widget _buildSleepQualitySystem() {
+    double sleepPercentage = (_currentData / _goalData * 100).clamp(0.0, 100.0);
 
     return Container(
       width: double.infinity,
@@ -1805,9 +2127,9 @@ class _DetailScreenState extends State<DetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Vitality Points System",
+              "Sleep Quality System",
               style: TextStyle(
-                color: Color(0xFF705ADD),
+                color: Colors.purple, // UPDATED: Changed color
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -1825,12 +2147,15 @@ class _DetailScreenState extends State<DetailScreen> {
                   // Progress
                   Container(
                     width:
-                        vitalityPercentage *
+                        sleepPercentage *
                         0.01 *
                         (MediaQuery.of(context).size.width - 32),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF705ADD), Color(0xFF9D8AEE)],
+                        colors: [
+                          Colors.purple,
+                          Colors.purpleAccent,
+                        ], // UPDATED: Changed colors
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ),
@@ -1850,7 +2175,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     left: 0,
                     top: -15,
                     child: Text(
-                      "10",
+                      "0",
                       style: TextStyle(color: Colors.white70, fontSize: 10),
                     ),
                   ),
@@ -1858,7 +2183,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     left: 0.6 * (MediaQuery.of(context).size.width - 32) - 10,
                     top: -15,
                     child: Text(
-                      "60",
+                      "6",
                       style: TextStyle(color: Colors.white70, fontSize: 10),
                     ),
                   ),
@@ -1866,7 +2191,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     left: (MediaQuery.of(context).size.width - 32) - 20,
                     top: -15,
                     child: Text(
-                      "100",
+                      "12",
                       style: TextStyle(color: Colors.white70, fontSize: 10),
                     ),
                   ),
@@ -1875,7 +2200,7 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              "Vitality Score measures the positive impact of your exercise on health over the past 7 days. Higher scores indicate better health outcomes from your physical activities.",
+              "Sleep Hours measures the duration of your sleep. Adults typically need 7-9 hours of quality sleep per night for optimal health and well-being.",
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 12,
@@ -1884,7 +2209,7 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              "Current Score: ${_currentData.toStringAsFixed(1)}/100",
+              "Current Sleep: ${_currentData.toStringAsFixed(1)}/8 hrs", // UPDATED: Changed text
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -1897,11 +2222,14 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildAboutVitalityCard() {
+  // UPDATED: Changed from _buildAboutVitalityCard to _buildAboutSleepCard
+  Widget _buildAboutSleepCard() {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const VitalityInfoScreen()),
+        MaterialPageRoute(
+          builder: (context) => const SleepInfoScreen(),
+        ), // UPDATED: Changed screen
       ),
       child: Container(
         width: double.infinity,
@@ -1915,7 +2243,7 @@ class _DetailScreenState extends State<DetailScreen> {
             children: [
               const Expanded(
                 child: Text(
-                  "About Vitality Score",
+                  "About Sleep Hours", // UPDATED: Changed text
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -1935,7 +2263,8 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildBodyFatHistorySection() {
+  // UPDATED: Changed from _buildBodyFatHistorySection to _buildWaistHistorySection
+  Widget _buildWaistHistorySection() {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1952,9 +2281,13 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.center, // Center the entire section
           children: [
+            // Centered header
             Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.center, // Center the header row
               children: [
                 const Icon(Icons.history, color: Colors.blue, size: 24),
                 const SizedBox(width: 8),
@@ -1966,24 +2299,84 @@ class _DetailScreenState extends State<DetailScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
               ],
             ),
             const SizedBox(height: 16),
+
             if (_historicalData.isNotEmpty)
               ..._historicalData.asMap().entries.map((entry) {
                 int index = entry.key;
                 double value = entry.value;
                 DateTime date = _historicalDates[index];
-                return _buildModernHistoryItem(date, value);
+                return _buildCenteredHistoryItem(date, value);
               }).toList(),
             if (_historicalData.isEmpty)
-              const Text(
-                "No history data available",
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+              const Center(
+                child: Text(
+                  "No history data available",
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCenteredHistoryItem(DateTime date, double value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151515),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center, // Center the entire row
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.center, // Center the date info
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('MMMM d, yyyy').format(date),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('HH:mm').format(date),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.blue.withOpacity(0.4)),
+            ),
+            child: Text(
+              "${value.toStringAsFixed(1)} cm",
+              style: const TextStyle(
+                color: Colors.blue,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2046,7 +2439,7 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildModernHistoryItem(DateTime date, double percentage) {
+  Widget _buildModernHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
@@ -2078,14 +2471,16 @@ class _DetailScreenState extends State<DetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.2),
+              color: Colors.blue.withOpacity(0.2), // UPDATED: Changed color
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.blue.withOpacity(0.4)),
+              border: Border.all(
+                color: Colors.blue.withOpacity(0.4),
+              ), // UPDATED: Changed color
             ),
             child: Text(
-              "${percentage.toStringAsFixed(1)}%",
+              "${value.toStringAsFixed(1)} cm", // UPDATED: Changed unit
               style: const TextStyle(
-                color: Colors.blue,
+                color: Colors.blue, // UPDATED: Changed color
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -2111,6 +2506,20 @@ class _DetailScreenState extends State<DetailScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const StepsInfoScreen()),
+      );
+    } else if (widget.title == "Sleep Hours") {
+      // UPDATED: Added sleep info
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SleepInfoScreen()),
+      );
+    } else if (widget.title == "Waist Measurement") {
+      // UPDATED: Added waist info
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const WaistMeasurementInfoScreen(),
+        ),
       );
     } else {
       showGeneralDialog(

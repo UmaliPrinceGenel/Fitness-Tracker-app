@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 
-class BodyCompositionInfoScreen extends StatelessWidget {
-  const BodyCompositionInfoScreen({super.key});
+class SleepInfoScreen extends StatelessWidget {
+  const SleepInfoScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +17,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
           },
         ),
         title: const Text(
-          "Body Composition",
+          "Sleep Health",
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
@@ -42,7 +42,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Body Composition",
+                          "Sleep Health",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -51,7 +51,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          "Body composition refers to the proportion of fat, muscle, bone, and water in your body. It's a more comprehensive measure of health than weight alone.",
+                          "Quality sleep is essential for physical health, mental clarity, and overall well-being. Tracking your sleep patterns helps you understand your sleep quality and make improvements for better health.",
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 16,
@@ -64,7 +64,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Understanding Your Metrics section
+                // Understanding Your Sleep Metrics section
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -77,7 +77,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Understanding Your Metrics:",
+                          "Understanding Sleep Stages:",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -85,19 +85,19 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _buildMetricItem(
-                          "• Weight:",
-                          "Your total body weight including fat, muscle, bone, and water.",
+                        _buildSleepStageItem(
+                          "Light Sleep:",
+                          "Transition phase between wakefulness and sleep. Important for memory consolidation and physical recovery.",
                         ),
                         const SizedBox(height: 12),
-                        _buildMetricItem(
-                          "• BMI (Body Mass Index):",
-                          "A calculation based on your height and weight that provides a general indication of whether your weight is healthy.",
+                        _buildSleepStageItem(
+                          "Deep Sleep:",
+                          "Crucial for physical restoration, tissue repair, and immune system strengthening. Difficult to wake from this stage.",
                         ),
                         const SizedBox(height: 12),
-                        _buildMetricItem(
-                          "• Body Fat Percentage:",
-                          "The percentage of your total weight that is fat tissue.",
+                        _buildSleepStageItem(
+                          "REM Sleep:",
+                          "Rapid Eye Movement sleep where dreaming occurs. Essential for learning, memory processing, and emotional regulation.",
                         ),
                       ],
                     ),
@@ -105,7 +105,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Why It Matters section
+                // Recommended Sleep Duration section
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -118,7 +118,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Why It Matters:",
+                          "Recommended Sleep Duration:",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -127,7 +127,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          "Monitoring your body composition can help you understand changes in your health and fitness over time. It can reveal whether weight changes are due to fat loss, muscle gain, or other factors.",
+                          "Most adults need 7-9 hours of quality sleep per night. Consistency in sleep schedule is as important as duration for optimal health benefits.",
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 16,
@@ -140,7 +140,7 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Additional Information section
+                // Sleep Quality Factors section
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -153,7 +153,53 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Tracking Your Progress:",
+                          "Factors Affecting Sleep Quality:",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildFactorItem(
+                          "Consistent Schedule:",
+                          "Going to bed and waking up at the same time daily regulates your body's internal clock.",
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFactorItem(
+                          "Sleep Environment:",
+                          "Dark, quiet, and cool rooms promote better sleep quality.",
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFactorItem(
+                          "Pre-Sleep Routine:",
+                          "Relaxing activities before bed help signal your body it's time to sleep.",
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFactorItem(
+                          "Daytime Habits:",
+                          "Regular exercise and limited caffeine intake improve sleep quality.",
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Benefits of Quality Sleep section
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Benefits of Quality Sleep:",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -162,7 +208,42 @@ class BodyCompositionInfoScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          "Regular monitoring of your body composition metrics can help you adjust your fitness and nutrition plan to achieve your health goals more effectively. It's important to remember that healthy body composition varies between individuals based on factors like age, gender, and activity level.",
+                          "Adequate, quality sleep supports immune function, cognitive performance, emotional well-being, and physical health. It helps with weight management, reduces stress, and improves overall quality of life.",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Sleep Tracking Tips section
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Improving Your Sleep:",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Track your sleep patterns consistently and look for trends. Small changes like limiting screen time before bed, maintaining a comfortable room temperature, and establishing a relaxing bedtime routine can significantly improve sleep quality over time.",
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 16,
@@ -181,12 +262,38 @@ class BodyCompositionInfoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricItem(String title, String description) {
+  Widget _buildSleepStageItem(String title, String description) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: RichText(
         text: TextSpan(
           text: title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          children: [
+            TextSpan(
+              text: " $description",
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFactorItem(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: RichText(
+        text: TextSpan(
+          text: "• $title",
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,

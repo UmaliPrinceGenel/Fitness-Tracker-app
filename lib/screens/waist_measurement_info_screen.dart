@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class VitalityInfoScreen extends StatelessWidget {
-  const VitalityInfoScreen({super.key});
+class WaistMeasurementInfoScreen extends StatelessWidget {
+  const WaistMeasurementInfoScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +16,7 @@ class VitalityInfoScreen extends StatelessWidget {
           },
         ),
         title: const Text(
-          'About Vitality Score',
+          'About Waist Measurement',
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
@@ -29,7 +29,7 @@ class VitalityInfoScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Vitality Details",
+                  "Waist Measurement Details",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -38,7 +38,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "What is Vitality score?",
+                  "What is Waist Measurement?",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -47,7 +47,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Vitality score can be used to assess the positive impact of personal exercise on health. Regularly reaching a 7-day vitality score of 100 can have significant positive health impacts.",
+                  "Waist measurement is a key indicator of abdominal fat and overall health risk. It provides important information about your body composition that goes beyond just weight or BMI. Regularly monitoring your waist circumference can help assess your risk for various health conditions.",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -56,7 +56,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Vitality score is based on the WHO Guidelines on Physical Activity and Sedentary Behaviour, which recommend that: All healthy adults engage in at least 150-300 minutes of moderate-intensity exercise or 75-150 minutes of high-intensity exercise per week; or an equivalent combination of moderate and higher intensity exercise. At the same time, a little physical exercise is better than none. Replacing sedentary time with low-intensity exercise also has health benefits.",
+                  "Excess abdominal fat is associated with increased risk of heart disease, type 2 diabetes, high blood pressure, and certain cancers. Maintaining a healthy waist measurement is crucial for long-term health and well-being.",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -65,7 +65,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "How is it calculated?",
+                  "How to Measure Correctly?",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -74,7 +74,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "The Vitality Score is customized based on your age, resting heart rate, maximum heart rate, and workout data from the past 7 days. You can earn Vitality points by exercising while wearing your device. Higher-intensity exercise will earn you more Vitality points in a shorter amount of time. As your Vitality score increases, it becomes more difficult to earn more points",
+                  "1. Stand straight and breathe normally\n2. Locate your hip bone and the bottom of your ribs\n3. Place the measuring tape midway between these points\n4. Ensure the tape is parallel to the floor\n5. Keep the tape snug but not compressing the skin\n6. Take the measurement at the end of a normal breath",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -83,7 +83,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "Why is it calculated on a 7-day basis?",
+                  "Why is Waist Measurement Important?",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -92,7 +92,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Vitality score is a health indicator for the past 7 days. You don't have to exercise a lot on any given day, nor exercise every day; you can earn Vitality points by exercising at any time within the 7-day period. We recommend exercising at least 2-3 times a week to maintain your physical and mental health.",
+                  "Waist measurement is a better predictor of health risks than BMI alone because it specifically measures abdominal fat. Visceral fat around your organs is metabolically active and can release inflammatory substances that increase disease risk.",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -101,7 +101,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "How many Vitality points can I earn?",
+                  "Healthy Waist Measurement Guidelines",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -110,7 +110,16 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "You can earn up to 80 Vitality points per day, so theoretically you could reach a score of 560 points over 7 days. However, as your score increases, it becomes increasingly difficult to earn more points.",
+                  "For Men:\n• Low risk: Less than 94 cm (37 inches)\n• Increased risk: 94-102 cm (37-40 inches)\n• High risk: More than 102 cm (40 inches)",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "For Women:\n• Low risk: Less than 80 cm (31.5 inches)\n• Increased risk: 80-88 cm (31.5-34.6 inches)\n• High risk: More than 88 cm (34.6 inches)",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -119,7 +128,7 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "Why set the three goals of 30, 60, and 100 points?",
+                  "How Often Should I Measure?",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -128,16 +137,43 @@ class VitalityInfoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "The WHO Guidelines on Physical Activity and Sedentary Behaviour recommend that all healthy adults engage in at least 75 minutes of higher-intensity exercise or 150 minutes of moderate-intensity exercise per week. For additional health benefits, a minimum of 300 minutes of moderate intensity activity or 150 minutes of higher intensity activity per week is required; alternatively, a person can engage in a combination of moderate and higher intensity aerobic activity at the same caloric consumption level.",
+                  "We recommend measuring your waist:\n• Once a week for general monitoring\n• At the same time of day (preferably morning)\n• Under similar conditions (before eating)\n• Using the same measuring tape for consistency",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                     height: 1.4,
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Tips for Reducing Waist Measurement",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 const Text(
-                  "When your 7-day Vitality score reaches 60, you've reached WHO's weekly minimum exercise recommendation. For the greatest health benefits, aim for a 7-day Vitality score of 100. Make sure to manage your workout intensity according to your physical health, and try to make it a habit to exercise regularly.",
+                  "• Engage in regular aerobic exercise\n• Include strength training 2-3 times per week\n• Reduce refined carbohydrates and added sugars\n• Increase fiber intake from vegetables and whole grains\n• Manage stress levels and get adequate sleep\n• Stay hydrated and limit alcohol consumption",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "When to Consult a Healthcare Professional",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "If your waist measurement falls into the 'high risk' category or if you notice rapid changes in your waist size, it's recommended to consult with a healthcare provider. They can provide personalized advice and help develop a plan to improve your health metrics.",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,

@@ -17,7 +17,8 @@ class HealthDashboard extends StatefulWidget {
   State<HealthDashboard> createState() => _HealthDashboardState();
 }
 
-class _HealthDashboardState extends State<HealthDashboard> {
+class _HealthDashboardState extends State<HealthDashboard>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -30,17 +31,17 @@ class _HealthDashboardState extends State<HealthDashboard> {
   double _movingMinutes = 0.0;
   double _movingGoal = 60.0;
 
-  // Body metrics data
-  double _bodyFat = 0.0;
+  // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
+  double _waistMeasurement = 0.0;
   double _weight = 0.0;
   double _height = 0.0;
   double _bmi = 0.0;
-  double _vitalityScore = 0.0;
+  double _sleepHours = 0.0;
 
-  // Historical data for graphs
-  List<double> _bodyFatHistory = [];
+  // Historical data for graphs - UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
+  List<double> _waistHistory = [];
   List<double> _weightHistory = [];
-  List<double> _vitalityHistory = [];
+  List<double> _sleepHistory = [];
 
   // Daily activity history
   List<DailyActivity> _dailyActivityHistory = [];
@@ -65,6 +66,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // ADD THIS LINE
     _loadUserData();
     _initStepTracking();
     _checkDailyReset();
@@ -135,7 +137,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
     // Update Firestore with reset data
     _updateHealthData(steps: 0, calories: 0, movingMinutes: 0);
-    _updateVitalityScore();
   }
 
   Future<void> _initStepTracking() async {
@@ -186,7 +187,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
       setState(() {
         _steps = newSteps;
         _updateCaloriesFromSteps();
-        _updateVitalityScore();
       });
       _updateHealthData(steps: _steps);
     }
@@ -243,7 +243,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
           _steps = newSteps;
           _updateCaloriesFromSteps();
           _updateMovingMinutes();
-          _updateVitalityScore();
         });
 
         _updateHealthData(steps: _steps);
@@ -283,27 +282,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
     }
   }
 
-  // Automatic Body Fat Calculation based on BMI
-  void _calculateBodyFat() {
-    if (_bmi > 0) {
-      // Simple estimation formula for body fat percentage
-      double estimatedBodyFat =
-          (1.20 * _bmi) + 0.23 - 5.4; // Simplified version
-      estimatedBodyFat = estimatedBodyFat.clamp(5.0, 40.0); // Reasonable range
-
-      if ((estimatedBodyFat - _bodyFat).abs() > 0.5) {
-        setState(() {
-          _bodyFat = double.parse(estimatedBodyFat.toStringAsFixed(1));
-        });
-
-        _bodyFatHistory.add(_bodyFat);
-        if (_bodyFatHistory.length > 10) _bodyFatHistory.removeAt(0);
-
-        _updateHealthData(bodyFat: _bodyFat);
-      }
-    }
-  }
-
   // Automatic BMI Calculation
   void _calculateBMI() {
     if (_height > 0 && _weight > 0) {
@@ -312,58 +290,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
         setState(() {
           _bmi = double.parse(newBmi.toStringAsFixed(1));
         });
-        _calculateBodyFat();
-        _updateVitalityScore();
       }
-    }
-  }
-
-  // Automatic Vitality Score Calculation
-  void _updateVitalityScore() {
-    double newVitalityScore = 0.0;
-
-    double stepsScore = (_steps / _stepsGoal * 40).clamp(0.0, 40.0);
-    double caloriesScore = (_calories / _caloriesGoal * 20).clamp(0.0, 20.0);
-    double movingScore = (_movingMinutes / _movingGoal * 20).clamp(0.0, 20.0);
-
-    double bmiScore = 0.0;
-    if (_bmi >= 18.5 && _bmi <= 24.9) {
-      bmiScore = 10.0;
-    } else if (_bmi >= 17 && _bmi <= 27) {
-      bmiScore = 7.0;
-    } else if (_bmi >= 15 && _bmi <= 30) {
-      bmiScore = 5.0;
-    } else {
-      bmiScore = 2.0;
-    }
-
-    double bodyFatScore = 0.0;
-    if (_bodyFat >= 18 && _bodyFat <= 25) {
-      bodyFatScore = 10.0;
-    } else if (_bodyFat >= 15 && _bodyFat <= 30) {
-      bodyFatScore = 7.0;
-    } else if (_bodyFat >= 12 && _bodyFat <= 35) {
-      bodyFatScore = 5.0;
-    } else {
-      bodyFatScore = 2.0;
-    }
-
-    newVitalityScore =
-        stepsScore + caloriesScore + movingScore + bmiScore + bodyFatScore;
-    newVitalityScore = newVitalityScore.clamp(0.0, 100.0);
-
-    if ((newVitalityScore - _vitalityScore).abs() > 1.0) {
-      setState(() {
-        _vitalityScore = double.parse(newVitalityScore.toStringAsFixed(0));
-      });
-
-      if (_vitalityHistory.isEmpty ||
-          (_vitalityScore - _vitalityHistory.last).abs() >= 2.0) {
-        _vitalityHistory.add(_vitalityScore);
-        if (_vitalityHistory.length > 10) _vitalityHistory.removeAt(0);
-      }
-
-      _updateHealthData(vitalityScore: _vitalityScore);
     }
   }
 
@@ -403,17 +330,20 @@ class _HealthDashboardState extends State<HealthDashboard> {
               _calories = (healthData['calories'] ?? 0.0).toDouble();
               _steps = (healthData['steps'] ?? 0).toInt();
               _movingMinutes = (healthData['movingMinutes'] ?? 0.0).toDouble();
-              _bodyFat = (healthData['bodyFat'] ?? 0.0).toDouble();
-              _vitalityScore = (healthData['vitalityScore'] ?? 0.0).toDouble();
+              // UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
+              _waistMeasurement = (healthData['waistMeasurement'] ?? 0.0)
+                  .toDouble();
+              _sleepHours = (healthData['sleepHours'] ?? 0.0).toDouble();
 
-              _bodyFatHistory = List<double>.from(
-                healthData['bodyFatHistory'] ?? [],
+              // UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
+              _waistHistory = List<double>.from(
+                healthData['waistHistory'] ?? [],
               );
               _weightHistory = List<double>.from(
                 healthData['weightHistory'] ?? [],
               );
-              _vitalityHistory = List<double>.from(
-                healthData['vitalityHistory'] ?? [],
+              _sleepHistory = List<double>.from(
+                healthData['sleepHistory'] ?? [],
               );
 
               // Load daily activity history
@@ -440,8 +370,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
           });
 
           _calculateBMI();
-          _calculateBodyFat();
-          _updateVitalityScore();
         }
       }
     } catch (e) {
@@ -455,8 +383,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
   Future<void> _initializeNewUserHealthData(String userId) async {
     try {
       _calculateBMI();
-      _calculateBodyFat();
-      _updateVitalityScore();
 
       await _firestore
           .collection('users')
@@ -467,11 +393,11 @@ class _HealthDashboardState extends State<HealthDashboard> {
             'calories': 0,
             'steps': 0,
             'movingMinutes': 0,
-            'bodyFat': _bodyFat,
-            'vitalityScore': _vitalityScore,
-            'bodyFatHistory': [_bodyFat],
+            'waistMeasurement': _waistMeasurement, // UPDATED
+            'sleepHours': _sleepHours, // UPDATED
+            'waistHistory': [_waistMeasurement], // UPDATED
             'weightHistory': [_weight],
-            'vitalityHistory': [_vitalityScore],
+            'sleepHistory': [_sleepHours], // UPDATED
             'dailyActivityHistory': [],
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
@@ -485,9 +411,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
     double? calories,
     int? steps,
     double? movingMinutes,
-    double? bodyFat,
+    double? waistMeasurement, // UPDATED
     double? weight,
-    double? vitalityScore,
+    double? sleepHours, // UPDATED
   }) async {
     try {
       final user = _auth.currentUser;
@@ -499,8 +425,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
         if (calories != null) updates['calories'] = calories;
         if (steps != null) updates['steps'] = steps;
         if (movingMinutes != null) updates['movingMinutes'] = movingMinutes;
-        if (bodyFat != null) updates['bodyFat'] = bodyFat;
-        if (vitalityScore != null) updates['vitalityScore'] = vitalityScore;
+        if (waistMeasurement != null)
+          updates['waistMeasurement'] = waistMeasurement; // UPDATED
+        if (sleepHours != null) updates['sleepHours'] = sleepHours; // UPDATED
 
         await _firestore
             .collection('users')
@@ -522,8 +449,6 @@ class _HealthDashboardState extends State<HealthDashboard> {
             _weight = weight;
           });
           _calculateBMI();
-          _calculateBodyFat();
-          _updateVitalityScore();
 
           await _firestore
               .collection('users')
@@ -531,21 +456,22 @@ class _HealthDashboardState extends State<HealthDashboard> {
               .collection('health_metrics')
               .doc('current')
               .set({
-                'vitalityScore': _vitalityScore,
                 'weightHistory': _weightHistory,
-                'bodyFatHistory': _bodyFatHistory,
-                'vitalityHistory': _vitalityHistory,
+                'waistHistory': _waistHistory, // UPDATED
+                'sleepHistory': _sleepHistory, // UPDATED
                 'updatedAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
         }
 
-        if (bodyFat != null) {
-          _bodyFatHistory.add(bodyFat);
-          if (_bodyFatHistory.length > 10) _bodyFatHistory.removeAt(0);
+        if (waistMeasurement != null) {
+          // UPDATED
+          _waistHistory.add(waistMeasurement);
+          if (_waistHistory.length > 10) _waistHistory.removeAt(0);
         }
-        if (vitalityScore != null) {
-          _vitalityHistory.add(vitalityScore);
-          if (_vitalityHistory.length > 10) _vitalityHistory.removeAt(0);
+        if (sleepHours != null) {
+          // UPDATED
+          _sleepHistory.add(sleepHours);
+          if (_sleepHistory.length > 10) _sleepHistory.removeAt(0);
         }
       }
     } catch (e) {
@@ -570,11 +496,21 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // ADD THIS LINE
     super.dispose();
   }
 
   Color _getSelectedIconColor(int index) {
     return index == _selectedIndex ? Colors.deepOrange : Colors.grey;
+  }
+
+  // ADD THIS ENTIRE METHOD
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // This runs when the app comes back to foreground
+      _loadUserData();
+    }
   }
 
   void _onItemTapped(int index) {
@@ -822,12 +758,13 @@ class _HealthDashboardState extends State<HealthDashboard> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Calories",
-                                                      currentValue: _calories,
-                                                      goalValue: _caloriesGoal,
-                                                    ),
+                                                builder: (context) => DetailScreen(
+                                                  title: "Calories",
+                                                  currentValue: _calories,
+                                                  goalValue: _caloriesGoal,
+                                                  onDataSaved:
+                                                      _loadUserData, // ADD THIS
+                                                ),
                                               ),
                                             );
                                           },
@@ -844,14 +781,15 @@ class _HealthDashboardState extends State<HealthDashboard> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Steps",
-                                                      currentValue: _steps
-                                                          .toDouble(),
-                                                      goalValue: _stepsGoal
-                                                          .toDouble(),
-                                                    ),
+                                                builder: (context) => DetailScreen(
+                                                  title: "Steps",
+                                                  currentValue: _steps
+                                                      .toDouble(),
+                                                  goalValue: _stepsGoal
+                                                      .toDouble(),
+                                                  onDataSaved:
+                                                      _loadUserData, // ADD THIS
+                                                ),
                                               ),
                                             );
                                           },
@@ -870,13 +808,13 @@ class _HealthDashboardState extends State<HealthDashboard> {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Moving",
-                                                      currentValue:
-                                                          _movingMinutes,
-                                                      goalValue: _movingGoal,
-                                                    ),
+                                                builder: (context) => DetailScreen(
+                                                  title: "Moving",
+                                                  currentValue: _movingMinutes,
+                                                  goalValue: _movingGoal,
+                                                  onDataSaved:
+                                                      _loadUserData, // ADD THIS
+                                                ),
                                               ),
                                             );
                                           },
@@ -904,14 +842,16 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
                         const SizedBox(height: 16),
 
+                        // UPDATED: Changed parameters to waistMeasurement and sleepHours
                         _DraggableCardGrid(
-                          bodyFat: _bodyFat,
+                          waistMeasurement: _waistMeasurement,
                           weight: _weight,
                           bmi: _bmi,
-                          vitalityScore: _vitalityScore,
-                          bodyFatHistory: _bodyFatHistory,
+                          sleepHours: _sleepHours,
+                          waistHistory: _waistHistory,
                           weightHistory: _weightHistory,
-                          vitalityHistory: _vitalityHistory,
+                          sleepHistory: _sleepHistory,
+                          onDataSaved: _loadUserData, // ADD THIS
                         ),
                       ]),
                     ),
@@ -921,7 +861,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
             ),
             const WorkoutScreen(),
             const CommunityScreen(),
-            const MyProfile(),
+            MyProfile(
+              key: ValueKey('profile_${DateTime.now().millisecondsSinceEpoch}'),
+            ),
           ],
         ),
       ),
@@ -1029,33 +971,72 @@ class _HealthDashboardState extends State<HealthDashboard> {
     );
   }
 
-  void _handleDataUpdate(String type, double newValue) {
-    switch (type) {
-      case 'Height':
-        setState(() {
-          _height = newValue;
-        });
-        _firestore
-            .collection('users')
-            .doc(_auth.currentUser!.uid)
-            .set({
-              'profile.height': _height,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true))
-            .then((_) {
-              _calculateBMI();
-              _calculateBodyFat();
-              _updateVitalityScore();
-            });
-        break;
-    }
+  void _handleDataUpdate(String type, double newValue) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$type updated successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    try {
+      switch (type) {
+        case 'Height':
+          // Get current user data to calculate BMI
+          final userDoc = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          final userData = userDoc.data();
+
+          double weight = 0.0;
+          if (userData != null && userData['profile'] != null) {
+            weight = (userData['profile']['weight'] ?? 0.0).toDouble();
+          }
+
+          double bmi = 0.0;
+          if (newValue > 0 && weight > 0) {
+            double heightInMeters = newValue / 100;
+            bmi = weight / (heightInMeters * heightInMeters);
+          }
+
+          // Update user profile with height AND recalculated BMI
+          await _firestore.collection('users').doc(user.uid).set({
+            'profile': {
+              'height': newValue,
+              'bmi': double.parse(bmi.toStringAsFixed(1)),
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
+          }, SetOptions(merge: true));
+
+          // Update health metrics with new BMI
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_metrics')
+              .doc('current')
+              .set({
+                'bmi': bmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+
+          // Refresh local data
+          _loadUserData();
+
+          break;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$type updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error updating $type: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update $type'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 
@@ -1165,23 +1146,25 @@ class _ModernMetricItem extends StatelessWidget {
   }
 }
 
+// UPDATED: Changed parameters to waistMeasurement and sleepHours
 class _DraggableCardGrid extends StatefulWidget {
-  final double bodyFat;
+  final double waistMeasurement;
   final double weight;
   final double bmi;
-  final double vitalityScore;
-  final List<double> bodyFatHistory;
+  final double sleepHours;
+  final List<double> waistHistory;
   final List<double> weightHistory;
-  final List<double> vitalityHistory;
-
+  final List<double> sleepHistory;
+  final VoidCallback onDataSaved; // ADD THIS
   const _DraggableCardGrid({
-    required this.bodyFat,
+    required this.waistMeasurement,
     required this.weight,
     required this.bmi,
-    required this.vitalityScore,
-    required this.bodyFatHistory,
+    required this.sleepHours,
+    required this.waistHistory,
     required this.weightHistory,
-    required this.vitalityHistory,
+    required this.sleepHistory,
+    required this.onDataSaved, // ADD THIS
   });
 
   @override
@@ -1198,16 +1181,23 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
   }
 
   void _initializeCards() {
+    // UPDATED: Changed to WaistCard and SleepCard
     cards = [
-      _BodyFatCard(
-        bodyFat: widget.bodyFat,
-        bodyFatHistory: widget.bodyFatHistory,
+      _WaistCard(
+        waistMeasurement: widget.waistMeasurement,
+        waistHistory: widget.waistHistory,
+        onDataSaved: widget.onDataSaved, // ADD THIS
       ),
-      _WeightCard(weight: widget.weight, weightHistory: widget.weightHistory),
-      _BMICard(bmi: widget.bmi),
-      _VitalityCard(
-        vitalityScore: widget.vitalityScore,
-        vitalityHistory: widget.vitalityHistory,
+      _WeightCard(
+        weight: widget.weight,
+        weightHistory: widget.weightHistory,
+        onDataSaved: widget.onDataSaved,
+      ), // ADD THIS
+      _BMICard(bmi: widget.bmi, onDataSaved: widget.onDataSaved), // ADD THIS
+      _SleepCard(
+        sleepHours: widget.sleepHours,
+        sleepHistory: widget.sleepHistory,
+        onDataSaved: widget.onDataSaved, // ADD THIS
       ),
     ];
   }
@@ -1299,11 +1289,16 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
   }
 }
 
-class _BodyFatCard extends StatelessWidget {
-  final double bodyFat;
-  final List<double> bodyFatHistory;
-
-  const _BodyFatCard({required this.bodyFat, required this.bodyFatHistory});
+// UPDATED: Changed from BodyFatCard to WaistCard with new icon
+class _WaistCard extends StatelessWidget {
+  final double waistMeasurement;
+  final List<double> waistHistory;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _WaistCard({
+    required this.waistMeasurement,
+    required this.waistHistory,
+    required this.onDataSaved, // ADD THIS
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1312,7 +1307,10 @@ class _BodyFatCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailScreen(title: "Body Fat %"),
+            builder: (context) => DetailScreen(
+              title: "Waist Measurement",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
           ),
         );
       },
@@ -1334,8 +1332,9 @@ class _BodyFatCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // UPDATED: Changed icon from Icons.opacity to Icons.straighten
                       Icon(
-                        Icons.opacity,
+                        Icons.straighten,
                         color: Colors.blue,
                         size: isVerySmallScreen ? 20 : 24,
                       ),
@@ -1344,7 +1343,7 @@ class _BodyFatCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Body Fat %",
+                    "Waist", // UPDATED: Changed label
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -1355,7 +1354,7 @@ class _BodyFatCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "${bodyFat.toStringAsFixed(1)}%",
+                    "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -1381,9 +1380,9 @@ class _BodyFatCard extends StatelessWidget {
                       color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: bodyFatHistory.length >= 2
+                    child: waistHistory.length >= 2
                         ? CustomPaint(
-                            painter: LineChartPainter(data: bodyFatHistory),
+                            painter: LineChartPainter(data: waistHistory),
                             size: const Size(double.infinity, 30),
                           )
                         : Center(
@@ -1429,8 +1428,12 @@ class _BodyFatCard extends StatelessWidget {
 class _WeightCard extends StatelessWidget {
   final double weight;
   final List<double> weightHistory;
-
-  const _WeightCard({required this.weight, required this.weightHistory});
+  final VoidCallback onDataSaved; // ADD THIS
+  const _WeightCard({
+    required this.weight,
+    required this.weightHistory,
+    required this.onDataSaved,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1439,7 +1442,10 @@ class _WeightCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailScreen(title: "Weight"),
+            builder: (context) => DetailScreen(
+              title: "Weight",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
           ),
         );
       },
@@ -1699,8 +1705,8 @@ class _BMIRange {
 
 class _BMICard extends StatelessWidget {
   final double bmi;
-
-  const _BMICard({required this.bmi});
+  final VoidCallback onDataSaved; // ADD THIS
+  const _BMICard({required this.bmi, required this.onDataSaved});
 
   @override
   Widget build(BuildContext context) {
@@ -1708,7 +1714,12 @@ class _BMICard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => DetailScreen(title: "BMI")),
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(
+              title: "BMI",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
+          ),
         );
       },
       child: Card(
@@ -1772,13 +1783,15 @@ class _BMICard extends StatelessWidget {
   }
 }
 
-class _VitalityCard extends StatelessWidget {
-  final double vitalityScore;
-  final List<double> vitalityHistory;
-
-  const _VitalityCard({
-    required this.vitalityScore,
-    required this.vitalityHistory,
+// UPDATED: Changed from VitalityCard to SleepCard with new icon
+class _SleepCard extends StatelessWidget {
+  final double sleepHours;
+  final List<double> sleepHistory;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _SleepCard({
+    required this.sleepHours,
+    required this.sleepHistory,
+    required this.onDataSaved,
   });
 
   @override
@@ -1788,7 +1801,10 @@ class _VitalityCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailScreen(title: "Vitality Score"),
+            builder: (context) => DetailScreen(
+              title: "Sleep Hours",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
           ),
         );
       },
@@ -1796,37 +1812,44 @@ class _VitalityCard extends StatelessWidget {
         color: const Color(0xFF191919),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Align(
                 alignment: Alignment.topLeft,
-                child: Icon(Icons.person, color: Colors.cyan, size: 28),
+                // UPDATED: Changed icon from Icons.person to Icons.bedtime
+                child: Icon(
+                  Icons.bedtime,
+                  color: Colors.purple,
+                  size: 28,
+                ), // Changed color to purple for sleep
               ),
               const SizedBox(height: 6),
               Text(
-                "Vitality Score",
+                "Sleep Hours", // UPDATED: Changed label
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 14,
                 ),
               ),
               Text(
-                "Score: ${vitalityScore.toStringAsFixed(0)}",
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
+                style: const TextStyle(color: Colors.white70, fontSize: 18),
               ),
               Text(
                 "${DateTime.now().day} ${_getMonthName(DateTime.now().month)}",
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 10),
               ),
               const Spacer(),
               Container(
-                height: 40,
+                height: 25,
                 decoration: BoxDecoration(color: Colors.grey[800]),
                 child: CustomPaint(
-                  painter: VitalityGraphPainter(data: vitalityHistory),
+                  painter: SleepGraphPainter(
+                    data: sleepHistory,
+                  ), // UPDATED: Changed painter
                   size: const Size(double.infinity, 40),
                 ),
               ),
@@ -1836,11 +1859,11 @@ class _VitalityCard extends StatelessWidget {
                 children: [
                   Text(
                     "0",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    style: TextStyle(color: Colors.white70, fontSize: 8),
                   ),
                   Text(
-                    "100",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    "12", // UPDATED: Changed max value from 100 to 12 for sleep hours
+                    style: TextStyle(color: Colors.white70, fontSize: 8),
                   ),
                 ],
               ),
@@ -1973,21 +1996,26 @@ class WeightLineChartPainter extends CustomPainter {
   bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
 
-class VitalityGraphPainter extends CustomPainter {
+// UPDATED: Changed from VitalityGraphPainter to SleepGraphPainter
+class SleepGraphPainter extends CustomPainter {
   final List<double> data;
 
-  const VitalityGraphPainter({required this.data});
+  const SleepGraphPainter({required this.data});
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final currentScore = data.last;
-    final normalizedHeight = (currentScore / 100) * size.height;
+    final currentHours = data.last;
+    // Normalize to 12 hours max for sleep
+    final normalizedHeight = (currentHours / 12) * size.height;
 
     final gradient =
         LinearGradient(
-          colors: [Colors.cyan.shade300, Colors.cyan.shade800],
+          colors: [
+            Colors.purple.shade300,
+            Colors.purple.shade800,
+          ], // UPDATED: Changed colors
         ).createShader(
           Rect.fromLTWH(
             0,
@@ -2008,7 +2036,8 @@ class VitalityGraphPainter extends CustomPainter {
     );
 
     final linePaint = Paint()
-      ..color = Colors.cyan
+      ..color = Colors
+          .purple // UPDATED: Changed color
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 

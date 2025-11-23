@@ -16,7 +16,7 @@ class MyProfile extends StatefulWidget {
   State<MyProfile> createState() => _MyProfileState();
 }
 
-class _MyProfileState extends State<MyProfile> {
+class _MyProfileState extends State<MyProfile>{
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -33,7 +33,13 @@ class _MyProfileState extends State<MyProfile> {
     _loadUserData();
     _loadRecentProgressImage();
   }
-
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  print('🔄 Profile tab opened - refreshing data');
+  _loadUserData();
+  _loadRecentProgressImage();
+}
   /// ✅ Load user data from Firestore
   Future<void> _loadUserData() async {
     try {
