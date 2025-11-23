@@ -907,17 +907,7 @@ void didChangeDependencies() {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                // App Settings
-                                _buildSettingsItem(
-                                  icon: Icons.settings,
-                                  title: "App Settings",
-                                  color: const Color.fromARGB(
-                                    255,
-                                    112,
-                                    90,
-                                    221,
-                                  ),
-                                ),
+                       
                                 const SizedBox(height: 12),
                                 // Version
                                 _buildSettingsItem(

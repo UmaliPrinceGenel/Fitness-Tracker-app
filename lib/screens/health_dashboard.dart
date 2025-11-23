@@ -56,17 +56,18 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   // Improved accelerometer variables
   List<double> _accelerometerValues = [0, 0, 0];
-  double _movementThreshold = 12.0;
   DateTime _lastStepTime = DateTime.now();
+  DateTime _lastMovementTime = DateTime.now();
   int _stepBuffer = 0;
   List<double> _accelerationBuffer = [];
   static const int STEP_TIME_GAP = 300;
-  static const double STEP_ACCEL_THRESHOLD = 10.0;
+  static const double STEP_ACCEL_THRESHOLD = 12.0; // Increased threshold
+  static const int MOVEMENT_TIME_THRESHOLD = 120; // 2 minutes
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // ADD THIS LINE
+    WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _initStepTracking();
     _checkDailyReset();
@@ -139,27 +140,37 @@ class _HealthDashboardState extends State<HealthDashboard>
     _updateHealthData(steps: 0, calories: 0, movingMinutes: 0);
   }
 
+  // FIXED: Improved step tracking initialization
   Future<void> _initStepTracking() async {
     await _requestPermissions();
     await _initPedometer();
     _startAccelerometerTracking();
+    _startMovingMinutesTimer(); // ADD THIS
   }
 
+  // FIXED: Improved permission request
   Future<void> _requestPermissions() async {
     try {
       var status = await Permission.activityRecognition.request();
       if (status.isGranted) {
         setState(() {
           _isTrackingSteps = true;
-          _status = 'Tracking active';
+          _status = 'Step tracking active';
         });
       } else {
         setState(() {
-          _status = 'Permission denied';
+          _status = 'Activity permission required for step tracking';
         });
+        // Fall back to accelerometer only
+        _startAccelerometerTracking();
       }
     } catch (e) {
       print('Permission error: $e');
+      setState(() {
+        _status = 'Using basic motion detection';
+      });
+      // Fall back to accelerometer only
+      _startAccelerometerTracking();
     }
   }
 
@@ -181,11 +192,17 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
+  // FIXED: Prevent duplicate step counting
   void _onStepCount(StepCount event) {
     final newSteps = event.steps;
-    if (newSteps > _steps) {
+
+    // Only update if the pedometer reports significantly more steps
+    // This prevents small fluctuations from causing issues
+    if (newSteps > _steps + 5) {
+      // Only update if at least 5 new steps
       setState(() {
         _steps = newSteps;
+        _lastMovementTime = DateTime.now(); // Update movement time
         _updateCaloriesFromSteps();
       });
       _updateHealthData(steps: _steps);
@@ -215,15 +232,20 @@ class _HealthDashboardState extends State<HealthDashboard>
     });
   }
 
+  // FIXED: Improved step detection algorithm
   void _detectStepFromAccelerometer(AccelerometerEvent event) {
+    // Calculate magnitude of acceleration vector
     double acceleration =
         (event.x * event.x + event.y * event.y + event.z * event.z);
 
+    // Add to buffer for smoothing
     _accelerationBuffer.add(acceleration);
-    if (_accelerationBuffer.length > 5) {
+    if (_accelerationBuffer.length > 10) {
+      // Increased buffer size
       _accelerationBuffer.removeAt(0);
     }
 
+    // Calculate smoothed acceleration
     double smoothedAcceleration =
         _accelerationBuffer.reduce((a, b) => a + b) /
         _accelerationBuffer.length;
@@ -231,35 +253,88 @@ class _HealthDashboardState extends State<HealthDashboard>
     DateTime now = DateTime.now();
     int timeDiff = now.difference(_lastStepTime).inMilliseconds;
 
+    // Only count step if enough time has passed and acceleration exceeds threshold
     if (timeDiff > STEP_TIME_GAP &&
-        smoothedAcceleration > STEP_ACCEL_THRESHOLD &&
-        _isSignificantMovement(smoothedAcceleration)) {
-      _stepBuffer++;
-      _lastStepTime = now;
+        smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
+      // Additional validation: check if this is a valid step pattern
+      if (_isValidStepPattern(smoothedAcceleration)) {
+        _stepBuffer++;
+        _lastStepTime = now;
+        _lastMovementTime = now; // Update movement time for moving minutes
 
-      if (_stepBuffer >= 1) {
-        final newSteps = _steps + _stepBuffer;
-        setState(() {
-          _steps = newSteps;
-          _updateCaloriesFromSteps();
-          _updateMovingMinutes();
-        });
+        // Process steps in batches to reduce UI updates
+        if (_stepBuffer >= 3) {
+          // Process every 3 steps
+          final newSteps = _steps + _stepBuffer;
+          setState(() {
+            _steps = newSteps;
+            _updateCaloriesFromSteps();
+          });
 
-        _updateHealthData(steps: _steps);
-        _stepBuffer = 0;
+          _updateHealthData(steps: _steps);
+          _stepBuffer = 0;
+        }
       }
     }
   }
 
-  bool _isSignificantMovement(double acceleration) {
-    return acceleration > _movementThreshold;
+  // FIXED: Add step pattern validation
+  bool _isValidStepPattern(double acceleration) {
+    // Check if we have enough data in buffer
+    if (_accelerationBuffer.length < 5) return true;
+
+    // Calculate variance to detect consistent movement vs random shakes
+    double mean =
+        _accelerationBuffer.reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
+    double variance =
+        _accelerationBuffer
+            .map((x) => (x - mean) * (x - mean))
+            .reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
+
+    // If variance is too high, it might be random shaking, not walking
+    return variance < 50.0; // Adjust this threshold as needed
   }
 
+  // FIXED: New moving minutes timer
+  void _startMovingMinutesTimer() {
+    // Check every 30 seconds if user has been active
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) {
+        final now = DateTime.now();
+        final timeSinceLastMovement = now
+            .difference(_lastMovementTime)
+            .inSeconds;
+
+        // If movement occurred within the last 2 minutes, count as active time
+        if (timeSinceLastMovement <= MOVEMENT_TIME_THRESHOLD) {
+          setState(() {
+            _movingMinutes += 0.5; // Add 0.5 minutes (30 seconds)
+          });
+
+          // Update Firestore every 5 minutes of movement
+          if (_movingMinutes % 5 < 0.1) {
+            _updateHealthData(movingMinutes: _movingMinutes);
+          }
+        }
+
+        // Continue the timer
+        _startMovingMinutesTimer();
+      }
+    });
+  }
+
+  // FIXED: Improved calorie calculation
   void _updateCaloriesFromSteps() {
+    if (_steps <= 0) return;
+
+    // More accurate calorie calculation based on weight and steps
     double caloriesPerStep = _weight > 0 ? _weight * 0.0004 : 0.04;
     double newCalories = _steps * caloriesPerStep;
 
-    if (newCalories > _calories) {
+    // Only update if there's a meaningful change
+    if ((newCalories - _calories).abs() > 0.1) {
       setState(() {
         _calories = newCalories;
       });
@@ -267,20 +342,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
-  void _updateMovingMinutes() {
-    DateTime now = DateTime.now();
-    double additionalMinutes = now.difference(_lastStepTime).inSeconds / 60.0;
-
-    if (additionalMinutes > 0.01) {
-      setState(() {
-        _movingMinutes += additionalMinutes;
-      });
-
-      if (_movingMinutes % 0.5 < 0.01) {
-        _updateHealthData(movingMinutes: _movingMinutes);
-      }
-    }
-  }
+  // REMOVED: Old _updateMovingMinutes method as it's now handled by timer
 
   // Automatic BMI Calculation
   void _calculateBMI() {
@@ -496,7 +558,7 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // ADD THIS LINE
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -504,12 +566,19 @@ class _HealthDashboardState extends State<HealthDashboard>
     return index == _selectedIndex ? Colors.deepOrange : Colors.grey;
   }
 
-  // ADD THIS ENTIRE METHOD
+  // FIXED: Improved app lifecycle handling
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // This runs when the app comes back to foreground
+      // Reload data when app comes to foreground
       _loadUserData();
+    } else if (state == AppLifecycleState.paused) {
+      // Save current state when app goes to background
+      _updateHealthData(
+        steps: _steps,
+        calories: _calories,
+        movingMinutes: _movingMinutes,
+      );
     }
   }
 
@@ -758,13 +827,14 @@ class _HealthDashboardState extends State<HealthDashboard>
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => DetailScreen(
-                                                  title: "Calories",
-                                                  currentValue: _calories,
-                                                  goalValue: _caloriesGoal,
-                                                  onDataSaved:
-                                                      _loadUserData, // ADD THIS
-                                                ),
+                                                builder: (context) =>
+                                                    DetailScreen(
+                                                      title: "Calories",
+                                                      currentValue: _calories,
+                                                      goalValue: _caloriesGoal,
+                                                      onDataSaved:
+                                                          _loadUserData,
+                                                    ),
                                               ),
                                             );
                                           },
@@ -781,15 +851,16 @@ class _HealthDashboardState extends State<HealthDashboard>
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => DetailScreen(
-                                                  title: "Steps",
-                                                  currentValue: _steps
-                                                      .toDouble(),
-                                                  goalValue: _stepsGoal
-                                                      .toDouble(),
-                                                  onDataSaved:
-                                                      _loadUserData, // ADD THIS
-                                                ),
+                                                builder: (context) =>
+                                                    DetailScreen(
+                                                      title: "Steps",
+                                                      currentValue: _steps
+                                                          .toDouble(),
+                                                      goalValue: _stepsGoal
+                                                          .toDouble(),
+                                                      onDataSaved:
+                                                          _loadUserData,
+                                                    ),
                                               ),
                                             );
                                           },
@@ -808,13 +879,15 @@ class _HealthDashboardState extends State<HealthDashboard>
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => DetailScreen(
-                                                  title: "Moving",
-                                                  currentValue: _movingMinutes,
-                                                  goalValue: _movingGoal,
-                                                  onDataSaved:
-                                                      _loadUserData, // ADD THIS
-                                                ),
+                                                builder: (context) =>
+                                                    DetailScreen(
+                                                      title: "Moving",
+                                                      currentValue:
+                                                          _movingMinutes,
+                                                      goalValue: _movingGoal,
+                                                      onDataSaved:
+                                                          _loadUserData,
+                                                    ),
                                               ),
                                             );
                                           },
@@ -851,7 +924,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                           waistHistory: _waistHistory,
                           weightHistory: _weightHistory,
                           sleepHistory: _sleepHistory,
-                          onDataSaved: _loadUserData, // ADD THIS
+                          onDataSaved: _loadUserData,
                         ),
                       ]),
                     ),
