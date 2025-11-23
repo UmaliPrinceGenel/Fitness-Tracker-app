@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../widgets/semi_circle_progress.dart';
 import 'detail_screen.dart';
-import 'my_profile.dart'; // Import the new profile page
-import 'workout_screen.dart'; // Import the new workout page
-import 'community_screen.dart'; // Import the new community page
+import 'my_profile.dart';
+import 'workout_screen.dart';
+import 'community_screen.dart';
 
 class HealthDashboard extends StatefulWidget {
   const HealthDashboard({super.key});
@@ -12,11 +17,569 @@ class HealthDashboard extends StatefulWidget {
   State<HealthDashboard> createState() => _HealthDashboardState();
 }
 
-class _HealthDashboardState extends State<HealthDashboard> {
+class _HealthDashboardState extends State<HealthDashboard>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Health data - will be loaded from Firestore
+  double _calories = 0.0;
+  double _caloriesGoal = 600.0;
+  int _steps = 0;
+  int _stepsGoal = 7000;
+  double _movingMinutes = 0.0;
+  double _movingGoal = 60.0;
+
+  // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
+  double _waistMeasurement = 0.0;
+  double _weight = 0.0;
+  double _height = 0.0;
+  double _bmi = 0.0;
+  double _sleepHours = 0.0;
+
+  // Historical data for graphs - UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
+  List<double> _waistHistory = [];
+  List<double> _weightHistory = [];
+  List<double> _sleepHistory = [];
+
+  // Daily activity history
+  List<DailyActivity> _dailyActivityHistory = [];
+
+  // Step tracking variables
+  bool _isLoading = true;
+  bool _isTrackingSteps = false;
+  String _status = 'Waiting...';
+
+  // Date tracking for daily reset
+  DateTime _currentDate = DateTime.now();
+
+  // Improved accelerometer variables
+  List<double> _accelerometerValues = [0, 0, 0];
+  DateTime _lastStepTime = DateTime.now();
+  DateTime _lastMovementTime = DateTime.now();
+  int _stepBuffer = 0;
+  List<double> _accelerationBuffer = [];
+  static const int STEP_TIME_GAP = 300;
+  static const double STEP_ACCEL_THRESHOLD = 12.0; // Increased threshold
+  static const int MOVEMENT_TIME_THRESHOLD = 120; // 2 minutes
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadUserData();
+    _initStepTracking();
+    _checkDailyReset();
+  }
+
+  // Check if we need to reset daily data
+  void _checkDailyReset() {
+    final now = DateTime.now();
+    if (now.day != _currentDate.day ||
+        now.month != _currentDate.month ||
+        now.year != _currentDate.year) {
+      _resetDailyData();
+    }
+
+    // Check every minute for date change
+    Future.delayed(const Duration(minutes: 1), _checkDailyReset);
+  }
+
+  // Reset daily activity data and save to history
+  Future<void> _resetDailyData() async {
+    final user = _auth.currentUser;
+    if (user != null && (_steps > 0 || _calories > 0 || _movingMinutes > 0)) {
+      // Save current day's data to history
+      final dailyActivity = DailyActivity(
+        date: _currentDate,
+        steps: _steps,
+        calories: _calories,
+        movingMinutes: _movingMinutes,
+      );
+
+      _dailyActivityHistory.add(dailyActivity);
+
+      // Keep only last 30 days
+      if (_dailyActivityHistory.length > 30) {
+        _dailyActivityHistory.removeAt(0);
+      }
+
+      // Save to Firestore
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('daily_activity')
+          .doc(_currentDate.toIso8601String().split('T')[0])
+          .set(dailyActivity.toMap());
+
+      // Update activity history in health metrics
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'dailyActivityHistory': _dailyActivityHistory
+                .map((e) => e.toMap())
+                .toList(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    }
+
+    // Reset daily counters
+    setState(() {
+      _currentDate = DateTime.now();
+      _steps = 0;
+      _calories = 0;
+      _movingMinutes = 0;
+      _stepBuffer = 0;
+    });
+
+    // Update Firestore with reset data
+    _updateHealthData(steps: 0, calories: 0, movingMinutes: 0);
+  }
+
+  // FIXED: Improved step tracking initialization
+  Future<void> _initStepTracking() async {
+    await _requestPermissions();
+    await _initPedometer();
+    _startAccelerometerTracking();
+    _startMovingMinutesTimer(); // ADD THIS
+  }
+
+  // FIXED: Improved permission request
+  Future<void> _requestPermissions() async {
+    try {
+      var status = await Permission.activityRecognition.request();
+      if (status.isGranted) {
+        setState(() {
+          _isTrackingSteps = true;
+          _status = 'Step tracking active';
+        });
+      } else {
+        setState(() {
+          _status = 'Activity permission required for step tracking';
+        });
+        // Fall back to accelerometer only
+        _startAccelerometerTracking();
+      }
+    } catch (e) {
+      print('Permission error: $e');
+      setState(() {
+        _status = 'Using basic motion detection';
+      });
+      // Fall back to accelerometer only
+      _startAccelerometerTracking();
+    }
+  }
+
+  Future<void> _initPedometer() async {
+    try {
+      Pedometer.stepCountStream.listen(_onStepCount).onError(_onStepCountError);
+      Pedometer.pedestrianStatusStream
+          .listen(_onPedestrianStatusChanged)
+          .onError(_onPedestrianStatusError);
+
+      setState(() {
+        _status = 'Pedometer initialized';
+      });
+    } catch (e) {
+      print('Pedometer init error: $e');
+      setState(() {
+        _status = 'Pedometer not available';
+      });
+    }
+  }
+
+  // FIXED: Prevent duplicate step counting
+  void _onStepCount(StepCount event) {
+    final newSteps = event.steps;
+
+    // Only update if the pedometer reports significantly more steps
+    // This prevents small fluctuations from causing issues
+    if (newSteps > _steps + 5) {
+      // Only update if at least 5 new steps
+      setState(() {
+        _steps = newSteps;
+        _lastMovementTime = DateTime.now(); // Update movement time
+        _updateCaloriesFromSteps();
+      });
+      _updateHealthData(steps: _steps);
+    }
+  }
+
+  void _onStepCountError(error) {
+    print('Step count error: $error');
+    setState(() {
+      _status = 'Step counter error';
+    });
+  }
+
+  void _onPedestrianStatusChanged(PedestrianStatus event) {
+    setState(() {
+      _status = event.status;
+    });
+  }
+
+  void _onPedestrianStatusError(error) {
+    print('Pedestrian status error: $error');
+  }
+
+  void _startAccelerometerTracking() {
+    accelerometerEvents.listen((AccelerometerEvent event) {
+      _detectStepFromAccelerometer(event);
+    });
+  }
+
+  // FIXED: Improved step detection algorithm
+  void _detectStepFromAccelerometer(AccelerometerEvent event) {
+    // Calculate magnitude of acceleration vector
+    double acceleration =
+        (event.x * event.x + event.y * event.y + event.z * event.z);
+
+    // Add to buffer for smoothing
+    _accelerationBuffer.add(acceleration);
+    if (_accelerationBuffer.length > 10) {
+      // Increased buffer size
+      _accelerationBuffer.removeAt(0);
+    }
+
+    // Calculate smoothed acceleration
+    double smoothedAcceleration =
+        _accelerationBuffer.reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
+
+    DateTime now = DateTime.now();
+    int timeDiff = now.difference(_lastStepTime).inMilliseconds;
+
+    // Only count step if enough time has passed and acceleration exceeds threshold
+    if (timeDiff > STEP_TIME_GAP &&
+        smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
+      // Additional validation: check if this is a valid step pattern
+      if (_isValidStepPattern(smoothedAcceleration)) {
+        _stepBuffer++;
+        _lastStepTime = now;
+        _lastMovementTime = now; // Update movement time for moving minutes
+
+        // Process steps in batches to reduce UI updates
+        if (_stepBuffer >= 3) {
+          // Process every 3 steps
+          final newSteps = _steps + _stepBuffer;
+          setState(() {
+            _steps = newSteps;
+            _updateCaloriesFromSteps();
+          });
+
+          _updateHealthData(steps: _steps);
+          _stepBuffer = 0;
+        }
+      }
+    }
+  }
+
+  // FIXED: Add step pattern validation
+  bool _isValidStepPattern(double acceleration) {
+    // Check if we have enough data in buffer
+    if (_accelerationBuffer.length < 5) return true;
+
+    // Calculate variance to detect consistent movement vs random shakes
+    double mean =
+        _accelerationBuffer.reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
+    double variance =
+        _accelerationBuffer
+            .map((x) => (x - mean) * (x - mean))
+            .reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
+
+    // If variance is too high, it might be random shaking, not walking
+    return variance < 50.0; // Adjust this threshold as needed
+  }
+
+  // FIXED: New moving minutes timer
+  void _startMovingMinutesTimer() {
+    // Check every 30 seconds if user has been active
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) {
+        final now = DateTime.now();
+        final timeSinceLastMovement = now
+            .difference(_lastMovementTime)
+            .inSeconds;
+
+        // If movement occurred within the last 2 minutes, count as active time
+        if (timeSinceLastMovement <= MOVEMENT_TIME_THRESHOLD) {
+          setState(() {
+            _movingMinutes += 0.5; // Add 0.5 minutes (30 seconds)
+          });
+
+          // Update Firestore every 5 minutes of movement
+          if (_movingMinutes % 5 < 0.1) {
+            _updateHealthData(movingMinutes: _movingMinutes);
+          }
+        }
+
+        // Continue the timer
+        _startMovingMinutesTimer();
+      }
+    });
+  }
+
+  // FIXED: Improved calorie calculation
+  void _updateCaloriesFromSteps() {
+    if (_steps <= 0) return;
+
+    // More accurate calorie calculation based on weight and steps
+    double caloriesPerStep = _weight > 0 ? _weight * 0.0004 : 0.04;
+    double newCalories = _steps * caloriesPerStep;
+
+    // Only update if there's a meaningful change
+    if ((newCalories - _calories).abs() > 0.1) {
+      setState(() {
+        _calories = newCalories;
+      });
+      _updateHealthData(calories: _calories);
+    }
+  }
+
+  // REMOVED: Old _updateMovingMinutes method as it's now handled by timer
+
+  // Automatic BMI Calculation
+  void _calculateBMI() {
+    if (_height > 0 && _weight > 0) {
+      double newBmi = _weight / ((_height / 100) * (_height / 100));
+      if (newBmi != _bmi) {
+        setState(() {
+          _bmi = double.parse(newBmi.toStringAsFixed(1));
+        });
+      }
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+
+          final healthDoc = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_metrics')
+              .doc('current')
+              .get();
+
+          // Load daily activity history
+          final dailyActivitySnapshot = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('daily_activity')
+              .orderBy('date', descending: true)
+              .limit(30)
+              .get();
+
+          setState(() {
+            _weight = (userData['profile']?['weight'] ?? 0.0).toDouble();
+            _height = (userData['profile']?['height'] ?? 0.0).toDouble();
+
+            if (healthDoc.exists) {
+              final healthData = healthDoc.data()!;
+              _calories = (healthData['calories'] ?? 0.0).toDouble();
+              _steps = (healthData['steps'] ?? 0).toInt();
+              _movingMinutes = (healthData['movingMinutes'] ?? 0.0).toDouble();
+              // UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
+              _waistMeasurement = (healthData['waistMeasurement'] ?? 0.0)
+                  .toDouble();
+              _sleepHours = (healthData['sleepHours'] ?? 0.0).toDouble();
+
+              // UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
+              _waistHistory = List<double>.from(
+                healthData['waistHistory'] ?? [],
+              );
+              _weightHistory = List<double>.from(
+                healthData['weightHistory'] ?? [],
+              );
+              _sleepHistory = List<double>.from(
+                healthData['sleepHistory'] ?? [],
+              );
+
+              // Load daily activity history
+              if (healthData['dailyActivityHistory'] != null) {
+                _dailyActivityHistory = List<Map<String, dynamic>>.from(
+                  healthData['dailyActivityHistory'],
+                ).map((e) => DailyActivity.fromMap(e)).toList();
+              }
+            } else {
+              _initializeNewUserHealthData(user.uid);
+            }
+
+            // Load additional daily activity from subcollection
+            _dailyActivityHistory.addAll(
+              dailyActivitySnapshot.docs
+                  .map((doc) => DailyActivity.fromMap(doc.data()))
+                  .toList(),
+            );
+
+            // Remove duplicates and sort by date
+            _dailyActivityHistory.sort((a, b) => a.date.compareTo(b.date));
+
+            _isLoading = false;
+          });
+
+          _calculateBMI();
+        }
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _initializeNewUserHealthData(String userId) async {
+    try {
+      _calculateBMI();
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'calories': 0,
+            'steps': 0,
+            'movingMinutes': 0,
+            'waistMeasurement': _waistMeasurement, // UPDATED
+            'sleepHours': _sleepHours, // UPDATED
+            'waistHistory': [_waistMeasurement], // UPDATED
+            'weightHistory': [_weight],
+            'sleepHistory': [_sleepHours], // UPDATED
+            'dailyActivityHistory': [],
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      print('Error initializing health data: $e');
+    }
+  }
+
+  Future<void> _updateHealthData({
+    double? calories,
+    int? steps,
+    double? movingMinutes,
+    double? waistMeasurement, // UPDATED
+    double? weight,
+    double? sleepHours, // UPDATED
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final updates = <String, dynamic>{
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        if (calories != null) updates['calories'] = calories;
+        if (steps != null) updates['steps'] = steps;
+        if (movingMinutes != null) updates['movingMinutes'] = movingMinutes;
+        if (waistMeasurement != null)
+          updates['waistMeasurement'] = waistMeasurement; // UPDATED
+        if (sleepHours != null) updates['sleepHours'] = sleepHours; // UPDATED
+
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('health_metrics')
+            .doc('current')
+            .set(updates, SetOptions(merge: true));
+
+        if (weight != null && weight != _weight) {
+          await _firestore.collection('users').doc(user.uid).set({
+            'profile.weight': weight,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          _weightHistory.add(weight);
+          if (_weightHistory.length > 10) _weightHistory.removeAt(0);
+
+          setState(() {
+            _weight = weight;
+          });
+          _calculateBMI();
+
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_metrics')
+              .doc('current')
+              .set({
+                'weightHistory': _weightHistory,
+                'waistHistory': _waistHistory, // UPDATED
+                'sleepHistory': _sleepHistory, // UPDATED
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+        }
+
+        if (waistMeasurement != null) {
+          // UPDATED
+          _waistHistory.add(waistMeasurement);
+          if (_waistHistory.length > 10) _waistHistory.removeAt(0);
+        }
+        if (sleepHours != null) {
+          // UPDATED
+          _sleepHistory.add(sleepHours);
+          if (_sleepHistory.length > 10) _sleepHistory.removeAt(0);
+        }
+      }
+    } catch (e) {
+      print('Error updating health data: $e');
+    }
+  }
+
+  // Get activity data for different time periods
+  List<DailyActivity> _getWeeklyActivity() {
+    final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
+    return _dailyActivityHistory
+        .where((activity) => activity.date.isAfter(oneWeekAgo))
+        .toList();
+  }
+
+  List<DailyActivity> _getMonthlyActivity() {
+    final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
+    return _dailyActivityHistory
+        .where((activity) => activity.date.isAfter(oneMonthAgo))
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   Color _getSelectedIconColor(int index) {
     return index == _selectedIndex ? Colors.deepOrange : Colors.grey;
+  }
+
+  // FIXED: Improved app lifecycle handling
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Reload data when app comes to foreground
+      _loadUserData();
+    } else if (state == AppLifecycleState.paused) {
+      // Save current state when app goes to background
+      _updateHealthData(
+        steps: _steps,
+        calories: _calories,
+        movingMinutes: _movingMinutes,
+      );
+    }
   }
 
   void _onItemTapped(int index) {
@@ -27,14 +590,43 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Loading your health data...',
+                style: TextStyle(color: Colors.white),
+              ),
+              if (!_isTrackingSteps)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text(
+                    'Step tracking requires activity permission',
+                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       bottomNavigationBar: SizedBox(
-        height: 87, // Increased from default ~60px to 62px
+        height: 87,
         child: BottomNavigationBar(
           backgroundColor: Colors.black,
           type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.white, // Keep text white for all items
+          selectedItemColor: Colors.white,
           unselectedItemColor: Colors.grey,
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
@@ -62,563 +654,494 @@ class _HealthDashboardState extends State<HealthDashboard> {
         child: IndexedStack(
           index: _selectedIndex,
           children: [
-            // Health page content
-            CustomScrollView(
-              slivers: [
-                // Sticky header with "Health" text and "+" button
-                SliverAppBar(
-                  backgroundColor: Colors.black,
-                  expandedHeight:
-                      60, // <-- HEIGHT OF HEADER CONTAINER (Change this value to adjust height)
-                  floating: false,
-                  pinned: true,
-                  automaticallyImplyLeading:
-                      false, // Prevents automatic back button
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(
-                          left: 10,
-                          top:
-                              30, // <-- ADJUST TOP PADDING TO LOWER "Health" TEXT
-                        ), // Move "Health" slightly to the right and lower it
-                        child: Text(
-                          "Health",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: 30, // <-- ADJUST TOP PADDING TO LOWER "+" BUTTON
-                        ),
-                        child: PopupMenuButton<String>(
-                          icon: const Icon(
-                            Icons.add_circle_outline,
-                            color: Colors.white,
-                          ),
-                          color:
-                              Colors.grey[800], // Gray background for dropdown
-                          onSelected: (String result) {
-                            // Handle menu item selection
-                          },
-                          itemBuilder: (BuildContext context) =>
-                              <PopupMenuEntry<String>>[
-                                const PopupMenuItem<String>(
-                                  value: 'add',
-                                  child: Text(
-                                    'Add',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                    ), // White text
-                                  ),
-                                ),
-                              ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  centerTitle: false,
-                ),
-                // Scrollable content
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      const SizedBox(height: 10),
-
-                      // Progress arc
-                      Center(
-                        child: Transform.translate(
-                          offset: const Offset(
-                            0,
-                            -20, // Adjust this value to move the semi-circle higher or lower
-                          ), // Move semi-circle higher
-                          child: SemiCircleProgress(
-                            caloriesPercent: 80.8, // 485/60
-                            stepsPercent: 62.3, // 4360/700
-                            movingPercent: 15.0, // 9/60
-                            caloriesValue: "485",
-                            caloriesGoal: "/600 kcal",
-                            stepsValue: "4360",
-                            stepsGoal: "/700 steps",
-                            movingValue: "9",
-                            movingGoal: "/60 mins",
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(
-                        height: 5,
-                      ), // Reduced space below semi-circle
-                      // Modern Activity summary card
-                      Container(
-                        width: double.infinity,
-                        height:
-                            199, // Reduced height to prevent bottom overflow
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
+            RefreshIndicator(
+              onRefresh: _loadUserData,
+              child: CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    backgroundColor: Colors.black,
+                    expandedHeight: 60,
+                    floating: false,
+                    pinned: true,
+                    automaticallyImplyLeading: false,
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(left: 10, top: 30),
+                          child: Text(
+                            "Health",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
+                          ),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              // Horizontal row of activity metrics with modern styling
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _ModernMetricItem(
-                                    icon: Icons.local_fire_department,
-                                    iconColor: const Color(
-                                      0xFFFF6B35,
-                                    ), // Modern red-orange
-                                    label: "Calories",
-                                    value: "485",
-                                    goal: "/600 kcal",
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              DetailScreen(title: "Calories"),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  _ModernMetricItem(
-                                    icon: Icons.directions_walk,
-                                    iconColor: const Color(
-                                      0xFFFF9800,
-                                    ), // Modern orange
-                                    label: "Steps",
-                                    value: "4360",
-                                    goal: "/7000 steps",
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              DetailScreen(title: "Steps"),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  _ModernMetricItem(
-                                    icon: Icons.directions_run,
-                                    iconColor: const Color(
-                                      0xFF2196F3,
-                                    ), // Modern blue
-                                    label: "Moving",
-                                    value: "9",
-                                    goal: "/60 mins",
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              DetailScreen(title: "Moving"),
-                                        ),
-                                      );
-                                    },
+                        Padding(
+                          padding: const EdgeInsets.only(top: 30),
+                          child: PopupMenuButton<String>(
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              color: Colors.white,
+                            ),
+                            color: Colors.grey[800],
+                            onSelected: (String result) {
+                              _showAddDataDialog();
+                            },
+                            itemBuilder: (BuildContext context) =>
+                                <PopupMenuEntry<String>>[
+                                  const PopupMenuItem<String>(
+                                    value: 'add',
+                                    child: Text(
+                                      'Add Data',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
                                   ),
                                 ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    centerTitle: false,
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        const SizedBox(height: 10),
+
+                        // PROPERLY CENTERED: Semi-circle progress
+                        Container(
+                          width: double.infinity,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Centered semi-circle chart
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.85,
+                                  maxHeight: 180,
+                                ),
+                                child: SemiCircleProgress(
+                                  caloriesPercent:
+                                      (_calories / _caloriesGoal * 100).clamp(
+                                        0.0,
+                                        100.0,
+                                      ),
+                                  stepsPercent: (_steps / _stepsGoal * 100)
+                                      .clamp(0.0, 100.0),
+                                  movingPercent:
+                                      (_movingMinutes / _movingGoal * 100)
+                                          .clamp(0.0, 100.0),
+                                  caloriesValue: _calories.toStringAsFixed(0),
+                                  caloriesGoal:
+                                      "/${_caloriesGoal.toInt()} kcal",
+                                  stepsValue: _steps.toString(),
+                                  stepsGoal: "/$_stepsGoal steps",
+                                  movingValue: _movingMinutes.toStringAsFixed(
+                                    0,
+                                  ),
+                                  movingGoal: "/${_movingGoal.toInt()} mins",
+                                ),
                               ),
-                              const SizedBox(
-                                height: 8, // Reduced spacing to save space
-                              ), // Spacing before where divider was
                             ],
                           ),
                         ),
-                      ),
 
-                      const SizedBox(
-                        height: 5,
-                      ), // Reduced space below Activity Summary Card
-                      // Grid for cards with drag-and-drop functionality
-                      _DraggableCardGrid(),
-                    ]),
+                        const SizedBox(height: 5),
+
+                        if (_isTrackingSteps)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(8),
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.green),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.directions_walk,
+                                  color: Colors.green,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Step Tracking: $_status',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Responsive metrics container
+                        Container(
+                          width: double.infinity,
+                          constraints: BoxConstraints(
+                            minHeight: 180,
+                            maxHeight: 220,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF191919),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Metrics row
+                                Expanded(
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: _ModernMetricItem(
+                                          icon: Icons.local_fire_department,
+                                          iconColor: const Color(0xFFFF6B35),
+                                          label: "Calories",
+                                          value: _calories.toStringAsFixed(0),
+                                          goal:
+                                              "/${_caloriesGoal.toInt()} kcal",
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    DetailScreen(
+                                                      title: "Calories",
+                                                      currentValue: _calories,
+                                                      goalValue: _caloriesGoal,
+                                                      onDataSaved:
+                                                          _loadUserData,
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: _ModernMetricItem(
+                                          icon: Icons.directions_walk,
+                                          iconColor: const Color(0xFFFF9800),
+                                          label: "Steps",
+                                          value: _steps.toString(),
+                                          goal: "/$_stepsGoal steps",
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    DetailScreen(
+                                                      title: "Steps",
+                                                      currentValue: _steps
+                                                          .toDouble(),
+                                                      goalValue: _stepsGoal
+                                                          .toDouble(),
+                                                      onDataSaved:
+                                                          _loadUserData,
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: _ModernMetricItem(
+                                          icon: Icons.directions_run,
+                                          iconColor: const Color(0xFF2196F3),
+                                          label: "Moving",
+                                          value: _movingMinutes.toStringAsFixed(
+                                            0,
+                                          ),
+                                          goal: "/${_movingGoal.toInt()} mins",
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    DetailScreen(
+                                                      title: "Moving",
+                                                      currentValue:
+                                                          _movingMinutes,
+                                                      goalValue: _movingGoal,
+                                                      onDataSaved:
+                                                          _loadUserData,
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                // Bottom text
+                                Text(
+                                  'Data resets daily at midnight • ${_dailyActivityHistory.length} days of history',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // UPDATED: Changed parameters to waistMeasurement and sleepHours
+                        _DraggableCardGrid(
+                          waistMeasurement: _waistMeasurement,
+                          weight: _weight,
+                          bmi: _bmi,
+                          sleepHours: _sleepHours,
+                          waistHistory: _waistHistory,
+                          weightHistory: _weightHistory,
+                          sleepHistory: _sleepHistory,
+                          onDataSaved: _loadUserData,
+                        ),
+                      ]),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            // Workout page
             const WorkoutScreen(),
-            // Community page
             const CommunityScreen(),
-            // MyProfile page
-            const MyProfile(),
+            MyProfile(
+              key: ValueKey('profile_${DateTime.now().millisecondsSinceEpoch}'),
+            ),
           ],
         ),
       ),
     );
   }
-}
 
-class _BodyFatCard extends StatelessWidget {
-  const _BodyFatCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to detail screen for Body Fat
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DetailScreen(title: "Body Fat %"),
+  void _showAddDataDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Update Health Data',
+            style: TextStyle(color: Colors.white),
           ),
-        );
-      },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.opacity, color: Colors.blue, size: 28),
-              const SizedBox(height: 6),
-              Text(
-                "Body Fat %",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16, // Reduced font size
-                ),
-              ),
-              // Larger font for the percentage value (no space between label and number)
-              Text(
-                "22.5%", // Latest data
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24, // Increased font size
-                ),
-              ),
-              // Time display below the number
-              Text(
-                "Updated 9:30 AM", // Last updated time
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              const Spacer(), // Add flexible space to push graph down
-              // Small line graph with background (no rounded corners)
-              Container(
-                height: 40, // Height for the graph
-                decoration: BoxDecoration(
-                  color: Colors.grey[800], // Dark background for the graph
-                ),
-                child: CustomPaint(
-                  painter: LineChartPainter(),
-                  size: Size(double.infinity, 40),
-                ),
-              ),
-              const SizedBox(height: 4),
-              // Date labels below the graph (only first and last)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "9/10",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                  Text(
-                    "9/20",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// Custom painter for the line chart
-class LineChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-
-    // Sample data points for body fat percentage over time
-    // Values: [9/10: 23.8%, 9/20: 22.5%]
-    List<double> values = [23.8, 22.5];
-    double minValue = 2.0;
-    double maxValue = 24.0;
-
-    double xStep = size.width / (values.length - 1);
-
-    List<Offset> points = [];
-    for (int i = 0; i < values.length; i++) {
-      double x = i * xStep;
-      // Invert y-axis (0,0 is top-left in Flutter)
-      double y =
-          size.height -
-          ((values[i] - minValue) / (maxValue - minValue)) * size.height;
-      points.add(Offset(x, y));
-    }
-
-    // Draw the line connecting the points
-    if (points.length > 1) {
-      for (int i = 0; i < points.length - 1; i++) {
-        canvas.drawLine(points[i], points[i + 1], paint);
-      }
-    }
-
-    // Draw gradient below the line
-    final gradient = LinearGradient(
-      colors: [Colors.blue.shade300, Colors.blue.shade800],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    // Create a path for the gradient area under the line
-    final path = Path();
-    path.moveTo(0, size.height); // Start at bottom left
-
-    // Add line to each point
-    for (int i = 0; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-
-    path.lineTo(size.width, size.height); // End at bottom right
-    path.close(); // Close the path
-
-    // Draw the gradient area
-    canvas.drawPath(path, Paint()..shader = gradient);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class _WeightCard extends StatelessWidget {
-  const _WeightCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to detail screen for Weight
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DetailScreen(title: "Weight"),
-          ),
-        );
-      },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.monitor_weight, color: Colors.green, size: 28),
-              const SizedBox(height: 6),
-              Text(
-                "Weight",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16, // Reduced font size
-                ),
-              ),
-              // Larger font for the weight value (no space between label and number)
-              Text(
-                "60.0 kg", // Latest data
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24, // Increased font size
-                ),
-              ),
-              // Time display below the number
-              Text(
-                "Updated 9:30 AM", // Last updated time
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-              const Spacer(), // Add flexible space to push graph down
-              // Small line graph with background (no rounded corners)
-              Container(
-                height: 40, // Height for the graph
-                decoration: BoxDecoration(
-                  color: Colors.grey[800], // Dark background for the graph
-                ),
-                child: CustomPaint(
-                  painter: WeightLineChartPainter(),
-                  size: Size(double.infinity, 40),
-                ),
-              ),
-              const SizedBox(height: 4),
-              // Date labels below the graph (only first and last)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "9/10",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                  Text(
-                    "9/20",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// Custom painter for the weight line chart
-class WeightLineChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.green
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-
-    // Sample data points for weight over time
-    // Values: [9/10: 61.2 kg, 9/20: 60.0 kg]
-    List<double> values = [61.2, 60.0];
-    double minValue = 59.0;
-    double maxValue = 62.0;
-
-    double xStep = size.width / (values.length - 1);
-
-    List<Offset> points = [];
-    for (int i = 0; i < values.length; i++) {
-      double x = i * xStep;
-      // Invert y-axis (0,0 is top-left in Flutter)
-      double y =
-          size.height -
-          ((values[i] - minValue) / (maxValue - minValue)) * size.height;
-      points.add(Offset(x, y));
-    }
-
-    // Draw the line connecting the points
-    if (points.length > 1) {
-      for (int i = 0; i < points.length - 1; i++) {
-        canvas.drawLine(points[i], points[i + 1], paint);
-      }
-    }
-
-    // Draw gradient below the line
-    final gradient = LinearGradient(
-      colors: [Colors.green.shade300, Colors.green.shade800],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    // Create a path for the gradient area under the line
-    final path = Path();
-    path.moveTo(0, size.height); // Start at bottom left
-
-    // Add line to each point
-    for (int i = 0; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-
-    path.lineTo(size.width, size.height); // End at bottom right
-    path.close(); // Close the path
-
-    // Draw the gradient area
-    canvas.drawPath(path, Paint()..shader = gradient);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-// ---------------- Reusable Widgets ---------------- //
-
-class _MetricItem extends StatelessWidget {
-  final IconData icon;
-  final Color? iconColor;
-  final String label;
-  final String value;
-  final String goal;
-  final VoidCallback? onTap; // Add onTap callback
-
-  const _MetricItem({
-    required this.icon,
-    this.iconColor,
-    required this.label,
-    required this.value,
-    required this.goal,
-    this.onTap, // Make onTap optional
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      // Wrap in GestureDetector to make it clickable
-      onTap: onTap, // Use the onTap callback
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment:
-            CrossAxisAlignment.start, // Align children to the start (left)
-        children: [
-          // Horizontal row with icon, label, and arrow
-          Row(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: iconColor ?? Colors.orange, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+              ListTile(
+                leading: const Icon(Icons.straighten, color: Colors.blue),
+                title: const Text(
+                  'Update Height',
+                  style: TextStyle(color: Colors.white),
                 ),
-              ),
-              const SizedBox(width: 4), // Reduced width instead of Spacer
-              const Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey,
-                size: 12, // Reduced size from 16 to 12
+                subtitle: const Text(
+                  'Manual height input',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showUpdateDialog('Height', _height, 250.0);
+                },
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Value and goal below the horizontal row, aligned with icon
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24, // Larger font size for value
-              fontWeight: FontWeight.bold,
+        );
+      },
+    );
+  }
+
+  void _showUpdateDialog(String type, double currentValue, double maxValue) {
+    TextEditingController controller = TextEditingController(
+      text: currentValue > 0 ? currentValue.toStringAsFixed(1) : '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: Text(
+            'Update $type',
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'New $type Value',
+              labelStyle: const TextStyle(color: Colors.white70),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.orange),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.orange),
+              ),
             ),
           ),
-          Text(
-            goal,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12, // Smaller font size for goal
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.orange),
+              ),
             ),
-          ),
-        ],
-      ),
+            ElevatedButton(
+              onPressed: () {
+                final newValue = double.tryParse(controller.text) ?? 0.0;
+                if (newValue >= 0 && newValue <= maxValue) {
+                  Navigator.pop(context);
+                  _handleDataUpdate(type, newValue);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please enter a value between 0 and $maxValue',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              child: const Text(
+                'Update',
+                style: TextStyle(color: Colors.black),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _handleDataUpdate(String type, double newValue) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      switch (type) {
+        case 'Height':
+          // Get current user data to calculate BMI
+          final userDoc = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          final userData = userDoc.data();
+
+          double weight = 0.0;
+          if (userData != null && userData['profile'] != null) {
+            weight = (userData['profile']['weight'] ?? 0.0).toDouble();
+          }
+
+          double bmi = 0.0;
+          if (newValue > 0 && weight > 0) {
+            double heightInMeters = newValue / 100;
+            bmi = weight / (heightInMeters * heightInMeters);
+          }
+
+          // Update user profile with height AND recalculated BMI
+          await _firestore.collection('users').doc(user.uid).set({
+            'profile': {
+              'height': newValue,
+              'bmi': double.parse(bmi.toStringAsFixed(1)),
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
+          }, SetOptions(merge: true));
+
+          // Update health metrics with new BMI
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_metrics')
+              .doc('current')
+              .set({
+                'bmi': bmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+
+          // Refresh local data
+          _loadUserData();
+
+          break;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$type updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error updating $type: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update $type'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+// Daily Activity Model
+class DailyActivity {
+  final DateTime date;
+  final int steps;
+  final double calories;
+  final double movingMinutes;
+
+  DailyActivity({
+    required this.date,
+    required this.steps,
+    required this.calories,
+    required this.movingMinutes,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'date': date.toIso8601String(),
+      'steps': steps,
+      'calories': calories,
+      'movingMinutes': movingMinutes,
+    };
+  }
+
+  factory DailyActivity.fromMap(Map<String, dynamic> map) {
+    return DailyActivity(
+      date: DateTime.parse(map['date']),
+      steps: map['steps'],
+      calories: (map['calories'] ?? 0).toDouble(),
+      movingMinutes: (map['movingMinutes'] ?? 0).toDouble(),
     );
   }
 }
@@ -629,7 +1152,7 @@ class _ModernMetricItem extends StatelessWidget {
   final String label;
   final String value;
   final String goal;
-  final VoidCallback? onTap; // Add onTap callback
+  final VoidCallback? onTap;
 
   const _ModernMetricItem({
     required this.icon,
@@ -637,38 +1160,33 @@ class _ModernMetricItem extends StatelessWidget {
     required this.label,
     required this.value,
     required this.goal,
-    this.onTap, // Make onTap optional
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // Wrap in GestureDetector to make it clickable
-      onTap: onTap, // Use the onTap callback
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF1111), // Slightly darker background
+          color: const Color(0xFF1111),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Center align for modern look
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Icon with modern styling - square with rounded corners
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: iconColor!.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(
-                  14,
-                ), // Square with rounded corners
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: iconColor, size: 28), // Increased size
+              child: Icon(icon, color: iconColor, size: 28),
             ),
             const SizedBox(height: 6),
-            // Label
             Text(
               label,
               style: const TextStyle(
@@ -676,25 +1194,23 @@ class _ModernMetricItem extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            // Value with modern styling
             Text(
               value,
               style: TextStyle(
-                color: iconColor, // Use the icon color for the value
-                fontSize: 24, // Increased font size
+                color: iconColor,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
-            // Goal with subtle styling
             Text(
               goal,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 13, // Increased font size for goal
-              ),
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -703,60 +1219,278 @@ class _ModernMetricItem extends StatelessWidget {
   }
 }
 
-class _InfoCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String progressText;
-  final IconData icon;
-  final Color? iconColor;
+// UPDATED: Changed parameters to waistMeasurement and sleepHours
+class _DraggableCardGrid extends StatefulWidget {
+  final double waistMeasurement;
+  final double weight;
+  final double bmi;
+  final double sleepHours;
+  final List<double> waistHistory;
+  final List<double> weightHistory;
+  final List<double> sleepHistory;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _DraggableCardGrid({
+    required this.waistMeasurement,
+    required this.weight,
+    required this.bmi,
+    required this.sleepHours,
+    required this.waistHistory,
+    required this.weightHistory,
+    required this.sleepHistory,
+    required this.onDataSaved, // ADD THIS
+  });
 
-  const _InfoCard({
-    required this.title,
-    required this.subtitle,
-    required this.progressText,
-    required this.icon,
-    this.iconColor,
+  @override
+  State<_DraggableCardGrid> createState() => _DraggableCardGridState();
+}
+
+class _DraggableCardGridState extends State<_DraggableCardGrid> {
+  List<Widget> cards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeCards();
+  }
+
+  void _initializeCards() {
+    // UPDATED: Changed to WaistCard and SleepCard
+    cards = [
+      _WaistCard(
+        waistMeasurement: widget.waistMeasurement,
+        waistHistory: widget.waistHistory,
+        onDataSaved: widget.onDataSaved, // ADD THIS
+      ),
+      _WeightCard(
+        weight: widget.weight,
+        weightHistory: widget.weightHistory,
+        onDataSaved: widget.onDataSaved,
+      ), // ADD THIS
+      _BMICard(bmi: widget.bmi, onDataSaved: widget.onDataSaved), // ADD THIS
+      _SleepCard(
+        sleepHours: widget.sleepHours,
+        sleepHistory: widget.sleepHistory,
+        onDataSaved: widget.onDataSaved, // ADD THIS
+      ),
+    ];
+  }
+
+  @override
+  void didUpdateWidget(covariant _DraggableCardGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _initializeCards();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final isSmallScreen = screenWidth < 350;
+        final double cardWidth =
+            constraints.maxWidth / 2 - (isSmallScreen ? 6 : 8);
+        final double cardHeight = cardWidth * (isSmallScreen ? 1.2 : 1.1);
+
+        return GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: isSmallScreen ? 6 : 8,
+            mainAxisSpacing: isSmallScreen ? 6 : 8,
+            childAspectRatio: isSmallScreen ? 0.75 : 0.85,
+          ),
+          itemCount: cards.length,
+          itemBuilder: (BuildContext context, int index) {
+            return SizedBox(
+              height: cardHeight,
+              child: LongPressDraggable<int>(
+                data: index,
+                feedback: Material(
+                  elevation: 8,
+                  child: Container(
+                    width: cardWidth,
+                    height: cardHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Opacity(opacity: 0.8, child: cards[index]),
+                    ),
+                  ),
+                ),
+                childWhenDragging: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Card(
+                    color: const Color(0xFF191919),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      child: const Center(child: SizedBox.shrink()),
+                    ),
+                  ),
+                ),
+                onDragStarted: () {},
+                onDragEnd: (details) {},
+                child: DragTarget<int>(
+                  onAccept: (int oldIndex) {
+                    if (oldIndex != index) {
+                      setState(() {
+                        Widget card = cards.removeAt(oldIndex);
+                        int adjustedNewIndex = oldIndex < index
+                            ? index - 1
+                            : index;
+                        cards.insert(adjustedNewIndex, card);
+                      });
+                    }
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return cards[index];
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// UPDATED: Changed from BodyFatCard to WaistCard with new icon
+class _WaistCard extends StatelessWidget {
+  final double waistMeasurement;
+  final List<double> waistHistory;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _WaistCard({
+    required this.waistMeasurement,
+    required this.waistHistory,
+    required this.onDataSaved, // ADD THIS
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to detail screen based on card type
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => DetailScreen(title: title)),
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(
+              title: "Waist Measurement",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
+          ),
         );
       },
       child: Card(
         color: const Color(0xFF191919),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: iconColor ?? Colors.white, size: 28),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const Spacer(),
-              Text(
-                progressText,
-                style: const TextStyle(color: Colors.greenAccent, fontSize: 12),
-              ),
-            ],
+          padding: const EdgeInsets.all(
+            12,
+          ), // Reduced padding for small screens
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isSmallScreen = constraints.maxWidth < 160;
+              final bool isVerySmallScreen = constraints.maxWidth < 140;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // UPDATED: Changed icon from Icons.opacity to Icons.straighten
+                      Icon(
+                        Icons.straighten,
+                        color: Colors.blue,
+                        size: isVerySmallScreen ? 20 : 24,
+                      ),
+                      if (!isSmallScreen) ...[const Spacer()],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Waist", // UPDATED: Changed label
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isVerySmallScreen ? 12 : 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isVerySmallScreen ? 16 : 20,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Updated ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isVerySmallScreen ? 8 : 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  Container(
+                    height: 30, // Reduced height for small screens
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: waistHistory.length >= 2
+                        ? CustomPaint(
+                            painter: LineChartPainter(data: waistHistory),
+                            size: const Size(double.infinity, 30),
+                          )
+                        : Center(
+                            child: Text(
+                              "No data",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: isVerySmallScreen ? 8 : 10,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Start",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isVerySmallScreen ? 8 : 9,
+                        ),
+                      ),
+                      Text(
+                        "Now",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isVerySmallScreen ? 8 : 9,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -764,17 +1498,301 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _BMICard extends StatelessWidget {
-  const _BMICard();
+class _WeightCard extends StatelessWidget {
+  final double weight;
+  final List<double> weightHistory;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _WeightCard({
+    required this.weight,
+    required this.weightHistory,
+    required this.onDataSaved,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to detail screen for BMI
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => DetailScreen(title: "BMI")),
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(
+              title: "Weight",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
+          ),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(
+            12,
+          ), // Reduced padding for small screens
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isSmallScreen = constraints.maxWidth < 160;
+              final bool isVerySmallScreen = constraints.maxWidth < 140;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Icon(
+                        Icons.monitor_weight,
+                        color: Colors.green,
+                        size: isVerySmallScreen ? 20 : 24,
+                      ),
+                      if (!isSmallScreen) ...[const Spacer()],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Weight",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isVerySmallScreen ? 12 : 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${weight.toStringAsFixed(1)} kg",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isVerySmallScreen ? 16 : 20,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Updated ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isVerySmallScreen ? 8 : 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  Container(
+                    height: 30, // Reduced height for small screens
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: weightHistory.length >= 2
+                        ? CustomPaint(
+                            painter: WeightLineChartPainter(
+                              data: weightHistory,
+                            ),
+                            size: const Size(double.infinity, 30),
+                          )
+                        : Center(
+                            child: Text(
+                              "No data",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: isVerySmallScreen ? 8 : 10,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Start",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isVerySmallScreen ? 8 : 9,
+                        ),
+                      ),
+                      Text(
+                        "Now",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isVerySmallScreen ? 8 : 9,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ResponsiveBMIIndicator extends StatelessWidget {
+  final double bmi;
+  final double height;
+
+  const ResponsiveBMIIndicator({Key? key, required this.bmi, this.height = 32})
+    : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      child: Column(
+        children: [
+          // BMI Scale Bar
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double width = constraints.maxWidth;
+                return Stack(
+                  children: [
+                    // Background scale
+                    _buildBMIScale(width),
+                    // BMI Indicator
+                    _buildBMIIndicator(width),
+                  ],
+                );
+              },
+            ),
+          ),
+          // BMI Labels
+          SizedBox(height: 4),
+          _buildBMILabels(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBMIScale(double totalWidth) {
+    // Define BMI ranges and their widths
+    final bmiRanges = [
+      _BMIRange(15.0, 18.5, Colors.blue), // Underweight
+      _BMIRange(18.5, 25.0, Colors.green), // Normal
+      _BMIRange(25.0, 30.0, Colors.orange), // Overweight
+      _BMIRange(30.0, 40.0, Colors.red), // Obese
+    ];
+
+    return Row(
+      children: bmiRanges.map((range) {
+        final rangeWidth = _calculateRangeWidth(range, totalWidth);
+        return Container(
+          width: rangeWidth,
+          height: 12,
+          decoration: BoxDecoration(
+            color: range.color,
+            borderRadius: _getBorderRadius(range, bmiRanges),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildBMIIndicator(double totalWidth) {
+    final double indicatorPosition = _calculateIndicatorPosition(totalWidth);
+
+    return Positioned(
+      left: indicatorPosition - 8, // Center the arrow above the position
+      child: Column(
+        children: [
+          Icon(Icons.arrow_drop_up, color: Colors.white, size: 20),
+          SizedBox(height: 2),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _getBMIColor(bmi),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              bmi.toStringAsFixed(1),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBMILabels() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("15", style: TextStyle(color: Colors.white70, fontSize: 10)),
+        Text("18.5", style: TextStyle(color: Colors.white70, fontSize: 10)),
+        Text("25", style: TextStyle(color: Colors.white70, fontSize: 10)),
+        Text("30", style: TextStyle(color: Colors.white70, fontSize: 10)),
+        Text("40+", style: TextStyle(color: Colors.white70, fontSize: 10)),
+      ],
+    );
+  }
+
+  double _calculateRangeWidth(_BMIRange range, double totalWidth) {
+    final totalRange = 40.0 - 15.0; // 15 to 40+
+    final rangeSize = range.end - range.start;
+    return (rangeSize / totalRange) * totalWidth;
+  }
+
+  double _calculateIndicatorPosition(double totalWidth) {
+    final double clampedBMI = bmi.clamp(15.0, 40.0);
+    final double totalRange = 40.0 - 15.0;
+    final double percentage = (clampedBMI - 15.0) / totalRange;
+    return percentage * totalWidth;
+  }
+
+  BorderRadius _getBorderRadius(_BMIRange range, List<_BMIRange> allRanges) {
+    final isFirst = range == allRanges.first;
+    final isLast = range == allRanges.last;
+
+    return BorderRadius.horizontal(
+      left: isFirst ? Radius.circular(6) : Radius.circular(0),
+      right: isLast ? Radius.circular(6) : Radius.circular(0),
+    );
+  }
+
+  Color _getBMIColor(double bmi) {
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25) return Colors.green;
+    if (bmi < 30) return Colors.orange;
+    return Colors.red;
+  }
+}
+
+class _BMIRange {
+  final double start;
+  final double end;
+  final Color color;
+
+  _BMIRange(this.start, this.end, this.color);
+}
+
+class _BMICard extends StatelessWidget {
+  final double bmi;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _BMICard({required this.bmi, required this.onDataSaved});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(
+              title: "BMI",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
+          ),
         );
       },
       child: Card(
@@ -785,11 +1803,7 @@ class _BMICard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.monitor_heart,
-                color: Colors.orange,
-                size: 28,
-              ), // Changed icon color to orange
+              Icon(Icons.monitor_heart, color: Colors.orange, size: 28),
               const SizedBox(height: 10),
               Text(
                 "BMI",
@@ -801,124 +1815,25 @@ class _BMICard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                "22.0", // BMI value
+                bmi.toStringAsFixed(1),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 24, // Larger font size for the value
+                  fontSize: 24,
                 ),
               ),
-              const SizedBox(height: 2), // Small space above "Normal" text
+              const SizedBox(height: 2),
               Text(
-                "Normal", // BMI category
-                style: const TextStyle(
-                  color: Colors.green, // Green color for normal range
+                _getBMICategory(bmi),
+                style: TextStyle(
+                  color: _getBMIColor(bmi),
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
-              const Spacer(), // Add flexible space to push graph down
-              // BMI Color Graph - Segmented Bar
-              Row(
-                children: [
-                  // Low BMI - Blue with rounded left corner
-                  Expanded(
-                    flex: 24, // Represents the range 0-24% for low BMI range
-                    child: Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(10), // Rounded left corner
-                          right: Radius.circular(
-                            2,
-                          ), // Slightly rounded right corner
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2), // Small space between segments
-                  // Normal BMI - Green
-                  Expanded(
-                    flex:
-                        25, // Represents the range 25-49% for normal BMI range
-                    child: Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(
-                          2,
-                        ), // Slightly rounded
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2), // Small space between segments
-                  // High BMI - Orange
-                  Expanded(
-                    flex: 25, // Represents the range 50-74% for high BMI range
-                    child: Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(
-                          2,
-                        ), // Slightly rounded
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 2), // Small space between segments
-                  // Very High BMI - Deep Orange with rounded right corner
-                  Expanded(
-                    flex:
-                        26, // Represents the range 75-100% for very high BMI range
-                    child: Container(
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.deepOrange,
-                        borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(
-                            2,
-                          ), // Slightly rounded left corner
-                          right: Radius.circular(10), // Rounded right corner
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Arrow indicator for current BMI position
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  // Calculate position based on BMI value (assuming 22.0 for this example)
-                  // BMI range is 0 to 40, so normalize to 0-1 range
-                  double bmiValue =
-                      22.0; // This would come from actual data in a real app
-                  double normalizedPosition =
-                      bmiValue / 40.0; // Normalize to 0-1 range
-                  if (normalizedPosition > 1.0) normalizedPosition = 1.0;
-
-                  return Stack(
-                    children: [
-                      Container(height: 20), // Placeholder for arrow
-                      Positioned(
-                        left: normalizedPosition * constraints.maxWidth,
-                        child: Transform.translate(
-                          offset: const Offset(
-                            -10,
-                            0,
-                          ), // Center the arrow on the position
-                          child: Icon(
-                            Icons.arrow_drop_up, // Upward arrow
-                            color: Colors.white, // White color for arrow
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+              const Spacer(),
+              // Use the new responsive BMI indicator
+              ResponsiveBMIIndicator(bmi: bmi),
             ],
           ),
         ),
@@ -926,32 +1841,43 @@ class _BMICard extends StatelessWidget {
     );
   }
 
-  // Helper method to get color based on BMI value
-  static Color _getBMIColor(double bmiValue) {
-    if (bmiValue < 18.5) {
-      return Colors.blue; // Low BMI
-    } else if (bmiValue >= 18.5 && bmiValue <= 24.9) {
-      return Colors.green; // Normal BMI
-    } else if (bmiValue >= 25.0 && bmiValue <= 29.9) {
-      return Colors.orange; // High BMI
-    } else {
-      return Colors.deepOrange; // Very High BMI
-    }
+  String _getBMICategory(double bmi) {
+    if (bmi < 18.5) return "Underweight";
+    if (bmi < 25) return "Normal";
+    if (bmi < 30) return "Overweight";
+    return "Obese";
+  }
+
+  Color _getBMIColor(double bmi) {
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25) return Colors.green;
+    if (bmi < 30) return Colors.orange;
+    return Colors.red;
   }
 }
 
-class _VitalityCard extends StatelessWidget {
-  const _VitalityCard();
+// UPDATED: Changed from VitalityCard to SleepCard with new icon
+class _SleepCard extends StatelessWidget {
+  final double sleepHours;
+  final List<double> sleepHistory;
+  final VoidCallback onDataSaved; // ADD THIS
+  const _SleepCard({
+    required this.sleepHours,
+    required this.sleepHistory,
+    required this.onDataSaved,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to detail screen for Vitality Score
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DetailScreen(title: "Vitality Score"),
+            builder: (context) => DetailScreen(
+              title: "Sleep Hours",
+              onDataSaved: onDataSaved, // PASS THE CALLBACK
+            ),
           ),
         );
       },
@@ -959,59 +1885,58 @@ class _VitalityCard extends StatelessWidget {
         color: const Color(0xFF191919),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon at the top left
               Align(
                 alignment: Alignment.topLeft,
-                child: Icon(Icons.person, color: Colors.cyan, size: 28),
+                // UPDATED: Changed icon from Icons.person to Icons.bedtime
+                child: Icon(
+                  Icons.bedtime,
+                  color: Colors.purple,
+                  size: 28,
+                ), // Changed color to purple for sleep
               ),
               const SizedBox(height: 6),
-              // "Vitality Score" text
               Text(
-                "Vitality Score",
+                "Sleep Hours", // UPDATED: Changed label
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 14,
                 ),
               ),
-              // "Past 7 days: 6" text
               Text(
-                "Past 7 days: 6",
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
+                style: const TextStyle(color: Colors.white70, fontSize: 18),
               ),
-              // Date last updated
               Text(
-                "26 September",
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                "${DateTime.now().day} ${_getMonthName(DateTime.now().month)}",
+                style: const TextStyle(color: Colors.white70, fontSize: 10),
               ),
-              const Spacer(), // Add flexible space to push graph down
-              // Simple graph with straight line at the top and gradient below
+              const Spacer(),
               Container(
-                height: 40, // Height for the graph
-                decoration: BoxDecoration(
-                  color: Colors.grey[800], // Dark background for the graph
-                ),
+                height: 25,
+                decoration: BoxDecoration(color: Colors.grey[800]),
                 child: CustomPaint(
-                  painter: VitalityGraphPainter(),
-                  size: Size(double.infinity, 40),
+                  painter: SleepGraphPainter(
+                    data: sleepHistory,
+                  ), // UPDATED: Changed painter
+                  size: const Size(double.infinity, 40),
                 ),
               ),
               const SizedBox(height: 4),
-              // Date labels below the graph (0 at left, 100 at right)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     "0",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    style: TextStyle(color: Colors.white70, fontSize: 8),
                   ),
                   Text(
-                    "100",
-                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                    "12", // UPDATED: Changed max value from 100 to 12 for sleep hours
+                    style: TextStyle(color: Colors.white70, fontSize: 8),
                   ),
                 ],
               ),
@@ -1021,122 +1946,181 @@ class _VitalityCard extends StatelessWidget {
       ),
     );
   }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
+  }
 }
 
-// Custom painter for the vitality graph
-class VitalityGraphPainter extends CustomPainter {
+// Chart painters
+class LineChartPainter extends CustomPainter {
+  final List<double> data;
+
+  const LineChartPainter({required this.data});
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw cyan gradient below the line at the top
+    if (data.length < 2) return;
+
+    final paint = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    double minValue = data.reduce((a, b) => a < b ? a : b);
+    double maxValue = data.reduce((a, b) => a > b ? a : b);
+    double range = maxValue - minValue;
+    if (range == 0) range = 1;
+
+    double xStep = size.width / (data.length - 1);
+
+    List<Offset> points = [];
+    for (int i = 0; i < data.length; i++) {
+      double x = i * xStep;
+      double y = size.height - ((data[i] - minValue) / range) * size.height;
+      points.add(Offset(x, y));
+    }
+
+    for (int i = 0; i < points.length - 1; i++) {
+      canvas.drawLine(points[i], points[i + 1], paint);
+    }
+
+    final gradient = LinearGradient(
+      colors: [Colors.blue.shade300, Colors.blue.shade800],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path();
+    path.moveTo(0, size.height);
+    for (int i = 0; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+
+    canvas.drawPath(path, Paint()..shader = gradient);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+class WeightLineChartPainter extends CustomPainter {
+  final List<double> data;
+
+  const WeightLineChartPainter({required this.data});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.length < 2) return;
+
+    final paint = Paint()
+      ..color = Colors.green
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    double minValue = data.reduce((a, b) => a < b ? a : b);
+    double maxValue = data.reduce((a, b) => a > b ? a : b);
+    double range = maxValue - minValue;
+    if (range == 0) range = 1;
+
+    double xStep = size.width / (data.length - 1);
+
+    List<Offset> points = [];
+    for (int i = 0; i < data.length; i++) {
+      double x = i * xStep;
+      double y = size.height - ((data[i] - minValue) / range) * size.height;
+      points.add(Offset(x, y));
+    }
+
+    for (int i = 0; i < points.length - 1; i++) {
+      canvas.drawLine(points[i], points[i + 1], paint);
+    }
+
+    final gradient = LinearGradient(
+      colors: [Colors.green.shade300, Colors.green.shade800],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path();
+    path.moveTo(0, size.height);
+    for (int i = 0; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+
+    canvas.drawPath(path, Paint()..shader = gradient);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+// UPDATED: Changed from VitalityGraphPainter to SleepGraphPainter
+class SleepGraphPainter extends CustomPainter {
+  final List<double> data;
+
+  const SleepGraphPainter({required this.data});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final currentHours = data.last;
+    // Normalize to 12 hours max for sleep
+    final normalizedHeight = (currentHours / 12) * size.height;
+
     final gradient =
         LinearGradient(
-          colors: [Colors.cyan.shade300, Colors.cyan.shade800],
+          colors: [
+            Colors.purple.shade300,
+            Colors.purple.shade800,
+          ], // UPDATED: Changed colors
         ).createShader(
-          Rect.fromLTWH(0, size.height * 0.3, size.width, size.height * 0.7),
+          Rect.fromLTWH(
+            0,
+            size.height - normalizedHeight,
+            size.width,
+            normalizedHeight,
+          ),
         );
 
-    // Draw the gradient area
     canvas.drawRect(
-      Rect.fromLTWH(0, size.height * 0.3, size.width, size.height * 0.7),
+      Rect.fromLTWH(
+        0,
+        size.height - normalizedHeight,
+        size.width,
+        normalizedHeight,
+      ),
       Paint()..shader = gradient,
     );
 
-    // Draw the straight line at the top
     final linePaint = Paint()
-      ..color = Colors.cyan
+      ..color = Colors
+          .purple // UPDATED: Changed color
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(
-      Offset(0, size.height * 0.3), // Start of line at top
-      Offset(size.width, size.height * 0.3), // End of line at top
+      Offset(0, size.height - normalizedHeight),
+      Offset(size.width, size.height - normalizedHeight),
       linePaint,
     );
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-// Draggable card grid widget
-class _DraggableCardGrid extends StatefulWidget {
-  const _DraggableCardGrid();
-
-  @override
-  State<_DraggableCardGrid> createState() => _DraggableCardGridState();
-}
-
-class _DraggableCardGridState extends State<_DraggableCardGrid> {
-  List<Widget> cards = [
-    const _BodyFatCard(),
-    const _WeightCard(),
-    const _BMICard(),
-    const _VitalityCard(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // 2 columns to maintain grid layout
-        crossAxisSpacing: 2, // Horizontal spacing
-        mainAxisSpacing: 2, // Vertical spacing
-        childAspectRatio: 0.8, // Adjusted aspect ratio to make cards wider
-      ),
-      itemCount: cards.length,
-      itemBuilder: (BuildContext context, int index) {
-        return LongPressDraggable<int>(
-          data: index,
-          feedback: Material(
-            elevation: 8,
-            child: Container(
-              width: 155,
-              height: 180,
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(child: Opacity(opacity: 0.8, child: cards[index])),
-            ),
-          ),
-          childWhenDragging: Container(
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Card(
-              color: const Color(0xFF191919),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(child: const Center(child: SizedBox.shrink())),
-            ),
-          ),
-          onDragStarted: () {
-            // Optional: Add visual feedback when drag starts
-          },
-          onDragEnd: (details) {
-            // Optional: Add visual feedback when drag ends
-          },
-          child: DragTarget<int>(
-            onAccept: (int oldIndex) {
-              if (oldIndex != index) {
-                setState(() {
-                  Widget card = cards.removeAt(oldIndex);
-                  // If the new index is after the old index, we need to adjust for the removed item
-                  int adjustedNewIndex = oldIndex < index ? index - 1 : index;
-                  cards.insert(adjustedNewIndex, card);
-                });
-              }
-            },
-            builder: (context, candidateData, rejectedData) {
-              return cards[index];
-            },
-          ),
-        );
-      },
-    );
-  }
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
