@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'progress_tracking_screen.dart'; // Import the new progress tracking screen
+import '../data/workout_data.dart'; // Import workout data
+import '../models/workout_model.dart'; // Import workout model
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -11,6 +13,9 @@ class WorkoutScreen extends StatefulWidget {
 
 class _WorkoutScreenState extends State<WorkoutScreen> {
   int _selectedTabIndex = 0;
+
+  // List of tab titles
+  final List<String> _tabTitles = ["Abs", "Arm", "Chest", "Leg"];
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +63,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         _buildStatItem(
                           icon: Icons.fitness_center,
                           label: "Workouts",
-                          value: "12",
+                          value: workouts.length.toString(),
                           color: Colors.orange, // Orange for workouts
                         ),
                         _buildStatItem(
@@ -422,18 +427,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   ),
                   child: Row(
                     children: [
-                      _buildTab("Abs", 0),
-                      _buildTab("Arm", 1),
-                      _buildTab("Chest", 2),
-                      _buildTab("Leg", 3),
+                      _buildTab(_tabTitles[0], 0),
+                      _buildTab(_tabTitles[1], 1),
+                      _buildTab(_tabTitles[2], 2),
+                      _buildTab(_tabTitles[3], 3),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // Video Preview Section
-                _buildVideoPreview(),
+                // Workout List Section - Filtered based on selected tab
+                _buildWorkoutList(),
               ],
             ),
           ),
@@ -470,6 +475,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
+  // Body Focus Tabs Choices
   Widget _buildTab(String title, int index) {
     return Expanded(
       child: GestureDetector(
@@ -502,9 +508,56 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
-  Widget _buildVideoPreview() {
+  // Workout List Section - Filtered based on selected tab
+  Widget _buildWorkoutList() {
+    // Filter workouts based on selected tab
+    List<Workout> filteredWorkouts = workouts.where((workout) {
+      return workout.bodyFocus.toLowerCase() == _tabTitles[_selectedTabIndex].toLowerCase();
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Display number of workouts for the selected category
+        Text(
+          "${filteredWorkouts.length} ${_tabTitles[_selectedTabIndex]} Workouts",
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Check if there are workouts for the selected category
+        if (filteredWorkouts.isEmpty)
+          const Center(
+            child: Text(
+              "No workouts available for this category",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+          )
+        else
+          // Build the list of workout cards
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(), // Disable scrolling for the list view since the parent is already scrollable
+            itemCount: filteredWorkouts.length,
+            itemBuilder: (context, index) {
+              return _buildWorkoutCard(filteredWorkouts[index]);
+            },
+          ),
+      ],
+    );
+  }
+
+  // Build individual workout card
+  Widget _buildWorkoutCard(Workout workout) {
     return Container(
       width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF191919),
         borderRadius: BorderRadius.circular(16),
@@ -521,7 +574,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Video preview box
+            // Video preview box with thumbnail
             Container(
               width: 120,
               height: 80,
@@ -529,10 +582,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 color: Colors.grey[800],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.play_arrow,
-                color: Colors.white,
-                size: 40,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  workout.thumbnailAsset, // Use the thumbnail asset from the workout data
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback if the image fails to load
+                    return const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 40,
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -541,9 +604,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Abs Workout Routine",
-                    style: TextStyle(
+                  Text(
+                    workout.title, // Use title from workout data
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -555,7 +618,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       const Icon(Icons.timer, color: Colors.white70, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        "25 min",
+                        workout.duration, // Use duration from workout data
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                       const SizedBox(width: 12),
@@ -568,9 +631,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           color: Colors.grey[800],
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text(
-                          "12 exercises",
-                          style: TextStyle(color: Colors.white70, fontSize: 10),
+                        child: Text(
+                          workout.exercises, // Use exercises from workout data
+                          style: const TextStyle(color: Colors.white70, fontSize: 10),
                         ),
                       ),
                     ],
@@ -584,13 +647,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.2),
+                          color: _getLevelColor(workout.level).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          "Beginner",
+                        child: Text(
+                          workout.level, // Use level from workout data
                           style: TextStyle(
-                            color: Colors.orange,
+                            color: _getLevelColor(workout.level),
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -605,5 +668,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
       ),
     );
+  }
+
+  // Helper method to get color based on workout level
+  Color _getLevelColor(String level) {
+    switch (level.toLowerCase()) {
+      case 'beginner':
+        return Colors.green;
+      case 'intermediate':
+        return Colors.orange;
+      case 'hard':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 }
