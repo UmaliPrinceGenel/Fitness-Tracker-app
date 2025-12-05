@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'progress_tracking_screen.dart'; // Import the new progress tracking screen
 import '../data/workout_data.dart'; // Import workout data
 import '../models/workout_model.dart'; // Import workout model
@@ -12,11 +14,107 @@ class WorkoutScreen extends StatefulWidget {
   State<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
-class _WorkoutScreenState extends State<WorkoutScreen> {
+class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserver {
   int _selectedTabIndex = 0;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<int> _weeklyWorkoutData = [0, 0, 0, 0, 0, 0, 0]; // Initialize with zeros for each day of the week
+  bool _isLoading = true;
 
-  // List of tab titles
+ // List of tab titles
   final List<String> _tabTitles = ["Abs", "Arm", "Chest", "Leg"];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeeklyProgressData();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when the app resumes (e.g., when returning from workout detail screen)
+      _loadWeeklyProgressData();
+    }
+  }
+
+  // Load weekly progress data from Firestore
+  Future<void> _loadWeeklyProgressData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Get the start of the current week (Monday)
+        DateTime now = DateTime.now();
+        DateTime startOfWeek = _getStartOfWeek(now);
+        DateTime endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+        // Query completed workouts for the current week
+        final completedWorkoutsSnapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('completed_workouts')
+            .where('completedAt', isGreaterThanOrEqualTo: startOfWeek)
+            .where('completedAt', isLessThan: endOfWeek)
+            .get();
+
+        // Initialize weekly data with zeros
+        List<int> weeklyData = [0, 0, 0, 0, 0, 0, 0];
+
+        // Process completed workouts to calculate weekly data
+        for (var doc in completedWorkoutsSnapshot.docs) {
+          final data = doc.data();
+          final completedAt = (data['completedAt'] as Timestamp).toDate();
+          final dayOfWeek = completedAt.weekday - 1; // Monday = 0, Sunday = 6
+
+          // Extract number of exercises from the workout data
+          final exercisesText = data['exercises'] as String;
+          int exerciseCount = 0;
+          try {
+            exerciseCount = int.parse(exercisesText.split(' ')[0]);
+          } catch (e) {
+            exerciseCount = 0;
+          }
+
+          // Add to the appropriate day, ensuring we don't exceed the maximum
+          if (dayOfWeek >= 0 && dayOfWeek < 7) {
+            weeklyData[dayOfWeek] += exerciseCount;
+          }
+        }
+
+        setState(() {
+          _weeklyWorkoutData = weeklyData;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading weekly progress data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Helper function to get the start of the week (Monday)
+  DateTime _getStartOfWeek(DateTime date) {
+    int daysFromMonday = date.weekday - 1; // Monday is 1, so subtract 1
+    return DateTime(date.year, date.month, date.day - daysFromMonday);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,79 +134,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         automaticallyImplyLeading: false, // Prevents the automatic back button
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Statistics Card
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildStatItem(
-                          icon: Icons.fitness_center,
-                          label: "Workouts",
-                          value: workouts.length.toString(),
-                          color: Colors.orange, // Orange for workouts
-                        ),
-                        _buildStatItem(
-                          icon: Icons.local_fire_department,
-                          label: "kcal",
-                          value: "1250",
-                          color: const Color(0xFFFF6B35), // Red orange for kcal
-                        ),
-                        _buildStatItem(
-                          icon: Icons.timer,
-                          label: "Minutes",
-                          value: "180",
-                          color: Colors.blue, // Blue for minutes
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Weekly Goal
-                const Text(
-                  "Weekly Goal",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Progress Tracking Card
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProgressTrackingScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
+        child: RefreshIndicator(
+          onRefresh: _loadWeeklyProgressData,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Statistics Card
+                  Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: const Color(0xFF191919),
@@ -122,325 +157,320 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      padding: const EdgeInsets.all(20.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "Progress Tracking",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ProgressTrackingScreen(),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  "More",
-                                  style: TextStyle(
-                                    color: Colors.orange,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          _buildStatItem(
+                            icon: Icons.fitness_center,
+                            label: "Workouts",
+                            value: workouts.length.toString(),
+                            color: Colors.orange, // Orange for workouts
                           ),
-                          const SizedBox(height: 10),
-                          // Bar chart visualization
-                          Container(
-                            height: 150,
-                            child: BarChart(
-                              BarChartData(
-                                alignment: BarChartAlignment.spaceAround,
-                                maxY: 8,
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: false,
-                                  horizontalInterval: 1,
-                                  getDrawingHorizontalLine: (value) {
-                                    return FlLine(
-                                      color: Colors.grey.withOpacity(0.3),
-                                      strokeWidth: 0.5,
-                                    );
-                                  },
-                                ),
-                                titlesData: FlTitlesData(
-                                  show: true,
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      getTitlesWidget: (value, meta) {
-                                        switch (value.toInt()) {
-                                          case 0:
-                                            return Text(
-                                              'Mon',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          case 1:
-                                            return Text(
-                                              'Tue',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          case 2:
-                                            return Text(
-                                              'Wed',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          case 3:
-                                            return Text(
-                                              'Thu',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          case 4:
-                                            return Text(
-                                              'Fri',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          case 5:
-                                            return Text(
-                                              'Sat',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          case 6:
-                                            return Text(
-                                              'Sun',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 10,
-                                              ),
-                                            );
-                                          default:
-                                            return Text('');
-                                        }
-                                      },
-                                      reservedSize: 30,
-                                    ),
-                                  ),
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      getTitlesWidget: (value, meta) {
-                                        return Text(
-                                          value.toInt().toString(),
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 10,
-                                          ),
-                                        );
-                                      },
-                                      reservedSize: 25,
-                                    ),
-                                  ),
-                                  topTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  rightTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                ),
-                                borderData: FlBorderData(show: false),
-                                barGroups: [
-                                  BarChartGroupData(
-                                    x: 0,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 3,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ), // Orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                  BarChartGroupData(
-                                    x: 1,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 4,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ), // Orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                  BarChartGroupData(
-                                    x: 2,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 3,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ).withOpacity(0.5), // Faded orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                  BarChartGroupData(
-                                    x: 3,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 5,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ), // Orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                  BarChartGroupData(
-                                    x: 4,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 6,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ).withOpacity(0.5), // Faded orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                  BarChartGroupData(
-                                    x: 5,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 4,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ), // Orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                  BarChartGroupData(
-                                    x: 6,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: 7,
-                                        color: const Color(
-                                          0xFFFF6B35,
-                                        ).withOpacity(0.5), // Faded orange
-                                        width: 10,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                          _buildStatItem(
+                            icon: Icons.local_fire_department,
+                            label: "kcal",
+                            value: "1250",
+                            color: const Color(0xFFFF6B35), // Red orange for kcal
                           ),
-                          const SizedBox(height: 15),
-                          // Streaks visualization
-                          const Text(
-                            "Streaks",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 20,
-                            child: Row(
-                              children: List.generate(7, (index) {
-                                bool hasWorkout =
-                                    index < 5; // Example: 5 days with workouts
-                                return Expanded(
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: hasWorkout
-                                          ? Colors.green
-                                          : Colors.grey[800],
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
+                          _buildStatItem(
+                            icon: Icons.timer,
+                            label: "Minutes",
+                            value: "180",
+                            color: Colors.blue, // Blue for minutes
                           ),
                         ],
                       ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                // Body Focus
-                const Text(
-                  "Body Focus",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  // Weekly Goal
+                  const Text(
+                    "Weekly Goal",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-                // Category Tabs
-                Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(20),
+                  // Progress Tracking Card
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProgressTrackingScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF191919),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Progress Tracking",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const ProgressTrackingScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "More",
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // Bar chart visualization
+                            Container(
+                              height: 150,
+                              child: _isLoading
+                                  ? const Center(
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                      ),
+                                    )
+                                  : BarChart(
+                                      BarChartData(
+                                        alignment: BarChartAlignment.spaceAround,
+                                        maxY: _weeklyWorkoutData.isNotEmpty
+                                            ? (_weeklyWorkoutData.reduce((a, b) => a > b ? a : b) + 5).toDouble()
+                                            : 8, // Dynamic maxY based on data
+                                        gridData: FlGridData(
+                                          show: true,
+                                          drawVerticalLine: false,
+                                          horizontalInterval: 1,
+                                          getDrawingHorizontalLine: (value) {
+                                            return FlLine(
+                                              color: Colors.grey.withOpacity(0.3),
+                                              strokeWidth: 0.5,
+                                            );
+                                          },
+                                        ),
+                                        titlesData: FlTitlesData(
+                                          show: true,
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                switch (value.toInt()) {
+                                                  case 0:
+                                                    return Text(
+                                                      'Mon',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  case 1:
+                                                    return Text(
+                                                      'Tue',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  case 2:
+                                                    return Text(
+                                                      'Wed',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  case 3:
+                                                    return Text(
+                                                      'Thu',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  case 4:
+                                                    return Text(
+                                                      'Fri',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  case 5:
+                                                    return Text(
+                                                      'Sat',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  case 6:
+                                                    return Text(
+                                                      'Sun',
+                                                      style: TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  default:
+                                                    return Text('');
+                                                }
+                                              },
+                                              reservedSize: 30,
+                                            ),
+                                          ),
+                                          leftTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                return Text(
+                                                  value.toInt().toString(),
+                                                  style: TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 10,
+                                                  ),
+                                                );
+                                              },
+                                              reservedSize: 25,
+                                            ),
+                                          ),
+                                          topTitles: AxisTitles(
+                                            sideTitles: SideTitles(showTitles: false),
+                                          ),
+                                          rightTitles: AxisTitles(
+                                            sideTitles: SideTitles(showTitles: false),
+                                          ),
+                                        ),
+                                        borderData: FlBorderData(show: false),
+                                        barGroups: List.generate(7, (i) {
+                                          return BarChartGroupData(
+                                            x: i,
+                                            barRods: [
+                                              BarChartRodData(
+                                                toY: _weeklyWorkoutData[i].toDouble(),
+                                                color: i == DateTime.now().weekday - 1
+                                                    ? const Color(0xFFFF6B35) // Today's color
+                                                    : const Color(0xFFFF6B35).withOpacity(0.5), // Other days color
+                                                width: 10,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ],
+                                          );
+                                        }),
+                                      ),
+                                    ),
+                            ),
+                            const SizedBox(height: 15),
+                            // Streaks visualization
+                            const Text(
+                              "Streaks",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              height: 20,
+                              child: Row(
+                                children: List.generate(7, (index) {
+                                  bool hasWorkout = _weeklyWorkoutData[index] > 0;
+                                  return Expanded(
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: hasWorkout
+                                            ? Colors.green
+                                            : Colors.grey[800],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      _buildTab(_tabTitles[0], 0),
-                      _buildTab(_tabTitles[1], 1),
-                      _buildTab(_tabTitles[2], 2),
-                      _buildTab(_tabTitles[3], 3),
-                    ],
+
+                  const SizedBox(height: 20),
+
+                  // Body Focus
+                  const Text(
+                    "Body Focus",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 10),
 
-                // Workout List Section - Filtered based on selected tab
-                _buildWorkoutList(),
-              ],
+                  // Category Tabs
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab(_tabTitles[0], 0),
+                        _buildTab(_tabTitles[1], 1),
+                        _buildTab(_tabTitles[2], 2),
+                        _buildTab(_tabTitles[3], 3),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Workout List Section - Filtered based on selected tab
+                  _buildWorkoutList(),
+                ],
+              ),
             ),
           ),
         ),
@@ -562,7 +592,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => WorkoutDetailScreen(workout: workout),
+            builder: (context) => WorkoutDetailScreen(
+              workout: workout,
+              onWorkoutCompleted: _loadWeeklyProgressData, // Pass callback to refresh data when workout is completed
+            ),
           ),
         );
       },

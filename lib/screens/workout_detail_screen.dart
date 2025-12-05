@@ -6,7 +6,8 @@ import 'exercise_detail_screen.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
-  const WorkoutDetailScreen({Key? key, required this.workout}) : super(key: key);
+  final VoidCallback? onWorkoutCompleted; // Add callback for when workout is completed
+  const WorkoutDetailScreen({Key? key, required this.workout, this.onWorkoutCompleted}) : super(key: key);
 
   @override
   State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
@@ -23,7 +24,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     _checkWorkoutCompletionStatus();
   }
 
-  // Check if the workout has already been completed by the user
+  // Check if the workout has already been completed by the user today
   Future<void> _checkWorkoutCompletionStatus() async {
     try {
       final user = _auth.currentUser;
@@ -36,13 +37,37 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
         final workoutDoc = await workoutRef.get();
         if (workoutDoc.exists) {
+          final data = workoutDoc.data();
+          if (data != null && data['completedAt'] != null) {
+            final completedAt = (data['completedAt'] as Timestamp).toDate();
+            final today = DateTime.now();
+            
+            // Check if the workout was completed today (same date)
+            final isCompletedToday = completedAt.year == today.year &&
+                completedAt.month == today.month &&
+                completedAt.day == today.day;
+                
+            setState(() {
+              _isWorkoutCompleted = isCompletedToday;
+            });
+          } else {
+            // If completedAt field is missing or null, consider it not completed today
+            setState(() {
+              _isWorkoutCompleted = false;
+            });
+          }
+        } else {
+          // Workout was never completed
           setState(() {
-            _isWorkoutCompleted = true;
+            _isWorkoutCompleted = false;
           });
         }
       }
     } catch (e) {
       print('Error checking workout completion status: $e');
+      setState(() {
+        _isWorkoutCompleted = false;
+      });
     }
  }
 
@@ -54,7 +79,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // Check if workout was completed today and call the callback if needed
+            if (_isWorkoutCompleted && widget.onWorkoutCompleted != null) {
+              widget.onWorkoutCompleted!();
+            }
+            Navigator.pop(context);
+          },
         ),
         title: Text(
           widget.workout.title,
@@ -278,9 +309,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: _startWorkout,
+          onPressed: _isWorkoutCompleted ? null : _startWorkout, // Disable button if workout is completed today
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
+            backgroundColor: _isWorkoutCompleted ? Colors.grey : Colors.orange, // Change color when disabled
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
@@ -443,6 +474,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         setState(() {
           _isWorkoutCompleted = true;
         });
+
+        // Call the callback if provided to notify parent screen of completion
+        if (widget.onWorkoutCompleted != null) {
+          widget.onWorkoutCompleted!();
+        }
 
         // Show a completion dialog
         showDialog(
