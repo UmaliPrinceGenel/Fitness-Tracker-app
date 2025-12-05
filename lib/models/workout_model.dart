@@ -19,6 +19,7 @@ class Exercise {
 }
 
 class Workout {
+  final String id;
   final String title;
   final String duration;
   final String exercises; // This will now indicate the number of exercises
@@ -29,6 +30,7 @@ class Workout {
   final List<Exercise> exerciseList; // List of individual exercises with calorie info
 
   Workout({
+    required this.id,
     required this.title,
     required this.duration,
     required this.exercises,

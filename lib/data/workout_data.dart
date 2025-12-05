@@ -3,6 +3,7 @@ import '../models/workout_model.dart';
 List<Workout> workouts = [
   // Abs Workouts
   Workout(
+    id: "abs_001",
     title: "Abs Workout Routine",
     duration: "25 min",
     exercises: "12 exercises",
@@ -78,21 +79,22 @@ List<Workout> workouts = [
         description: "Lying exercise alternating leg lifts",
       ),
       Exercise(
-        name: "Side Plank",
-        caloriesPerMinute: 5,
-        duration: 60, // 1 minute (30 sec each side)
-        description: "Plank on your side to work obliques",
+        name: "Tabletop Dead Bug",
+        caloriesPerMinute: 4,
+        duration: 90, // 1.5 minutes
+        description: "Beginner-friendly core stability exercise",
       ),
     ],
   ),
   Workout(
+    id: "abs_002",
     title: "Core Strength Training",
     duration: "30 min",
     exercises: "15 exercises",
     level: "Intermediate",
     bodyFocus: "Abs",
     videoAsset: "assets/videos/core_strength.mp4", // Placeholder path
-    thumbnailAsset: "assets/aabs_workout.mp4",
+    thumbnailAsset: "assets/abs_workout.mp4",
     exerciseList: [
       Exercise(
         name: "Plank",
@@ -187,6 +189,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "abs_003",
     title: "6-Pack Abs Challenge",
     duration: "40 min",
     exercises: "20 exercises",
@@ -318,6 +321,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "abs_004",
     title: "Beginner Core Workout",
     duration: "20 min",
     exercises: "10 exercises",
@@ -389,6 +393,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "abs_005",
     title: "Advanced Abs Training",
     duration: "35 min",
     exercises: "18 exercises",
@@ -510,6 +515,7 @@ List<Workout> workouts = [
   
   // Arm Workouts
   Workout(
+    id: "arm_001",
     title: "Arm Strength Training",
     duration: "30 min",
     exercises: "14 exercises",
@@ -605,6 +611,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "arm_002",
     title: "Bicep and Tricep Blast",
     duration: "25 min",
     exercises: "12 exercises",
@@ -688,6 +695,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "arm_003",
     title: "Beginner Arm Workout",
     duration: "20 min",
     exercises: "10 exercises",
@@ -759,6 +767,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "arm_004",
     title: "Upper Body Power",
     duration: "35 min",
     exercises: "16 exercises",
@@ -866,6 +875,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "arm_005",
     title: "Dumbbell Arm Routine",
     duration: "28 min",
     exercises: "13 exercises",
@@ -957,6 +967,7 @@ List<Workout> workouts = [
   
   // Chest Workouts
   Workout(
+    id: "chest_001",
     title: "Chest Power Training",
     duration: "32 min",
     exercises: "15 exercises",
@@ -1058,6 +1069,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "chest_002",
     title: "Beginner Chest Workout",
     duration: "22 min",
     exercises: "11 exercises",
@@ -1135,6 +1147,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "chest_003",
     title: "Pectoral Muscle Builder",
     duration: "38 min",
     exercises: "19 exercises",
@@ -1260,6 +1273,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "chest_004",
     title: "Push Up Challenge",
     duration: "25 min",
     exercises: "12 exercises",
@@ -1343,6 +1357,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "chest_005",
     title: "Chest and Shoulders",
     duration: "35 min",
     exercises: "17 exercises",
@@ -1456,8 +1471,9 @@ List<Workout> workouts = [
     ],
   ),
   
-  // Leg Workouts
+   // Leg Workouts
   Workout(
+    id: "leg_001",
     title: "Leg Day Challenge",
     duration: "40 min",
     exercises: "20 exercises",
@@ -1589,6 +1605,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "leg_002",
     title: "Beginner Leg Workout",
     duration: "25 min",
     exercises: "12 exercises",
@@ -1672,6 +1689,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "leg_003",
     title: "Squat and Deadlift",
     duration: "35 min",
     exercises: "16 exercises",
@@ -1779,6 +1797,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "leg_004",
     title: "Lower Body Burn",
     duration: "30 min",
     exercises: "14 exercises",
@@ -1874,6 +1893,7 @@ List<Workout> workouts = [
     ],
   ),
   Workout(
+    id: "leg_005",
     title: "Quadriceps Focus",
     duration: "32 min",
     exercises: "15 exercises",
