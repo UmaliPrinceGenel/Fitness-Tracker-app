@@ -13,6 +13,10 @@ class ExerciseDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the specific exercise from the workout's exercise list
+    Exercise exercise = workout.exerciseList[exerciseNumber - 1]; // Use 0-based index
+    double caloriesBurned = exercise.getCaloriesBurned();
+    
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -22,7 +26,7 @@ class ExerciseDetailScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Exercise $exerciseNumber",
+          exercise.name, // Show the actual exercise name instead of "Exercise X"
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -79,7 +83,7 @@ class ExerciseDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          "Exercise $exerciseNumber",
+                          exercise.name, // Show the actual exercise name
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -129,13 +133,15 @@ class ExerciseDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildInfoRow(Icons.fitness_center, "Exercise Type", "Strength Training"),
+                        _buildInfoRow(Icons.fitness_center, "Exercise Type", exercise.name),
                         const Divider(height: 20, color: Colors.white38),
-                        _buildInfoRow(Icons.timer, "Duration", "60 seconds"),
+                        _buildInfoRow(Icons.timer, "Duration", "${exercise.duration ~/ 60}:${(exercise.duration % 60).toString().padLeft(2, '0')} min"),
                         const Divider(height: 20, color: Colors.white38),
-                        _buildInfoRow(Icons.repeat, "Reps/Sets", "10-12 reps, 3 sets"),
+                        _buildInfoRow(Icons.local_fire_department, "Calories Burned", "${caloriesBurned.toStringAsFixed(1)} cal"),
                         const Divider(height: 20, color: Colors.white38),
-                        _buildInfoRow(Icons.directions_run, "Rest", "30 seconds between sets"),
+                        _buildInfoRow(Icons.repeat, "Reps/Sets", "As prescribed"),
+                        const Divider(height: 20, color: Colors.white38),
+                        _buildInfoRow(Icons.directions_run, "Rest", "As needed"),
                       ],
                     ),
                   ),
@@ -168,7 +174,7 @@ class ExerciseDetailScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
-                      "This exercise is part of the ${workout.bodyFocus} workout routine. It targets the major muscle groups in the ${workout.bodyFocus.toLowerCase()} area. Proper form is essential to maximize benefits and prevent injury. Keep your core engaged and maintain controlled movements throughout the exercise.",
+                      exercise.description, // Use the actual exercise description
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -275,9 +281,7 @@ class ExerciseDetailScreen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () {
                   // Navigate to next exercise if available
-                  int totalExercises = int.tryParse(
-                    workout.exercises.split(' ')[0],
-                  ) ?? 10;
+                  int totalExercises = workout.exerciseList.length; // Use the actual length of exercise list
                   
                   if (exerciseNumber < totalExercises) {
                     Navigator.pushReplacement(
@@ -303,7 +307,7 @@ class ExerciseDetailScreen extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  exerciseNumber < (int.tryParse(workout.exercises.split(' ')[0]) ?? 10) 
+                  exerciseNumber < workout.exerciseList.length // Use the actual length of exercise list
                       ? "Next" 
                       : "Finish Workout",
                   style: const TextStyle(

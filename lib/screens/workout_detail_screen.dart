@@ -69,7 +69,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _isWorkoutCompleted = false;
       });
     }
- }
+  }
 
   @override
  Widget build(BuildContext context) {
@@ -356,13 +356,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
  List<Widget> _buildExerciseList() {
-    // Generate a list of exercises based on the number mentioned in the workout
-    int exerciseCount = int.tryParse(
-      widget.workout.exercises.split(' ')[0],
-    ) ?? 10; // Default to 10 if parsing fails
-
+    // Use the exerciseList from the workout model instead of calculating count
     List<Widget> exercises = [];
-    for (int i = 1; i <= exerciseCount; i++) {
+    for (int i = 0; i < widget.workout.exerciseList.length; i++) {
+      final exercise = widget.workout.exerciseList[i];
+      double caloriesBurned = exercise.getCaloriesBurned();
+      
       exercises.add(
         GestureDetector(
           onTap: () {
@@ -371,7 +370,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => ExerciseDetailScreen(
-                  exerciseNumber: i,
+                  exerciseNumber: i + 1, // Use 1-based indexing for display
                   workout: widget.workout,
                 ),
               ),
@@ -401,7 +400,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      i.toString(),
+                      (i + 1).toString(), // Use 1-based indexing for display
                       style: const TextStyle(
                         color: Colors.orange,
                         fontWeight: FontWeight.bold,
@@ -412,12 +411,26 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    "Exercise $i",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        exercise.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${exercise.duration ~/ 60}:${(exercise.duration % 60).toString().padLeft(2, '0')} | ${caloriesBurned.toStringAsFixed(1)} cal",
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Icon(
@@ -431,7 +444,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
       );
 
-      if (i < exerciseCount) {
+      if (i < widget.workout.exerciseList.length - 1) {
         exercises.add(const Divider(height: 1, color: Colors.white10));
       }
     }

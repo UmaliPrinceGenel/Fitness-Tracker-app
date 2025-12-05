@@ -78,18 +78,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
           final completedAt = (data['completedAt'] as Timestamp).toDate();
           final dayOfWeek = completedAt.weekday - 1; // Monday = 0, Sunday = 6
 
-          // Extract number of exercises from the workout data
-          final exercisesText = data['exercises'] as String;
-          int exerciseCount = 0;
-          try {
-            exerciseCount = int.parse(exercisesText.split(' ')[0]);
-          } catch (e) {
-            exerciseCount = 0;
+          // Extract workout title to get the actual exercise list from our workout data
+          final workoutTitle = data['title'] as String;
+          final workout = workouts.firstWhere((w) => w.title == workoutTitle, orElse: () => workouts[0]);
+
+          // Calculate total calories burned for this workout based on exercises
+          double totalCalories = 0;
+          for (Exercise exercise in workout.exerciseList) {
+            totalCalories += exercise.getCaloriesBurned();
           }
 
-          // Add to the appropriate day, ensuring we don't exceed the maximum
+          // Add to the appropriate day, converting to integer for the chart
           if (dayOfWeek >= 0 && dayOfWeek < 7) {
-            weeklyData[dayOfWeek] += exerciseCount;
+            weeklyData[dayOfWeek] += totalCalories.floor();
           }
         }
 
