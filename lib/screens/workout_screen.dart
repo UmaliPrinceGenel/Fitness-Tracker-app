@@ -19,6 +19,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<int> _weeklyWorkoutData = [0, 0, 0, 0, 0, 0, 0]; // Initialize with zeros for each day of the week
+  int _weeklyWorkoutsCount = 0; // Track weekly completed workouts
+  int _weeklyCalories = 0; // Track weekly calories burned
+  int _weeklyMinutes = 0; // Track weekly minutes exercised
   bool _isLoading = true;
 
  // List of tab titles
@@ -71,6 +74,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
 
         // Initialize weekly data with zeros
         List<int> weeklyData = [0, 0, 0, 0, 0, 0, 0];
+        int totalWeeklyWorkouts = 0;
+        int totalWeeklyCalories = 0;
+        int totalWeeklyMinutes = 0;
 
         // Process completed workouts to calculate weekly data
         for (var doc in completedWorkoutsSnapshot.docs) {
@@ -84,18 +90,28 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
 
           // Calculate total calories burned for this workout based on exercises
           double totalCalories = 0;
+          int totalMinutes = 0;
           for (Exercise exercise in workout.exerciseList) {
             totalCalories += exercise.getCaloriesBurned();
+            totalMinutes += (exercise.duration / 60).round(); // Convert seconds to minutes
           }
 
           // Add to the appropriate day, converting to integer for the chart
           if (dayOfWeek >= 0 && dayOfWeek < 7) {
             weeklyData[dayOfWeek] += totalCalories.floor();
           }
+
+          // Add to weekly totals
+          totalWeeklyWorkouts++;
+          totalWeeklyCalories += totalCalories.floor();
+          totalWeeklyMinutes += totalMinutes;
         }
 
         setState(() {
           _weeklyWorkoutData = weeklyData;
+          _weeklyWorkoutsCount = totalWeeklyWorkouts;
+          _weeklyCalories = totalWeeklyCalories;
+          _weeklyMinutes = totalWeeklyMinutes;
           _isLoading = false;
         });
       } else {
@@ -165,19 +181,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                           _buildStatItem(
                             icon: Icons.fitness_center,
                             label: "Workouts",
-                            value: workouts.length.toString(),
+                            value: _weeklyWorkoutsCount.toString(),
                             color: Colors.orange, // Orange for workouts
                           ),
                           _buildStatItem(
                             icon: Icons.local_fire_department,
                             label: "kcal",
-                            value: "1250",
+                            value: _weeklyCalories.toString(),
                             color: const Color(0xFFFF6B35), // Red orange for kcal
                           ),
                           _buildStatItem(
                             icon: Icons.timer,
                             label: "Minutes",
-                            value: "180",
+                            value: _weeklyMinutes.toString(),
                             color: Colors.blue, // Blue for minutes
                           ),
                         ],
