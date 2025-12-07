@@ -96,9 +96,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             totalMinutes += (exercise.duration / 60).round(); // Convert seconds to minutes
           }
 
-          // Add to the appropriate day, converting to integer for the chart
+          // Add to the appropriate day, incrementing by 1 for each workout completed (instead of calories)
           if (dayOfWeek >= 0 && dayOfWeek < 7) {
-            weeklyData[dayOfWeek] += totalCalories.floor();
+            weeklyData[dayOfWeek] += 1; // Increment by 1 for each workout completed on that day - this is used for the daily chart
           }
 
           // Add to weekly totals
@@ -276,7 +276,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                               ],
                             ),
                             const SizedBox(height: 10),
-                            // Bar chart visualization
+                            // Bar chart visualization - now shows number of workouts per day instead of calories
                             Container(
                               height: 150,
                               child: _isLoading
@@ -289,8 +289,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                                       BarChartData(
                                         alignment: BarChartAlignment.spaceAround,
                                         maxY: _weeklyWorkoutData.isNotEmpty
-                                            ? (_weeklyWorkoutData.reduce((a, b) => a > b ? a : b) + 5).toDouble()
-                                            : 8, // Dynamic maxY based on data
+                                            ? (_weeklyWorkoutData.reduce((a, b) => a > b ? a : b) + 2).toDouble()
+                                            : 5, // Dynamic maxY based on data, with appropriate increment for workout counts
                                         gridData: FlGridData(
                                           show: true,
                                           drawVerticalLine: false,
