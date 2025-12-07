@@ -15,6 +15,8 @@ class WorkoutDetailScreen extends StatefulWidget {
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   bool _isWorkoutCompleted = false;
+  String _currentButtonState = 'start'; // 'start', 'done', 'again'
+  DateTime? _workoutStartTime;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -49,17 +51,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 
             setState(() {
               _isWorkoutCompleted = isCompletedToday;
+              _currentButtonState = isCompletedToday ? 'again' : 'start';
             });
           } else {
             // If completedAt field is missing or null, consider it not completed today
             setState(() {
               _isWorkoutCompleted = false;
+              _currentButtonState = 'start';
             });
           }
         } else {
           // Workout was never completed
           setState(() {
             _isWorkoutCompleted = false;
+            _currentButtonState = 'start';
           });
         }
       }
@@ -67,275 +72,321 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       print('Error checking workout completion status: $e');
       setState(() {
         _isWorkoutCompleted = false;
+        _currentButtonState = 'start';
       });
     }
   }
 
   @override
  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: _onBackPressed,
+      child: Scaffold(
         backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            // Check if workout was completed today and call the callback if needed
-            if (_isWorkoutCompleted && widget.onWorkoutCompleted != null) {
-              widget.onWorkoutCompleted!();
-            }
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(
-          widget.workout.title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () async {
+              bool shouldPop = await _onBackPressed();
+              if (shouldPop) {
+                Navigator.pop(context);
+              }
+            },
           ),
+          title: Text(
+            widget.workout.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Workout Image/Thumbnail
-                Container(
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      widget.workout.thumbnailAsset,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.fitness_center,
-                          color: Colors.white,
-                          size: 60,
-                        );
-                      },
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Workout Image/Thumbnail
+                  Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        widget.workout.thumbnailAsset,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.fitness_center,
+                            color: Colors.white,
+                            size: 60,
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                // Workout Info
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.workout.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            _buildInfoItem(
-                              icon: Icons.timer,
-                              label: widget.workout.duration,
-                            ),
-                            const SizedBox(width: 16),
-                            _buildInfoItem(
-                              icon: Icons.fitness_center,
-                              label: widget.workout.exercises,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getLevelColor(widget.workout.level).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: _getLevelColor(widget.workout.level).withOpacity(0.4),
-                                ),
-                              ),
-                              child: Text(
-                                widget.workout.level,
-                                style: TextStyle(
-                                  color: _getLevelColor(widget.workout.level),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.orange.withOpacity(0.4),
-                                ),
-                              ),
-                              child: Text(
-                                widget.workout.bodyFocus,
-                                style: const TextStyle(
-                                  color: Colors.orange,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
+                  // Workout Info
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Workout Description
-                const Text(
-                  "About this workout",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exercises.toLowerCase()} that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        height: 1.5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.workout.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              _buildInfoItem(
+                                icon: Icons.timer,
+                                label: widget.workout.duration,
+                              ),
+                              const SizedBox(width: 16),
+                              _buildInfoItem(
+                                icon: Icons.fitness_center,
+                                label: widget.workout.exercises,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getLevelColor(widget.workout.level).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _getLevelColor(widget.workout.level).withOpacity(0.4),
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.workout.level,
+                                  style: TextStyle(
+                                    color: _getLevelColor(widget.workout.level),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.orange.withOpacity(0.4),
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.workout.bodyFocus,
+                                  style: const TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                // Exercise List
-                const Text(
-                  "Exercises",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: _buildExerciseList(),
+                  // Workout Description
+                  const Text(
+                    "About this workout",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exercises.toLowerCase()} that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Exercise List
+                  const Text(
+                    "Exercises",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: _buildExerciseList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: _getButtonAction(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _getButtonColor(),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: _isWorkoutCompleted ? null : _startWorkout, // Disable button if workout is completed today
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _isWorkoutCompleted ? Colors.grey : Colors.orange, // Change color when disabled
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            child: Text(
+              _getButtonText(),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          child: _isWorkoutCompleted
-              ? const Text(
-                  "Workout Completed!",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : const Text(
-                  "Start Workout",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
         ),
       ),
     );
+  }
+
+  // Handle back button press to properly manage workout state
+  Future<bool> _onBackPressed() async {
+    // If the workout is in progress (button state is 'done'), ask for confirmation
+    if (_currentButtonState == 'done' && _workoutStartTime != null) {
+      return await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: const Text(
+              "Workout in Progress",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              "You have a workout in progress. Are you sure you want to exit? Your progress will not be saved.",
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(false); // Don't pop the screen
+                },
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Reset the workout state before exiting
+                  setState(() {
+                    _currentButtonState = 'start';
+                    _workoutStartTime = null;
+                  });
+                  Navigator.of(context).pop(true); // Pop the screen
+                },
+                child: const Text(
+                  "Exit",
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+          );
+        },
+      ) ?? false; // Return false if dialog is dismissed
+    }
+
+    // If no workout is in progress, allow normal exit
+    return true;
   }
 
   Widget _buildInfoItem({required IconData icon, required String label}) {
@@ -465,7 +516,252 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
- void _startWorkout() async {
+  // Helper methods to determine button text, color, and action based on state
+ String _getButtonText() {
+    switch (_currentButtonState) {
+      case 'start':
+        return 'Start Workout';
+      case 'done':
+        return 'Done';
+      case 'again':
+        return 'Again';
+      default:
+        return 'Start Workout';
+    }
+  }
+
+  Color _getButtonColor() {
+    // Always show orange color for active buttons, grey when disabled
+    if (_currentButtonState == 'start') {
+      return Colors.orange;
+    } else if (_currentButtonState == 'done') {
+      return Colors.orange;
+    } else if (_currentButtonState == 'again') {
+      return Colors.orange;
+    } else {
+      return Colors.grey;
+    }
+  }
+
+  VoidCallback? _getButtonAction() {
+    if (_currentButtonState == 'start') {
+      return _onStartWorkoutPressed;
+    } else if (_currentButtonState == 'done') {
+      return _onDoneWorkoutPressed;
+    } else if (_currentButtonState == 'again') {
+      return _onAgainWorkoutPressed;
+    } else {
+      return null;
+    }
+  }
+
+   // Helper method to convert duration string to seconds
+  int _parseDurationToSeconds(String duration) {
+    // Expected format: "X min" or "X mins" or "X minutes"
+    // For example: "25 mins", "30 min", "45 minutes"
+    final List<String> parts = duration.split(' ');
+    if (parts.length >= 2) {
+      try {
+        final int minutes = int.parse(parts[0]);
+        return minutes * 60; // Convert to seconds
+      } catch (e) {
+        print('Error parsing duration: $e');
+        return 0; // Default to 0 seconds if parsing fails
+      }
+    }
+    return 0; // Default to 0 seconds if format is unexpected
+  }
+
+  // New methods for handling the different button states with popups
+  void _onStartWorkoutPressed() {
+    // Show "You may Start Now" popup
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            "Start Workout",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            "You may Start Now",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog and do nothing
+              },
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Record start time and change button to "Done"
+                setState(() {
+                  _workoutStartTime = DateTime.now();
+                  _currentButtonState = 'done';
+                });
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                "Start",
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _onDoneWorkoutPressed() async {
+    // Check if workout was started to calculate duration
+    int actualDurationSeconds = 0;
+    if (_workoutStartTime != null) {
+      actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
+    }
+
+    // Get expected workout duration in seconds
+    int expectedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
+
+    // Determine if user might be cheating based on time
+    bool isCheating = expectedDurationSeconds > 0 && actualDurationSeconds < expectedDurationSeconds;
+
+    if (isCheating) {
+      // Show "Are you sure you are not cheating?" popup
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: const Text(
+              "Are you sure?",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Text(
+              "Are you sure you are not cheating? The ${widget.workout.title} workout is expected to take ${widget.workout.duration}, but you completed it in ${_formatSecondsToMinutes(actualDurationSeconds)}.",
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close dialog and do nothing
+                },
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  // User confirms they're not cheating, save workout completion
+                  Navigator.of(context).pop(); // Close dialog
+                  await _saveWorkoutCompletion();
+                },
+                child: const Text(
+                  "Yes, I'm sure",
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // Show congratulations popup if workout was completed in expected time or more
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: const Text(
+              "Congratulations!",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Text(
+              "Great job completing the ${widget.workout.title} workout in ${_formatSecondsToMinutes(actualDurationSeconds)}! Your progress has been saved.",
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close dialog
+                  await _saveWorkoutCompletion();
+                },
+                child: const Text(
+                  "OK",
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void _onAgainWorkoutPressed() {
+    // Show "Are you sure you want to do this again?" popup
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            "Do Again?",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            "Are you sure you want to do this again?",
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog and do nothing
+              },
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // User confirms, reset workout start time and keep "Done" button
+                setState(() {
+                  _workoutStartTime = DateTime.now(); // Start timing for the new session
+                  _currentButtonState = 'done';
+                });
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                "Yes",
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Helper method to format seconds to minutes for display
+  String _formatSecondsToMinutes(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    if (remainingSeconds > 0) {
+      return "${minutes}m ${remainingSeconds}s";
+    } else {
+      return "${minutes}m";
+    }
+  }
+
+  // Helper method to save workout completion to Firebase
+  Future<void> _saveWorkoutCompletion() async {
     try {
       final user = _auth.currentUser;
       if (user != null) {
@@ -486,41 +782,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
         setState(() {
           _isWorkoutCompleted = true;
+          _currentButtonState = 'again';
         });
 
         // Call the callback if provided to notify parent screen of completion
         if (widget.onWorkoutCompleted != null) {
           widget.onWorkoutCompleted!();
         }
-
-        // Show a completion dialog
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF191919),
-              title: const Text(
-                "Workout Completed!",
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Text(
-                "Great job completing the ${widget.workout.title} workout! Your progress has been saved.",
-                style: const TextStyle(color: Colors.white70),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Close dialog
-                  },
-                  child: const Text(
-                    "OK",
-                    style: TextStyle(color: Colors.orange),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
       }
     } catch (e) {
       print('Error saving workout completion: $e');
@@ -555,4 +823,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       );
     }
   }
+
+  // Original _startWorkout method is now replaced by the new methods above
 }
