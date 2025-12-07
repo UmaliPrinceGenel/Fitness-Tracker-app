@@ -101,7 +101,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             weeklyData[dayOfWeek] += 1; // Increment by 1 for each workout completed on that day - this is used for the daily chart
           }
 
-          // Add to weekly totals
+          // Add to weekly totals (include cheated workouts in count but potentially handle them differently)
           totalWeeklyWorkouts++;
           totalWeeklyCalories += totalCalories.floor();
           totalWeeklyMinutes += totalMinutes;
@@ -603,132 +603,197 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
 
   // Build individual workout card
   Widget _buildWorkoutCard(Workout workout) {
-    return GestureDetector(
-      onTap: () {
-        // Navigate to workout detail screen when card is tapped
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WorkoutDetailScreen(
-              workout: workout,
-              onWorkoutCompleted: _loadWeeklyProgressData, // Pass callback to refresh data when workout is completed
+    return FutureBuilder<DocumentSnapshot>(
+      future: _firestore
+          .collection('users')
+          .doc(_auth.currentUser?.uid)
+          .collection('completed_workouts')
+          .doc(workout.title)
+          .get(),
+      builder: (context, snapshot) {
+        bool isCompleted = false;
+        bool isCheated = false;
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          isCompleted = data['completedAt'] != null;
+          isCheated = data['isCheated'] == true;
+        }
+
+        return GestureDetector(
+          onTap: () {
+            // Navigate to workout detail screen when card is tapped
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => WorkoutDetailScreen(
+                  workout: workout,
+                  onWorkoutCompleted: _loadWeeklyProgressData, // Pass callback to refresh data when workout is completed
+                ),
+              ),
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF191919),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Video preview box with thumbnail
+                  Stack(
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            workout.thumbnailAsset, // Use the thumbnail asset from the workout data
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback if the image fails to load
+                              return const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 40,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      // Status indicator overlay
+                      if (isCompleted)
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: isCheated ? Colors.red : Colors.green,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              isCheated ? Icons.warning : Icons.check,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  // Video details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          workout.title, // Use title from workout data
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.timer, color: Colors.white70, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              workout.duration, // Use duration from workout data
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                workout.exercises, // Use exercises from workout data
+                                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getLevelColor(workout.level).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                workout.level, // Use level from workout data
+                                style: TextStyle(
+                                  color: _getLevelColor(workout.level),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            if (isCompleted) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isCheated ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isCheated ? Colors.red : Colors.green,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  isCheated ? 'Cheated' : 'Done',
+                                  style: TextStyle(
+                                    color: isCheated ? Colors.red : Colors.green,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF191919),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Video preview box with thumbnail
-              Container(
-                width: 120,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    workout.thumbnailAsset, // Use the thumbnail asset from the workout data
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Fallback if the image fails to load
-                      return const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 40,
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Video details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      workout.title, // Use title from workout data
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.timer, color: Colors.white70, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          workout.duration, // Use duration from workout data
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            workout.exercises, // Use exercises from workout data
-                            style: const TextStyle(color: Colors.white70, fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getLevelColor(workout.level).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            workout.level, // Use level from workout data
-                            style: TextStyle(
-                              color: _getLevelColor(workout.level),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

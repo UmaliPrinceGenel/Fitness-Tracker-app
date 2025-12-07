@@ -765,6 +765,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
+        // Check if workout was completed too quickly (potential cheating)
+        int actualDurationSeconds = 0;
+        if (_workoutStartTime != null) {
+          actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
+        }
+
+        // Get expected workout duration in seconds
+        int expectedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
+        bool isCheated = expectedDurationSeconds > 0 && actualDurationSeconds < expectedDurationSeconds;
+
         // Update workout completion status in Firebase
         await _firestore
             .collection('users')
@@ -778,6 +788,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           'level': widget.workout.level,
           'bodyFocus': widget.workout.bodyFocus,
           'completedAt': FieldValue.serverTimestamp(),
+          'actualDuration': actualDurationSeconds, // Store actual duration for reference
+          'expectedDuration': expectedDurationSeconds, // Store expected duration for reference
+          'isCheated': isCheated, // Flag to indicate if workout was potentially cheated
         });
 
         setState(() {
