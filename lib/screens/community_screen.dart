@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 import 'photo_editing_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -115,8 +117,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
-  /// ✅ Delete post and associated images
-  Future<void> _deletePost(String postId, List<String> imageUrls) async {
+  /// ✅ Delete post and associated media
+  Future<void> _deletePost(String postId, List<String> mediaUrls) async {
     try {
       final user = _firebaseAuth.currentUser;
       if (user == null) return;
@@ -161,20 +163,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
       if (shouldDelete != true) return;
 
-      // Delete images from Supabase storage
-      for (final imageUrl in imageUrls) {
+      // Delete media from Supabase storage
+      for (final mediaUrl in mediaUrls) {
         try {
-          final uri = Uri.parse(imageUrl);
+          final uri = Uri.parse(mediaUrl);
           final pathSegments = uri.path.split('/');
           final bucketIndex = pathSegments.indexOf('community-posts');
 
           if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
             final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
             await _supabase.storage.from('community-posts').remove([filePath]);
-            print('🗑️ Deleted image from Supabase: $filePath');
+            print('🗑️ Deleted media from Supabase: $filePath');
           }
         } catch (e) {
-          print('❌ Error deleting image from storage: $e');
+          print('❌ Error deleting media from storage: $e');
         }
       }
 
@@ -218,6 +220,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
         opaque: false,
         pageBuilder: (context, animation, secondaryAnimation) =>
             ImageZoomOverlay(imageUrls: imageUrls, initialIndex: initialIndex),
+      ),
+    );
+  }
+
+  /// ✅ Show video player overlay
+  void _showVideoPlayer(String videoUrl) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            VideoPlayerOverlay(videoUrl: videoUrl),
       ),
     );
   }
@@ -389,6 +402,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                       color: Colors.blue,
                                       size: 20,
                                     ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.videocam,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -449,8 +468,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         onComment: _showCommentsBottomSheet,
                         onDelete: _deletePost,
                         onImageTap: _showImageZoom,
-                        onShowLikes:
-                            _showLikesBottomSheet, // NEW: Add this callback
+                        onVideoTap: _showVideoPlayer,
+                        onShowLikes: _showLikesBottomSheet,
                       );
                     },
                   );
@@ -489,7 +508,8 @@ class PostCard extends StatefulWidget {
   final Function(BuildContext, String) onComment;
   final Function(String, List<String>) onDelete;
   final Function(List<String>, int) onImageTap;
-  final Function(BuildContext, String) onShowLikes; // NEW: Add this callback
+  final Function(String) onVideoTap;
+  final Function(BuildContext, String) onShowLikes;
 
   const PostCard({
     super.key,
@@ -499,7 +519,8 @@ class PostCard extends StatefulWidget {
     required this.onComment,
     required this.onDelete,
     required this.onImageTap,
-    required this.onShowLikes, // NEW: Add this parameter
+    required this.onVideoTap,
+    required this.onShowLikes,
   });
 
   @override
@@ -507,7 +528,7 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
-  int _currentImageIndex = 0;
+  int _currentMediaIndex = 0;
 
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
@@ -535,17 +556,33 @@ class _PostCardState extends State<PostCard> {
   }
 
   List<String> _getPostImages() {
-    final postImages = widget.postData['postImages'];
-    if (postImages is List) {
+    final postImages = widget.postData['postImages'] as List<dynamic>?;
+    if (postImages != null && postImages.isNotEmpty) {
       return postImages.cast<String>();
     }
-    final singleImage = widget.postData['postImage'];
-    return singleImage != null ? [singleImage] : [];
+    return [];
+  }
+
+  List<String> _getPostVideos() {
+    final postVideos = widget.postData['postVideos'] as List<dynamic>?;
+    if (postVideos != null && postVideos.isNotEmpty) {
+      return postVideos.cast<String>();
+    }
+    return [];
+  }
+
+  List<String> _getAllMedia() {
+    return [..._getPostImages(), ..._getPostVideos()];
   }
 
   bool _isCurrentUserPost() {
     final user = fbAuth.FirebaseAuth.instance.currentUser;
     return user != null && widget.postData['userId'] == user.uid;
+  }
+
+  bool _isVideo(int index) {
+    final images = _getPostImages();
+    return index >= images.length;
   }
 
   @override
@@ -554,6 +591,8 @@ class _PostCardState extends State<PostCard> {
     final isLiked = _getIsLiked();
     final likesCount = _getLikesCount();
     final postImages = _getPostImages();
+    final postVideos = _getPostVideos();
+    final allMedia = _getAllMedia();
     final isCurrentUserPost = _isCurrentUserPost();
 
     return Container(
@@ -613,7 +652,7 @@ class _PostCardState extends State<PostCard> {
                     color: Colors.grey[800],
                     onSelected: (String result) {
                       if (result == 'delete') {
-                        widget.onDelete(widget.postId, postImages);
+                        widget.onDelete(widget.postId, allMedia);
                       }
                     },
                     itemBuilder: (BuildContext context) =>
@@ -653,8 +692,8 @@ class _PostCardState extends State<PostCard> {
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ),
-          // Post images
-          if (postImages.isNotEmpty)
+          // Post media
+          if (allMedia.isNotEmpty)
             Container(
               margin: const EdgeInsets.all(16.0),
               width: double.infinity,
@@ -665,58 +704,80 @@ class _PostCardState extends State<PostCard> {
               ),
               child: Stack(
                 children: [
+                  // Show media gallery
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: PageView.builder(
-                      itemCount: postImages.length,
+                      itemCount: allMedia.length,
                       onPageChanged: (index) {
                         setState(() {
-                          _currentImageIndex = index;
+                          _currentMediaIndex = index;
                         });
                       },
                       itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () {
-                            widget.onImageTap(postImages, index);
-                          },
-                          child: Image.network(
-                            postImages[index],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: 250,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value:
-                                      loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                        Colors.blue,
+                        final mediaUrl = allMedia[index];
+                        final isVideo = _isVideo(index);
+
+                        if (isVideo) {
+                          return GestureDetector(
+                            onTap: () {
+                              // Use a Future.delayed to ensure build completes
+                              Future.delayed(Duration.zero, () {
+                                widget.onVideoTap(mediaUrl);
+                              });
+                            },
+                            child: VideoThumbnailWidget(videoUrl: mediaUrl),
+                          );
+                        } else {
+                          // Image
+                          return GestureDetector(
+                            onTap: () {
+                              widget.onImageTap(postImages, index);
+                            },
+                            child: Image.network(
+                              mediaUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: 250,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value:
+                                            loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                            : null,
+                                        valueColor:
+                                            const AlwaysStoppedAnimation<Color>(
+                                              Colors.blue,
+                                            ),
                                       ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(
-                                child: Icon(
-                                  Icons.error,
-                                  color: Colors.grey,
-                                  size: 50,
-                                ),
-                              );
-                            },
-                          ),
-                        );
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(
+                                    Icons.error,
+                                    color: Colors.grey,
+                                    size: 50,
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        }
                       },
                     ),
                   ),
 
-                  // Image counter for multiple images
-                  if (postImages.length > 1)
+                  // Media counter for multiple media
+                  if (allMedia.length > 1)
                     Positioned(
                       top: 12,
                       right: 12,
@@ -730,12 +791,67 @@ class _PostCardState extends State<PostCard> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${_currentImageIndex + 1}/${postImages.length}',
+                          '${_currentMediaIndex + 1}/${allMedia.length}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
+                        ),
+                      ),
+                    ),
+
+                  // Media type indicator
+                  if (allMedia.isNotEmpty)
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            if (_isVideo(_currentMediaIndex))
+                              const Icon(
+                                Icons.videocam,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            if (_isVideo(_currentMediaIndex))
+                              const SizedBox(width: 4),
+                            if (_isVideo(_currentMediaIndex))
+                              const Text(
+                                "VIDEO",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            if (!_isVideo(_currentMediaIndex))
+                              const Icon(
+                                Icons.photo,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            if (!_isVideo(_currentMediaIndex))
+                              const SizedBox(width: 4),
+                            if (!_isVideo(_currentMediaIndex))
+                              const Text(
+                                "PHOTO",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -760,7 +876,6 @@ class _PostCardState extends State<PostCard> {
                         widget.onLike(widget.postId, newLikeStatus);
                       },
                       onLongPress: () {
-                        // NEW: Show likes bottom sheet on long press
                         if (_getLikesCount() > 0) {
                           widget.onShowLikes(context, widget.postId);
                         }
@@ -774,7 +889,6 @@ class _PostCardState extends State<PostCard> {
                     const SizedBox(width: 4),
                     GestureDetector(
                       onTap: () {
-                        // NEW: Also show likes on tap of the count
                         if (_getLikesCount() > 0) {
                           widget.onShowLikes(context, widget.postId);
                         }
@@ -818,7 +932,185 @@ class _PostCardState extends State<PostCard> {
   }
 }
 
-// ✅ NEW: Likes Bottom Sheet (same UI as comments)
+// ✅ Video Player Overlay
+class VideoPlayerOverlay extends StatefulWidget {
+  final String videoUrl;
+
+  const VideoPlayerOverlay({super.key, required this.videoUrl});
+
+  @override
+  State<VideoPlayerOverlay> createState() => _VideoPlayerOverlayState();
+}
+
+class _VideoPlayerOverlayState extends State<VideoPlayerOverlay>
+    with WidgetsBindingObserver {
+  late VideoPlayerController _videoController;
+  ChewieController? _chewieController;
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeVideoPlayer();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _videoController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _videoController.pause();
+    }
+  }
+
+  Future<void> _initializeVideoPlayer() async {
+    try {
+      _videoController = VideoPlayerController.network(widget.videoUrl);
+
+      // Listen for initialization
+      _videoController.addListener(() {
+        if (_videoController.value.hasError) {
+          print(
+            'Video player error: ${_videoController.value.errorDescription}',
+          );
+          setState(() {
+            _hasError = true;
+            _isLoading = false;
+          });
+        }
+      });
+
+      // Initialize video
+      await _videoController.initialize();
+
+      // Ensure video is ready
+      if (_videoController.value.isInitialized) {
+        _chewieController = ChewieController(
+          videoPlayerController: _videoController,
+          autoPlay: true,
+          looping: false,
+          allowFullScreen: true,
+          allowMuting: true,
+          showControls: true,
+          materialProgressColors: ChewieProgressColors(
+            playedColor: Colors.orange,
+            handleColor: Colors.orange,
+            backgroundColor: Colors.grey,
+            bufferedColor: Colors.grey.shade500,
+          ),
+          placeholder: Container(
+            color: Colors.black,
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.orange),
+            ),
+          ),
+          autoInitialize: true,
+          errorBuilder: (context, errorMessage) {
+            return Center(
+              child: Text(
+                'Error loading video: $errorMessage',
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          },
+        );
+
+        setState(() {
+          _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      print('Error initializing video player: $e');
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  void _retryVideo() {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    _initializeVideoPlayer();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Video player or loading/error state
+            Center(
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.orange)
+                  : _hasError
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 50,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Failed to load video',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: _retryVideo,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    )
+                  : _chewieController != null
+                  ? Chewie(controller: _chewieController!)
+                  : const Text(
+                      'Video not ready',
+                      style: TextStyle(color: Colors.white),
+                    ),
+            ),
+
+            // Close button
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ✅ NEW: Likes Bottom Sheet
 class LikesBottomSheet extends StatefulWidget {
   final String postId;
 
@@ -984,9 +1276,9 @@ class _LikesBottomSheetState extends State<LikesBottomSheet> {
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
+                                    const Text(
                                       "Liked this post",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white70,
                                         fontSize: 12,
                                       ),
@@ -1009,27 +1301,27 @@ class _LikesBottomSheetState extends State<LikesBottomSheet> {
       ),
     );
   }
+}
 
-  Future<List<Map<String, dynamic>>> _getUsersData(List<String> userIds) async {
-    final usersData = <Map<String, dynamic>>[];
-
-    for (final userId in userIds) {
-      try {
-        final userDoc = await _firestore.collection('users').doc(userId).get();
-        if (userDoc.exists) {
-          final userData = userDoc.data()!;
-          usersData.add({
-            'username': userData['displayName'] ?? 'User',
-            'profileImage': userData['photoURL'],
-          });
-        }
-      } catch (e) {
-        print('Error fetching user data for $userId: $e');
+Future<List<Map<String, dynamic>>> _getUsersData(List<String> userIds) async {
+  final usersData = <Map<String, dynamic>>[];
+  final firestore = FirebaseFirestore.instance; // Create instance here
+  for (final userId in userIds) {
+    try {
+      final userDoc = await firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        usersData.add({
+          'username': userData['displayName'] ?? 'User',
+          'profileImage': userData['photoURL'],
+        });
       }
+    } catch (e) {
+      print('Error fetching user data for $userId: $e');
     }
-
-    return usersData;
   }
+
+  return usersData;
 }
 
 class CommentsBottomSheet extends StatefulWidget {
@@ -1046,6 +1338,99 @@ class CommentsBottomSheet extends StatefulWidget {
 
   @override
   State<CommentsBottomSheet> createState() => _CommentsBottomSheetState();
+}
+
+class VideoThumbnailWidget extends StatefulWidget {
+  final String videoUrl;
+
+  const VideoThumbnailWidget({super.key, required this.videoUrl});
+
+  @override
+  State<VideoThumbnailWidget> createState() => _VideoThumbnailWidgetState();
+}
+
+class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
+  VideoPlayerController? _thumbnailController;
+  bool _thumbnailLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThumbnail();
+  }
+
+  @override
+  void dispose() {
+    _thumbnailController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadThumbnail() async {
+    try {
+      _thumbnailController = VideoPlayerController.network(widget.videoUrl);
+      await _thumbnailController!.initialize();
+      setState(() {
+        _thumbnailLoading = false;
+      });
+    } catch (e) {
+      print('Error loading thumbnail: $e');
+      setState(() {
+        _thumbnailLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (_thumbnailController != null &&
+            _thumbnailController!.value.isInitialized)
+          VideoPlayer(_thumbnailController!),
+
+        // Play button overlay
+        Center(
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.play_arrow, color: Colors.white, size: 40),
+          ),
+        ),
+
+        // Video indicator
+        Positioned(
+          bottom: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.videocam, color: Colors.white, size: 12),
+                SizedBox(width: 4),
+                Text(
+                  "VIDEO",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
@@ -1248,7 +1633,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   }
 }
 
-// ✅ NEW: Image Zoom Overlay
+// ✅ Image Zoom Overlay
 class ImageZoomOverlay extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
@@ -1334,7 +1719,7 @@ class _ImageZoomOverlayState extends State<ImageZoomOverlay> {
             top: 50,
             right: 20,
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.black54,
                 shape: BoxShape.circle,
               ),
