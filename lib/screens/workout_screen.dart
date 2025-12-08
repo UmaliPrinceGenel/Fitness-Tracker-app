@@ -384,7 +384,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                                                   ),
                                                 );
                                               },
-                                              reservedSize: 25,
+                                              reservedSize: 35,
+                                              interval: 1,
                                             ),
                                           ),
                                           topTitles: AxisTitles(
