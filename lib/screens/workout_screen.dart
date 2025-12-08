@@ -628,6 +628,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                 builder: (context) => WorkoutDetailScreen(
                   workout: workout,
                   onWorkoutCompleted: _loadWeeklyProgressData, // Pass callback to refresh data when workout is completed
+                  onWorkoutReset: _loadWeeklyProgressData, // Pass callback to refresh data when workout is reset
                 ),
               ),
             );

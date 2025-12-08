@@ -7,7 +7,8 @@ import 'exercise_detail_screen.dart';
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
   final VoidCallback? onWorkoutCompleted; // Add callback for when workout is completed
-  const WorkoutDetailScreen({Key? key, required this.workout, this.onWorkoutCompleted}) : super(key: key);
+  final VoidCallback? onWorkoutReset; // Add callback for when workout is reset
+  const WorkoutDetailScreen({Key? key, required this.workout, this.onWorkoutCompleted, this.onWorkoutReset}) : super(key: key);
 
   @override
   State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
@@ -103,6 +104,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            PopupMenuButton<String>(
+              onSelected: (String choice) {
+                if (choice == 'reset') {
+                  _showResetConfirmationDialog();
+                }
+              },
+              itemBuilder: (BuildContext context) {
+                return {
+                  if (_isWorkoutCompleted) // Only show reset option if workout is completed
+                    'reset': 'Reset Workout Status',
+                }.entries.map((entry) {
+                  return PopupMenuItem<String>(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  );
+                }).toList();
+              },
+              icon: Icon(Icons.more_vert, color: Colors.white),
+            ),
+          ],
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -835,6 +857,137 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         },
       );
     }
+  }
+
+  // Helper method to reset workout completion status in Firebase
+  Future<void> _resetWorkoutCompletion() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Delete the workout completion document from Firestore
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('completed_workouts')
+            .doc(widget.workout.title)
+            .delete();
+
+        setState(() {
+          _isWorkoutCompleted = false;
+          _currentButtonState = 'start';
+        });
+
+        // Call the callback if provided to notify parent screen of reset
+        if (widget.onWorkoutReset != null) {
+          widget.onWorkoutReset!();
+        }
+
+        // Show success message
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: const Color(0xFF191919),
+                title: const Text(
+                  "Workout Reset",
+                  style: TextStyle(color: Colors.white),
+                ),
+                content: const Text(
+                  "Workout status has been reset successfully.",
+                  style: TextStyle(color: Colors.white70),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                    },
+                    child: const Text(
+                      "OK",
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      }
+    } catch (e) {
+      print('Error resetting workout completion: $e');
+      
+      // Show error dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF191919),
+              title: const Text(
+                "Error",
+                style: TextStyle(color: Colors.white),
+              ),
+              content: const Text(
+                "There was an error resetting your workout progress. Please try again.",
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close dialog
+                  },
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    }
+  }
+
+  // Show confirmation dialog for resetting workout status
+  void _showResetConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            "Reset Workout Status",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            "Are you sure you want to reset the status for ${widget.workout.title}? This will mark the workout as not completed.",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog without resetting
+              },
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                await _resetWorkoutCompletion(); // Reset the workout status
+              },
+              child: const Text(
+                "Reset",
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Original _startWorkout method is now replaced by the new methods above
