@@ -96,13 +96,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             totalMinutes += (exercise.duration / 60).round(); // Convert seconds to minutes
           }
 
+          // Check if the workout was cheated
+          bool isCheated = data['isCheated'] == true;
+
           // Add to the appropriate day, incrementing by 1 for each workout completed (instead of calories)
-          if (dayOfWeek >= 0 && dayOfWeek < 7) {
+          // Only increment if the workout was not cheated
+          if (dayOfWeek >= 0 && dayOfWeek < 7 && !isCheated) {
             weeklyData[dayOfWeek] += 1; // Increment by 1 for each workout completed on that day - this is used for the daily chart
           }
 
           // Add to weekly totals (include cheated workouts in count but potentially handle them differently)
-          totalWeeklyWorkouts++;
+          // Only increment the total weekly workouts if the workout was not cheated
+          if (!isCheated) {
+            totalWeeklyWorkouts++;
+          }
           totalWeeklyCalories += totalCalories.floor();
           totalWeeklyMinutes += totalMinutes;
         }

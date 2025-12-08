@@ -4,8 +4,8 @@ List<Workout> workouts = [
   // Abs Workouts
   Workout(
     id: "abs_001",
-    title: "Abs Workout Routine",
-    duration: "25 min",
+    title: "Testing Workout 1 Second",
+    duration: "12 second",
     exercises: "12 exercises",
     level: "Beginner",
     bodyFocus: "Abs",
@@ -15,73 +15,73 @@ List<Workout> workouts = [
       Exercise(
         name: "Crunches",
         caloriesPerMinute: 5,
-        duration: 60, // 1 minute
+        duration: 1, // 1 minute
         description: "Classic abdominal crunch to target your abs",
       ),
       Exercise(
         name: "Plank",
         caloriesPerMinute: 4,
-        duration: 90, // 1.5 minutes
+        duration: 1, // 1.5 minutes
         description: "Hold a plank position to strengthen your core",
       ),
       Exercise(
         name: "Bicycle Crunches",
         caloriesPerMinute: 6,
-        duration: 120, // 2 minutes
+        duration: 1, // 2 minutes
         description: "Dynamic exercise that works your entire core",
       ),
       Exercise(
         name: "Leg Raises",
         caloriesPerMinute: 5,
-        duration: 60, // 1 minute
+        duration: 1, // 1 minute
         description: "Lie on your back and raise your legs to work lower abs",
       ),
       Exercise(
         name: "Russian Twists",
         caloriesPerMinute: 6,
-        duration: 120, // 2 minutes
+        duration: 1, // 2 minutes
         description: "Seated twist to work obliques and core",
       ),
       Exercise(
         name: "Mountain Climbers",
         caloriesPerMinute: 10,
-        duration: 60, // 1 minute
+        duration: 1, // 1 minute
         description: "Fast-paced exercise that works your entire core",
       ),
       Exercise(
         name: "Dead Bug",
         caloriesPerMinute: 4,
-        duration: 120, // 2 minutes
+        duration: 1, // 2 minutes
         description: "Core stability exercise that targets deep abs",
       ),
       Exercise(
         name: "Flutter Kicks",
         caloriesPerMinute: 5,
-        duration: 60, // 1 minute
+        duration: 1, // 1 minute
         description: "Lying exercise to work lower abs and hip flexors",
       ),
       Exercise(
         name: "Hollow Body Hold",
         caloriesPerMinute: 4,
-        duration: 90, // 1.5 minutes
+        duration: 1, // 1.5 minutes
         description: "Hold the hollow position to strengthen core",
       ),
       Exercise(
         name: "Toe Touches",
         caloriesPerMinute: 5,
-        duration: 60, // 1 minute
+        duration: 1, // 1 minute
         description: "Sit and reach for your toes to work upper abs",
       ),
       Exercise(
         name: "Scissor Kicks",
         caloriesPerMinute: 5,
-        duration: 90, // 1.5 minutes
+        duration: 1, // 1.5 minutes
         description: "Lying exercise alternating leg lifts",
       ),
       Exercise(
         name: "Tabletop Dead Bug",
         caloriesPerMinute: 4,
-        duration: 90, // 1.5 minutes
+        duration: 1, // 1.5 minutes
         description: "Beginner-friendly core stability exercise",
       ),
     ],
