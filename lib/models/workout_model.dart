@@ -1,20 +1,29 @@
 class Exercise {
   final String name;
-  final int caloriesPerMinute; // Average calories burned per minute for this exercise
+  final int baseCaloriesPerMinute; // Base calories burned per minute for this exercise without additional factors
   final int duration; // Duration in seconds for this specific exercise
   final String description; // Description of the exercise
 
   Exercise({
     required this.name,
-    required this.caloriesPerMinute,
+    required this.baseCaloriesPerMinute,
     required this.duration,
     required this.description,
   });
 
-  // Calculate calories burned for this exercise based on duration
-  double getCaloriesBurned() {
+  // Calculate calories burned for this exercise based on duration and additional factors
+  double getCaloriesBurned({double weightFactor = 1.0, int sets = 1, int reps = 1}) {
     double minutes = duration / 60.0;
-    return caloriesPerMinute * minutes;
+    // Base calculation
+    double baseCalories = baseCaloriesPerMinute * minutes;
+    
+    // Apply factors for weight, sets, and reps
+    // Weight factor: increases calorie burn based on weight used (1.0 = bodyweight/no extra weight)
+    // Sets and reps: increase calorie burn proportionally to volume
+    double volumeFactor = (sets * reps) / 10.0; // Normalize by 10 as a baseline
+    if (volumeFactor < 0.5) volumeFactor = 0.5; // Minimum factor to avoid very low values
+
+    return baseCalories * weightFactor * volumeFactor;
   }
 }
 

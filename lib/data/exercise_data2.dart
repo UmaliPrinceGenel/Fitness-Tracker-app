@@ -14,43 +14,43 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell Bench Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Overall Strength & Thickness",
       ),
       Exercise(
         name: "Incline Bench Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Upper Chest Development",
       ),
       Exercise(
         name: "Dumbbell Flyes",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 180, // 3 minutes
         description: "Chest Stretch & Isolation",
       ),
       Exercise(
         name: "Push-ups",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 180, // 3 minutes
         description: "Overall Chest, Shoulders, Triceps, and Core",
       ),
       Exercise(
         name: "Dumbbell Bench Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Overall Strength & Symmetrical Development",
       ),
       Exercise(
         name: "Decline Bench Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Lower Chest Focus",
       ),
       Exercise(
         name: "Cable Crossover",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 180, // 3 minutes
         description: "Lower/Inner Chest Focus (Adduction)",
       ),
@@ -68,31 +68,31 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Dumbbell Bench Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Overall Strength & Symmetrical Development",
       ),
       Exercise(
         name: "Incline Bench Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Upper Chest Development",
       ),
       Exercise(
         name: "Dumbbell Flyes",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Chest Stretch & Isolation",
       ),
       Exercise(
         name: "Push-ups",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 150, // 2.5 minutes
         description: "Overall Chest, Shoulders, Triceps, and Core",
       ),
       Exercise(
         name: "Cable Crossover",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Lower/Inner Chest Focus (Adduction)",
       ),
@@ -110,19 +110,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Push-ups",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 120, // 2 minutes
         description: "Overall Chest, Shoulders, Triceps, and Core",
       ),
       Exercise(
         name: "Dumbbell Flyes",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Chest Stretch & Isolation",
       ),
       Exercise(
         name: "Cable Crossover",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Lower/Inner Chest Focus (Adduction)",
       ),
@@ -142,25 +142,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Pull-ups / Chin-ups",
-        caloriesPerMinute: 9,
+        baseCaloriesPerMinute: 9,
         duration: 150, // 2.5 minutes
         description: "Back Width (Lat Activation)",
       ),
       Exercise(
         name: "Lat Pulldowns",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 150, // 2.5 minutes
         description: "Lat Isolation (Width)",
       ),
       Exercise(
         name: "Single-Arm Dumbbell Rows",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Lats & Full Back Thickness",
       ),
       Exercise(
         name: "Barbell Deadlift",
-        caloriesPerMinute: 10,
+        baseCaloriesPerMinute: 10,
         duration: 150, // 2.5 minutes
         description: "Full Body Strength (Targets Lats, Traps, Spinal Erectors)",
       ),
@@ -178,19 +178,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Lat Pulldowns",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 120, // 2 minutes
         description: "Lat Isolation (Width)",
       ),
       Exercise(
         name: "Single-Arm Dumbbell Rows",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Lats & Full Back Thickness",
       ),
       Exercise(
         name: "Pull-ups / Chin-ups",
-        caloriesPerMinute: 9,
+        baseCaloriesPerMinute: 9,
         duration: 120, // 2 minutes
         description: "Back Width (Lat Activation)",
       ),
@@ -208,13 +208,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Lat Pulldowns",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 90, // 1.5 minutes
         description: "Lat Isolation (Width)",
       ),
       Exercise(
         name: "Single-Arm Dumbbell Rows",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 90, // 1.5 minutes
         description: "Lats & Full Back Thickness",
       ),
@@ -223,7 +223,7 @@ List<Workout> exerciseWorkouts = [
 
   // Back (Mid-Back) Workouts
   Workout(
-    id: "back_mid_001",
+    id: "back_mid_01",
     title: "Mid-Back Training HARD",
     duration: "25 min",
     exercises: "6 exercises",
@@ -234,31 +234,31 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell Rows",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Overall Thickness & Strength",
       ),
       Exercise(
         name: "Seated Cable Rows",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 150, // 2.5 minutes
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
         name: "T-Bar Row",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Mid-Back & Traps Thickness",
       ),
       Exercise(
         name: "Face Pulls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Rear Delts & Upper Back/Rotator Cuff Health",
       ),
       Exercise(
         name: "Rack Pulls",
-        caloriesPerMinute: 10,
+        baseCaloriesPerMinute: 10,
         duration: 150, // 2.5 minutes
         description: "Upper Back Strength & Partial Deadlift",
       ),
@@ -276,25 +276,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell Rows",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Overall Thickness & Strength",
       ),
       Exercise(
         name: "Seated Cable Rows",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 120, // 2 minutes
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
         name: "T-Bar Row",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Mid-Back & Traps Thickness",
       ),
       Exercise(
         name: "Face Pulls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Rear Delts & Upper Back/Rotator Cuff Health",
       ),
@@ -312,13 +312,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Seated Cable Rows",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 90, // 1.5 minutes
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
         name: "Face Pulls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Rear Delts & Upper Back/Rotator Cuff Health",
       ),
@@ -338,19 +338,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell Deadlift",
-        caloriesPerMinute: 10,
+        baseCaloriesPerMinute: 10,
         duration: 120, // 2 minutes
         description: "Full Body Strength (Targets Lats, Traps, Spinal Erectors)",
       ),
       Exercise(
         name: "Rack Pulls",
-        caloriesPerMinute: 10,
+        baseCaloriesPerMinute: 10,
         duration: 120, // 2 minutes
         description: "Upper Back Strength & Partial Deadlift",
       ),
       Exercise(
         name: "Barbell/Dumbbell Shrugs",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Upper Traps (Height)",
       ),
@@ -368,13 +368,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Shrugs",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 90, // 1.5 minutes
         description: "Upper Traps (Height)",
       ),
       Exercise(
         name: "Face Pulls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Rear Delts & Upper Back",
       ),
@@ -394,37 +394,37 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Overhead Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Overall Shoulder Strength & Anterior/Medial Delts",
       ),
       Exercise(
         name: "Dumbbell Lateral Raises",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 180, // 3 minutes
         description: "Medial Delts (Shoulder Width)",
       ),
       Exercise(
         name: "Rear Delt Fly",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 180, // 3 minutes
         description: "Posterior Delt Isolation (Shoulder Health)",
       ),
       Exercise(
         name: "Dumbbell Front Raises",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 180, // 3 minutes
         description: "Anterior Delt Isolation",
       ),
       Exercise(
         name: "Upright Rows",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 180, // 3 minutes
         description: "Medial Delts & Upper Traps",
       ),
       Exercise(
         name: "Face Pulls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 180, // 3 minutes
         description: "Rear Delts & Upper Back",
       ),
@@ -442,31 +442,31 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Overhead Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Overall Shoulder Strength & Anterior/Medial Delts",
       ),
       Exercise(
         name: "Dumbbell Lateral Raises",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Medial Delts (Shoulder Width)",
       ),
       Exercise(
         name: "Rear Delt Fly",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Posterior Delt Isolation (Shoulder Health)",
       ),
       Exercise(
         name: "Dumbbell Front Raises",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Anterior Delt Isolation",
       ),
       Exercise(
         name: "Face Pulls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Rear Delts & Upper Back",
       ),
@@ -484,19 +484,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Dumbbell Lateral Raises",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Medial Delts (Shoulder Width)",
       ),
       Exercise(
         name: "Dumbbell Front Raises",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Anterior Delt Isolation",
       ),
       Exercise(
         name: "Rear Delt Fly",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Posterior Delt Isolation (Shoulder Health)",
       ),
@@ -516,25 +516,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Overhead Tricep Extension",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Long Head (Stretch) Focus",
       ),
       Exercise(
         name: "Skull Crushers",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Long Head (Stretch) & Overall Mass",
       ),
       Exercise(
         name: "Tricep Pushdowns",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Overall Tricep (Medial/Lateral Heads)",
       ),
       Exercise(
         name: "Overhead Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Overall Shoulder Strength & Anterior/Medial Delts",
       ),
@@ -552,19 +552,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Tricep Pushdowns",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Overall Tricep (Medial/Lateral Heads)",
       ),
       Exercise(
         name: "Skull Crushers",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Long Head (Stretch) & Overall Mass",
       ),
       Exercise(
         name: "Overhead Tricep Extension",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Long Head (Stretch) Focus",
       ),
@@ -582,13 +582,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Tricep Pushdowns",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Overall Tricep (Medial/Lateral Heads)",
       ),
       Exercise(
         name: "Overhead Tricep Extension",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Long Head (Stretch) Focus",
       ),
@@ -596,7 +596,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Biceps Workouts
-  Workout(
+ Workout(
     id: "biceps_001",
     title: "Biceps Training HARD",
     duration: "25 min",
@@ -608,31 +608,31 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Bicep Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Overall Bicep Mass",
       ),
       Exercise(
         name: "Hammer Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Bicep and Brachialis/Forearm Development",
       ),
       Exercise(
         name: "Preacher Curls",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Bicep Isolation (Focus on Peak)",
       ),
       Exercise(
         name: "Concentration Curls",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Bicep Peak & Isolation",
       ),
       Exercise(
         name: "Cable Bicep Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Use cable machine for constant tension",
       ),
@@ -650,25 +650,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Bicep Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Overall Bicep Mass",
       ),
       Exercise(
         name: "Hammer Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Bicep and Brachialis/Forearm Development",
       ),
       Exercise(
         name: "Preacher Curls",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Bicep Isolation (Focus on Peak)",
       ),
       Exercise(
         name: "Concentration Curls",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Bicep Peak & Isolation",
       ),
@@ -686,13 +686,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Bicep Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Overall Bicep Mass",
       ),
       Exercise(
         name: "Hammer Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Bicep and Brachialis/Forearm Development",
       ),
@@ -712,13 +712,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Wrist Curls",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Forearm Flexors/Extensors",
       ),
       Exercise(
         name: "Hammer Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Bicep and Brachialis/Forearm Development",
       ),
@@ -738,31 +738,31 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell Squat",
-        caloriesPerMinute: 10,
+        baseCaloriesPerMinute: 10,
         duration: 180, // 3 minutes
         description: "Overall Leg Strength & Quad Dominance",
       ),
       Exercise(
         name: "Leg Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Quad & Glute Mass (Adjustable Foot Placement)",
       ),
       Exercise(
         name: "Leg Extensions",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 180, // 3 minutes
         description: "Quad Isolation & Teardrop Muscle (VMO)",
       ),
       Exercise(
         name: "Lunges",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 180, // 3 minutes
         description: "Single-Leg Strength & Quad/Glute Focus",
       ),
       Exercise(
         name: "Goblet Squats",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Squat holding weight at chest level, good quad activation",
       ),
@@ -780,25 +780,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Leg Press",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Quad & Glute Mass (Adjustable Foot Placement)",
       ),
       Exercise(
         name: "Leg Extensions",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Quad Isolation & Teardrop Muscle (VMO)",
       ),
       Exercise(
         name: "Lunges",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 150, // 2.5 minutes
         description: "Single-Leg Strength & Quad/Glute Focus",
       ),
       Exercise(
         name: "Bodyweight Squats",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Basic squat without added weight",
       ),
@@ -816,19 +816,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Bodyweight Squats",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Basic squat without added weight",
       ),
       Exercise(
         name: "Leg Extensions",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Quad Isolation & Teardrop Muscle (VMO)",
       ),
       Exercise(
         name: "Lunges",
-        caloriesPerMinute: 7,
+        baseCaloriesPerMinute: 7,
         duration: 120, // 2 minutes
         description: "Single-Leg Strength & Quad/Glute Focus",
       ),
@@ -848,31 +848,31 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Barbell Deadlift",
-        caloriesPerMinute: 10,
+        baseCaloriesPerMinute: 10,
         duration: 180, // 3 minutes
         description: "Full Posterior Chain Strength",
       ),
       Exercise(
         name: "Romanian Deadlifts",
-        caloriesPerMinute: 9,
+        baseCaloriesPerMinute: 9,
         duration: 180, // 3 minutes
         description: "Hamstring & Glute Stretch/Mass",
       ),
       Exercise(
         name: "Glute Bridges",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 180, // 3 minutes
         description: "Glute Isolation & Peak Contraction",
       ),
       Exercise(
         name: "Lying Leg Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 180, // 3 minutes
         description: "Hamstring Isolation & Contraction",
       ),
       Exercise(
         name: "Hip Thrusts",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 180, // 3 minutes
         description: "Exercise for glutes and hamstrings",
       ),
@@ -890,25 +890,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Romanian Deadlifts",
-        caloriesPerMinute: 9,
+        baseCaloriesPerMinute: 9,
         duration: 150, // 2.5 minutes
         description: "Hamstring & Glute Stretch/Mass",
       ),
       Exercise(
         name: "Glute Bridges",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Glute Isolation & Peak Contraction",
       ),
       Exercise(
         name: "Lying Leg Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Hamstring Isolation & Contraction",
       ),
       Exercise(
         name: "Hip Thrusts",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Exercise for glutes and hamstrings",
       ),
@@ -926,19 +926,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Glute Bridges",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Glute Isolation & Peak Contraction",
       ),
       Exercise(
         name: "Lying Leg Curls",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Hamstring Isolation & Contraction",
       ),
       Exercise(
         name: "Hip Thrusts",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Exercise for glutes and hamstrings",
       ),
@@ -958,19 +958,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Standing Calf Raises",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Gastrocnemius (Upper, visible calf)",
       ),
       Exercise(
         name: "Seated Calf Raises",
-        caloriesPerMinute: 3,
+        baseCaloriesPerMinute: 3,
         duration: 120, // 2 minutes
         description: "Soleus (Deeper muscle, crucial for ankle stability)",
       ),
       Exercise(
         name: "Calf Press",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Machine exercise for calf muscles",
       ),
@@ -988,13 +988,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Standing Calf Raises",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Gastrocnemius (Upper, visible calf)",
       ),
       Exercise(
         name: "Seated Calf Raises",
-        caloriesPerMinute: 3,
+        baseCaloriesPerMinute: 3,
         duration: 90, // 1.5 minutes
         description: "Soleus (Deeper muscle, crucial for ankle stability)",
       ),
@@ -1014,38 +1014,38 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Cable Crunches",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Upper Abs (Hypertrophy/Mass)",
       ),
       Exercise(
         name: "Hanging Leg Raises",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Lower Abs (Requires high grip strength)",
       ),
       Exercise(
         name: "Reverse Crunches",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Lower Abs (Pelvic tilt and lift)",
       ),
       Exercise(
         name: "Ab Wheel Rollouts",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Spinal Extension (High Anti-Extension Strength)",
       ),
       Exercise(
         name: "Plank",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Hold a plank position to strengthen your core",
       ),
     ],
   ),
   Workout(
-    id: "abs_002",
+    id: "abs_02",
     title: "Abs Training MEDIUM",
     duration: "20 min",
     exercises: "5 exercises",
@@ -1056,32 +1056,32 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Cable Crunches",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Upper Abs (Hypertrophy/Mass)",
       ),
       Exercise(
         name: "Reverse Crunches",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Lower Abs (Pelvic tilt and lift)",
       ),
       Exercise(
         name: "Russian Twists",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Rotational Power (Dynamic Obliques)",
       ),
       Exercise(
         name: "Plank",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Hold a plank position to strengthen your core",
       ),
     ],
   ),
   Workout(
-    id: "abs_003",
+    id: "abs_03",
     title: "Abs Training EASY",
     duration: "15 min",
     exercises: "4 exercises",
@@ -1092,19 +1092,19 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Reverse Crunches",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Lower Abs (Pelvic tilt and lift)",
       ),
       Exercise(
         name: "Russian Twists",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Rotational Power (Dynamic Obliques)",
       ),
       Exercise(
         name: "Plank",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Hold a plank position to strengthen your core",
       ),
@@ -1112,7 +1112,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Rotational / Anti-Rotation Workouts
-  Workout(
+ Workout(
     id: "rotational_001",
     title: "Rotational Core Training HARD",
     duration: "25 min",
@@ -1124,37 +1124,37 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Russian Twists",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Rotational Power (Dynamic Obliques)",
       ),
       Exercise(
         name: "Side Plank",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Anti-Lateral Flexion (Lateral Stability/Obliques)",
       ),
       Exercise(
         name: "Pallof Press",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Anti-Rotation (Prevents twisting; excellent for stability)",
       ),
       Exercise(
         name: "Cable Woodchopper",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Rotational Power (Cross-body movement)",
       ),
       Exercise(
         name: "Cable Crunches",
-        caloriesPerMinute: 5,
+        baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Upper Abs (Hypertrophy/Mass)",
       ),
       Exercise(
         name: "Hanging Leg Raises",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Lower Abs (Requires high grip strength)",
       ),
@@ -1172,25 +1172,25 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Russian Twists",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Rotational Power (Dynamic Obliques)",
       ),
       Exercise(
         name: "Side Plank",
-        caloriesPerMinute: 8,
+        baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Anti-Lateral Flexion (Lateral Stability/Obliques)",
       ),
       Exercise(
         name: "Pallof Press",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Anti-Rotation (Prevents twisting; excellent for stability)",
       ),
       Exercise(
         name: "Cable Woodchopper",
-        caloriesPerMinute: 6,
+        baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Rotational Power (Cross-body movement)",
       ),
@@ -1208,13 +1208,13 @@ List<Workout> exerciseWorkouts = [
     exerciseList: [
       Exercise(
         name: "Russian Twists",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Rotational Power (Dynamic Obliques)",
       ),
       Exercise(
         name: "Pallof Press",
-        caloriesPerMinute: 4,
+        baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Anti-Rotation (Prevents twisting; excellent for stability)",
       ),

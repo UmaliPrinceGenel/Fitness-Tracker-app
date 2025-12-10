@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'progress_tracking_screen.dart'; // Import the new progress tracking screen
-import '../data/workout_data.dart'; // Import workout data
+import '../data/exercise_data2.dart'; // Import workout data
 import '../models/workout_model.dart'; // Import workout model
 import 'workout_detail_screen.dart'; // Import workout detail screen
 
@@ -25,7 +25,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   bool _isLoading = true;
 
  // List of tab titles
-  final List<String> _tabTitles = ["Abs", "Arm", "Chest", "Leg"];
+  final List<String> _tabTitles = ["Chest", "Arms", "Core", "Lower Body", "Shoulders"];
 
   @override
   void initState() {
@@ -86,7 +86,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
 
           // Extract workout title to get the actual exercise list from our workout data
           final workoutTitle = data['title'] as String;
-          final workout = workouts.firstWhere((w) => w.title == workoutTitle, orElse: () => workouts[0]);
+          final workout = exerciseWorkouts.firstWhere((w) => w.title == workoutTitle, orElse: () => exerciseWorkouts[0]);
 
           // Calculate total calories burned for this workout based on exercises
           double totalCalories = 0;
@@ -486,6 +486,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                         _buildTab(_tabTitles[1], 1),
                         _buildTab(_tabTitles[2], 2),
                         _buildTab(_tabTitles[3], 3),
+                        _buildTab(_tabTitles[4], 4),
                       ],
                     ),
                   ),
@@ -567,8 +568,25 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   // Workout List Section - Filtered based on selected tab
   Widget _buildWorkoutList() {
     // Filter workouts based on selected tab
-    List<Workout> filteredWorkouts = workouts.where((workout) {
-      return workout.bodyFocus.toLowerCase() == _tabTitles[_selectedTabIndex].toLowerCase();
+    List<Workout> filteredWorkouts = exerciseWorkouts.where((workout) {
+      String bodyFocus = workout.bodyFocus.toLowerCase();
+      String selectedCategory = _tabTitles[_selectedTabIndex].toLowerCase();
+      
+      // Map exercises to the new categories
+      switch(selectedCategory) {
+        case "chest":
+          return bodyFocus == "chest";
+        case "arms":
+          return bodyFocus == "arm" || bodyFocus == "triceps" || bodyFocus == "biceps" || bodyFocus == "forearms";
+        case "core":
+          return bodyFocus == "abs" || bodyFocus == "core";
+        case "lower body":
+          return bodyFocus == "legs" || bodyFocus == "calves" || bodyFocus == "glutes & hamstrings";
+        case "shoulders":
+          return bodyFocus == "shoulders" || bodyFocus == "traps";
+        default:
+          return bodyFocus == selectedCategory;
+      }
     }).toList();
 
     return Column(
@@ -809,10 +827,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   // Helper method to get color based on workout level
   Color _getLevelColor(String level) {
     switch (level.toLowerCase()) {
-      case 'beginner':
+      case 'easy':
         return Colors.green;
-      case 'intermediate':
-        return Colors.orange;
+      case 'medium':
+        return Colors.yellow;
       case 'hard':
         return Colors.red;
       default:
