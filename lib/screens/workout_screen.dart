@@ -744,7 +744,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                             const Icon(Icons.timer, color: Colors.white70, size: 14),
                             const SizedBox(width: 4),
                             Text(
-                              workout.duration, // Use duration from workout data
+                              _getTotalExerciseDuration(workout), // Use calculated duration from exercises
                               style: TextStyle(color: Colors.white70, fontSize: 12),
                             ),
                             const SizedBox(width: 12),
@@ -758,7 +758,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                workout.exercises, // Use exercises from workout data
+                                "${workout.exerciseList.length} exercises", // Use actual count from exercise list
                                 style: const TextStyle(color: Colors.white70, fontSize: 10),
                               ),
                             ),
@@ -836,5 +836,31 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
       default:
         return Colors.grey;
     }
+  }
+
+  // Calculate total duration from all exercises in the workout
+  String _getTotalExerciseDuration(Workout workout) {
+    int totalSeconds = 0;
+    
+    // Sum up the duration of all exercises
+    for (Exercise exercise in workout.exerciseList) {
+      totalSeconds += exercise.duration;
+    }
+    
+    // Convert total seconds to minutes and format as "X min" or "X mins"
+    int totalMinutes = totalSeconds ~/ 60;
+    
+    // Handle edge cases: if total minutes is 0, return "0 min", otherwise format appropriately
+    if (totalMinutes == 0) {
+      // If there are exercises but total is 0 minutes, at least show 1 min to avoid confusion
+      if (workout.exerciseList.isNotEmpty) {
+        // Check if there are any exercises with duration less than 60 seconds
+        bool hasShortExercises = workout.exerciseList.any((exercise) => exercise.duration > 0);
+        return hasShortExercises ? "1 min" : "0 min";
+      }
+      return "0 min";
+    }
+    
+    return totalMinutes > 1 ? "${totalMinutes} mins" : "${totalMinutes} min";
   }
 }

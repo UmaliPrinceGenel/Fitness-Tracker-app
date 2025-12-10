@@ -190,12 +190,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                             children: [
                               _buildInfoItem(
                                 icon: Icons.timer,
-                                label: widget.workout.duration,
+                                label: _getTotalExerciseDuration(),
                               ),
                               const SizedBox(width: 16),
                               _buildInfoItem(
                                 icon: Icons.fitness_center,
-                                label: widget.workout.exercises,
+                                label: "${widget.workout.exerciseList.length} exercises",
                               ),
                             ],
                           ),
@@ -279,7 +279,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
-                        "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exercises.toLowerCase()} that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
+                        "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exerciseList.length} exercises that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -988,6 +988,32 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         );
       },
     );
+  }
+
+  // Calculate total duration from all exercises in the workout
+  String _getTotalExerciseDuration() {
+    int totalSeconds = 0;
+    
+    // Sum up the duration of all exercises
+    for (Exercise exercise in widget.workout.exerciseList) {
+      totalSeconds += exercise.duration;
+    }
+    
+    // Convert total seconds to minutes and format as "X min" or "X mins"
+    int totalMinutes = totalSeconds ~/ 60;
+    
+    // Handle edge cases: if total minutes is 0, return "0 min", otherwise format appropriately
+    if (totalMinutes == 0) {
+      // If there are exercises but total is 0 minutes, at least show 1 min to avoid confusion
+      if (widget.workout.exerciseList.isNotEmpty) {
+        // Check if there are any exercises with duration less than 60 seconds
+        bool hasShortExercises = widget.workout.exerciseList.any((exercise) => exercise.duration > 0);
+        return hasShortExercises ? "1 min" : "0 min";
+      }
+      return "0 min";
+    }
+    
+    return totalMinutes > 1 ? "${totalMinutes} mins" : "${totalMinutes} min";
   }
 
   // Original _startWorkout method is now replaced by the new methods above
