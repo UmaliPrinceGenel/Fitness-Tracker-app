@@ -227,22 +227,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 5),
-                const Text(
-                  "Input the weight, sets, and reps you have done",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  "Input the weight, sets, and reps you have done",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10,
-                  ),
-                ),
                 const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
@@ -268,6 +252,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               child: TextField(
                                 controller: weightController,
                                 keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.white), // Set input text color to white
                                 decoration: const InputDecoration(
                                   labelText: 'Weight (kg)',
                                   labelStyle: TextStyle(color: Colors.orange),
@@ -300,6 +285,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               child: TextField(
                                 controller: repsController,
                                 keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.white), // Set input text color to white
                                 decoration: const InputDecoration(
                                   labelText: 'Reps',
                                   labelStyle: TextStyle(color: Colors.orange),
@@ -332,6 +318,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               child: TextField(
                                 controller: setsController,
                                 keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.white), // Set input text color to white
                                 decoration: const InputDecoration(
                                   labelText: 'Sets',
                                   labelStyle: TextStyle(color: Colors.orange),
