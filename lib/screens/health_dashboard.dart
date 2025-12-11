@@ -60,9 +60,13 @@ class _HealthDashboardState extends State<HealthDashboard>
   DateTime _lastMovementTime = DateTime.now();
   int _stepBuffer = 0;
   List<double> _accelerationBuffer = [];
+  List<double> _accelerationTimeBuffer = []; // Track timing for pattern recognition
   static const int STEP_TIME_GAP = 300;
-  static const double STEP_ACCEL_THRESHOLD = 12.0; // Increased threshold
+  static const double STEP_ACCEL_THRESHOLD = 15.0; // Increased threshold to reduce false positives
   static const int MOVEMENT_TIME_THRESHOLD = 120; // 2 minutes
+  static const double EMULATOR_NOISE_THRESHOLD = 0.5; // Threshold to detect potential emulator noise
+  double _lastAccelerationMagnitude = 0.0;
+  DateTime _lastAccelerationTime = DateTime.now();
 
   @override
   void initState() {
@@ -235,27 +239,37 @@ class _HealthDashboardState extends State<HealthDashboard>
   // FIXED: Improved step detection algorithm
   void _detectStepFromAccelerometer(AccelerometerEvent event) {
     // Calculate magnitude of acceleration vector
-    double acceleration =
-        (event.x * event.x + event.y * event.y + event.z * event.z);
+    double acceleration = (event.x * event.x + event.y * event.y + event.z * event.z);
+    
+    // Calculate difference from last acceleration to detect rapid changes (emulator noise)
+    double accelerationDiff = (acceleration - _lastAccelerationMagnitude).abs();
+    DateTime now = DateTime.now();
+    int timeDiffFromLastReading = now.difference(_lastAccelerationTime).inMilliseconds;
+    
+    // Update tracking variables
+    _lastAccelerationMagnitude = acceleration;
+    _lastAccelerationTime = now;
+    
+    // Skip processing if acceleration changes are too rapid (likely emulator noise)
+    if (timeDiffFromLastReading < 50 && accelerationDiff > EMULATOR_NOISE_THRESHOLD) {
+      return; // Skip this reading as it might be emulator noise
+    }
 
     // Add to buffer for smoothing
     _accelerationBuffer.add(acceleration);
-    if (_accelerationBuffer.length > 10) {
-      // Increased buffer size
+    _accelerationTimeBuffer.add(now.millisecondsSinceEpoch.toDouble());
+    if (_accelerationBuffer.length > 15) { // Increased buffer size for better smoothing
       _accelerationBuffer.removeAt(0);
+      _accelerationTimeBuffer.removeAt(0);
     }
 
     // Calculate smoothed acceleration
-    double smoothedAcceleration =
-        _accelerationBuffer.reduce((a, b) => a + b) /
-        _accelerationBuffer.length;
+    double smoothedAcceleration = _accelerationBuffer.reduce((a, b) => a + b) / _accelerationBuffer.length;
 
-    DateTime now = DateTime.now();
     int timeDiff = now.difference(_lastStepTime).inMilliseconds;
 
     // Only count step if enough time has passed and acceleration exceeds threshold
-    if (timeDiff > STEP_TIME_GAP &&
-        smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
+    if (timeDiff > STEP_TIME_GAP && smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
       // Additional validation: check if this is a valid step pattern
       if (_isValidStepPattern(smoothedAcceleration)) {
         _stepBuffer++;
@@ -263,8 +277,8 @@ class _HealthDashboardState extends State<HealthDashboard>
         _lastMovementTime = now; // Update movement time for moving minutes
 
         // Process steps in batches to reduce UI updates
-        if (_stepBuffer >= 3) {
-          // Process every 3 steps
+        if (_stepBuffer >= 5) { // Increased batch size to reduce sensitivity
+          // Process every 5 steps instead of 3
           final newSteps = _steps + _stepBuffer;
           setState(() {
             _steps = newSteps;
@@ -284,17 +298,34 @@ class _HealthDashboardState extends State<HealthDashboard>
     if (_accelerationBuffer.length < 5) return true;
 
     // Calculate variance to detect consistent movement vs random shakes
-    double mean =
-        _accelerationBuffer.reduce((a, b) => a + b) /
-        _accelerationBuffer.length;
-    double variance =
-        _accelerationBuffer
-            .map((x) => (x - mean) * (x - mean))
-            .reduce((a, b) => a + b) /
-        _accelerationBuffer.length;
+    double mean = _accelerationBuffer.reduce((a, b) => a + b) / _accelerationBuffer.length;
+    double variance = _accelerationBuffer
+        .map((x) => (x - mean) * (x - mean))
+        .reduce((a, b) => a + b) / _accelerationBuffer.length;
 
     // If variance is too high, it might be random shaking, not walking
-    return variance < 50.0; // Adjust this threshold as needed
+    if (variance > 100.0) return false; // More restrictive variance check
+
+    // Additional check: ensure acceleration values are not all too similar (indicating noise)
+    double maxVal = _accelerationBuffer.reduce((a, b) => a > b ? a : b);
+    double minVal = _accelerationBuffer.reduce((a, b) => a < b ? a : b);
+    double range = maxVal - minVal;
+    
+    // If the range is too small, it might be constant noise rather than actual steps
+    if (range < 2.0) return false;
+
+    // Additional check: look for peaks in the acceleration data that would indicate steps
+    int peakCount = 0;
+    for (int i = 1; i < _accelerationBuffer.length - 1; i++) {
+      // Check if current value is a peak (higher than neighbors)
+      if (_accelerationBuffer[i] > _accelerationBuffer[i - 1] && 
+          _accelerationBuffer[i] > _accelerationBuffer[i + 1]) {
+        peakCount++;
+      }
+    }
+
+    // For valid walking pattern, we should have some peaks (at least 1 in the buffer)
+    return peakCount >= 1;
   }
 
   // FIXED: New moving minutes timer

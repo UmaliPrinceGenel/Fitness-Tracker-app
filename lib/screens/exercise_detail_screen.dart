@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:video_player/video_player.dart';
 import '../models/workout_model.dart';
+import '../services/video_mapping_service.dart';
 
 class ExerciseDetailScreen extends StatefulWidget {
   final int exerciseNumber;
@@ -20,7 +22,7 @@ class ExerciseDetailScreen extends StatefulWidget {
 class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   late Exercise exercise;
   late double caloriesBurned;
-  late TextEditingController weightController;
+ late TextEditingController weightController;
   late TextEditingController repsController;
   late TextEditingController setsController;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -28,6 +30,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   double weightFactor = 1.0; // Default to bodyweight or no extra weight
   int reps = 1;
   int sets = 1;
+  VideoPlayerController? _controller;
 
   @override
   void initState() {
@@ -37,15 +40,46 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     weightController = TextEditingController(text: "");
     repsController = TextEditingController(text: "8"); // Default to recommended minimum reps
     setsController = TextEditingController(text: "3"); // Default to recommended minimum sets
+    
+    // Initialize video player with the exercise-specific video
+    _initializeVideoPlayer();
+  }
+
+  Future<void> _initializeVideoPlayer() async {
+    try {
+      print("Initializing video for exercise: ${exercise.name}");
+      // Get the video path using the VideoMappingService
+      String? videoPath = VideoMappingService.getVideoPath(exercise.name);
+      
+      print("Video path result: $videoPath");
+      
+      // If a video path is found, initialize the video player
+      if (videoPath != null) {
+        print("Attempting to initialize video controller with path: $videoPath");
+        _controller = VideoPlayerController.asset(videoPath);
+        await _controller!.initialize();
+        print("Video controller initialized successfully");
+        setState(() {}); // Trigger rebuild to show the video player
+      } else {
+        print("No video path found, will show placeholder");
+        setState(() {}); // Still trigger rebuild to show the placeholder
+      }
+    } catch (e) {
+      print("Error initializing video player: $e");
+      // Video not found or couldn't be loaded, continue without video
+      setState(() {}); // Trigger rebuild to show the placeholder
+    }
   }
 
   @override
   void dispose() {
+    _controller?.dispose();
     weightController.dispose();
     repsController.dispose();
     setsController.dispose();
     super.dispose();
   }
+
 
   void updateCalories() {
     double weightValue = double.tryParse(weightController.text) ?? 0.0;
@@ -147,7 +181,99 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Exercise Header
+                // Video Player Section
+                if (_controller != null && _controller!.value.isInitialized)
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: AspectRatio(
+                              aspectRatio: _controller!.value.aspectRatio,
+                              child: VideoPlayer(_controller!),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          IconButton(
+                            icon: Icon(
+                              _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                if (_controller!.value.isPlaying) {
+                                  _controller!.pause();
+                                } else {
+                                  _controller!.play();
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: 200, // Fixed height for video placeholder
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.videocam_off,
+                              size: 64,
+                              color: Colors.white54,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Video not available for ${exercise.name}",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 20),
+
+                // Exercise Header (with exercise info only)
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -165,28 +291,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.orange.withOpacity(0.4),
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              widget.exerciseNumber.toString(),
-                              style: const TextStyle(
-                                color: Colors.orange,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
                         Text(
                           exercise.name, // Show the actual exercise name
                           style: const TextStyle(
