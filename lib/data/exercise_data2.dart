@@ -67,7 +67,7 @@ List<Workout> exerciseWorkouts = [
     thumbnailAsset: "assets/abs.png",
     exerciseList: [
       Exercise(
-        name: "Dumbbell Bench Press",
+        name: "Incline Dumbbell Bench Press",
         baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Overall Strength & Symmetrical Development",
@@ -141,7 +141,7 @@ List<Workout> exerciseWorkouts = [
     thumbnailAsset: "assets/abs.png",
     exerciseList: [
       Exercise(
-        name: "Pull-ups / Chin-ups",
+        name: "Pull-ups Chin-ups",
         baseCaloriesPerMinute: 9,
         duration: 150, // 2.5 minutes
         description: "Back Width (Lat Activation)",
@@ -189,7 +189,7 @@ List<Workout> exerciseWorkouts = [
         description: "Lats & Full Back Thickness",
       ),
       Exercise(
-        name: "Pull-ups / Chin-ups",
+        name: "Pull-ups Chin-ups",
         baseCaloriesPerMinute: 9,
         duration: 120, // 2 minutes
         description: "Back Width (Lat Activation)",
@@ -245,13 +245,13 @@ List<Workout> exerciseWorkouts = [
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
-        name: "T-Bar Row",
+        name: "T-Bar Rows",
         baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Mid-Back & Traps Thickness",
       ),
       Exercise(
-        name: "Face Pulls",
+        name: "Face Pulls Back",
         baseCaloriesPerMinute: 5,
         duration: 150, // 2.5 minutes
         description: "Rear Delts & Upper Back/Rotator Cuff Health",
@@ -287,13 +287,13 @@ List<Workout> exerciseWorkouts = [
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
-        name: "T-Bar Row",
+        name: "T-Bar Rows",
         baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Mid-Back & Traps Thickness",
       ),
       Exercise(
-        name: "Face Pulls",
+        name: "Face Pulls Back",
         baseCaloriesPerMinute: 5,
         duration: 120, // 2 minutes
         description: "Rear Delts & Upper Back/Rotator Cuff Health",
@@ -317,7 +317,7 @@ List<Workout> exerciseWorkouts = [
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
-        name: "Face Pulls",
+        name: "Face Pulls Back",
         baseCaloriesPerMinute: 5,
         duration: 90, // 1.5 minutes
         description: "Rear Delts & Upper Back/Rotator Cuff Health",
@@ -760,12 +760,6 @@ List<Workout> exerciseWorkouts = [
         duration: 180, // 3 minutes
         description: "Single-Leg Strength & Quad/Glute Focus",
       ),
-      Exercise(
-        name: "Goblet Squats",
-        baseCaloriesPerMinute: 8,
-        duration: 180, // 3 minutes
-        description: "Squat holding weight at chest level, good quad activation",
-      ),
     ],
   ),
   Workout(
@@ -847,7 +841,7 @@ List<Workout> exerciseWorkouts = [
     thumbnailAsset: "assets/abs.png",
     exerciseList: [
       Exercise(
-        name: "Barbell Deadlift",
+        name: "Barbell Deadlift Glutes",
         baseCaloriesPerMinute: 10,
         duration: 180, // 3 minutes
         description: "Full Posterior Chain Strength",

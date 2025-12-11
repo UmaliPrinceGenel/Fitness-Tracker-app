@@ -48,6 +48,7 @@ dependencies:
   # For creating modern charts and graphs
   fl_chart: ^0.68.0
   permission_handler: ^12.0.1
+  video_player: ^2.10.1
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +76,24 @@ flutter:
     - assets/
     - assets/default_picture.jpg
     - assets/google.png
+    - assets/videos/
+    - assets/videos/Back/
+    - assets/videos/Back/Lats/
+    - assets/videos/Back/Mid-Back/
+    - assets/videos/Biceps/
+    - assets/videos/Calves/
+    - assets/videos/Chest/
+    - assets/videos/Forearms/
+    - assets/videos/Glutes & Hamstrings/
+    - assets/videos/Quads/
+    - assets/videos/Rotational - Anti-Rotation (Obliques-Deep Core)/
+    - assets/videos/Shoulder/
+    - assets/videos/Shoulder/Anterior/
+    - assets/videos/Shoulder/Medial/
+    - assets/videos/Shoulder/Posterior/
+    - assets/videos/Spinal Flexion (Rectus Abdominis)/
+    - assets/videos/Traps/
+    - assets/videos/Triceps/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
