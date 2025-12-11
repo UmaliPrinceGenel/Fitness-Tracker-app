@@ -35,8 +35,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     exercise = widget.workout.exerciseList[widget.exerciseNumber - 1];
     caloriesBurned = exercise.getCaloriesBurned();
     weightController = TextEditingController(text: "");
-    repsController = TextEditingController(text: "1");
-    setsController = TextEditingController(text: "1");
+    repsController = TextEditingController(text: "8"); // Default to recommended minimum reps
+    setsController = TextEditingController(text: "3"); // Default to recommended minimum sets
   }
 
   @override
@@ -342,6 +342,35 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Save Button
+                        ElevatedButton(
+                          onPressed: () {
+                            _saveUserData(); // Save the current values
+                            // Show a confirmation message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Exercise data saved successfully!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            "Save Data",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
