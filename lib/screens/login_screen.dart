@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; // Add this import
+import 'dart:async'; // Add this import for TimeoutException
 import '../screens/signup_screen.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/health_dashboard.dart';
@@ -108,13 +109,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// ✅ Handle navigation after successful login
+   /// ✅ Handle navigation after successful login
   Future<void> _handlePostLogin(fbAuth.User user) async {
     try {
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final userDoc = await _getUserDocument(user.uid).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Firestore operation timed out. Please try again.');
+        },
+      );
 
       if (userDoc.exists) {
-        final userData = userDoc.data()!;
+        final userData = userDoc.data() as Map<String, dynamic>;
         final bool hasCompletedProfile = userData['hasCompletedProfile'] ?? false;
 
         if (hasCompletedProfile) {
@@ -255,9 +261,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final credential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      // Create a timeout for the authentication operation
+      final credential = await _performEmailSignIn().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw fbAuth.FirebaseAuthException(
+            code: 'timeout',
+            message: 'Authentication operation timed out. Please check your connection and try again.',
+          );
+        },
       );
 
       final user = credential.user;
@@ -298,6 +310,8 @@ class _LoginScreenState extends State<LoginScreen> {
         errorMessage = 'Invalid email address.';
       } else if (e.code == 'user-disabled') {
         errorMessage = 'This account has been disabled.';
+      } else if (e.code == 'timeout') {
+        errorMessage = e.message ?? 'Operation timed out. Please check your connection and try again.';
       } else {
         errorMessage = 'Login failed: invalid email or password';
       }
@@ -315,7 +329,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// ✅ IMPROVED: Login with Google - Works on both Web and Mobile
+  /// ✅ Helper method to perform email sign-in with timeout
+  Future<fbAuth.UserCredential> _performEmailSignIn() async {
+    return await _firebaseAuth.signInWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+  }
+
+   /// ✅ IMPROVED: Login with Google - Works on both Web and Mobile
   Future<void> _loginWithGoogle() async {
     setState(() => _isLoading = true);
     
@@ -334,14 +356,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       fbAuth.UserCredential userCredential;
 
-      if (kIsWeb) {
-        // For web platforms - use signInWithPopup
-        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
-      } else {
-        // For mobile platforms (Android/iOS) - use signInWithProvider
-        // This is the correct approach for mobile platforms
-        userCredential = await _firebaseAuth.signInWithProvider(googleProvider);
-      }
+      // Create a timeout for the authentication operation
+      userCredential = await _performGoogleSignIn(googleProvider).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw fbAuth.FirebaseAuthException(
+            code: 'timeout',
+            message: 'Authentication operation timed out. Please try again.',
+          );
+        },
+      );
 
       // Wait a moment for the auth state to update
       await Future.delayed(const Duration(milliseconds: 50));
@@ -363,8 +387,13 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        // ✅ Check if user exists in Firestore
-        final userDoc = await _firestore.collection('users').doc(fbUser.uid).get();
+        // ✅ Check if user exists in Firestore with timeout
+        final userDoc = await _getUserDocument(fbUser.uid).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            throw Exception('Firestore operation timed out. Please try again.');
+          },
+        );
 
         if (!userDoc.exists) {
           // User doesn't exist - show message to sign up first
@@ -421,17 +450,61 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on fbAuth.FirebaseAuthException catch (e) {
       await _handleGoogleLoginError(e);
-    } catch (e) {
-      print('Google Sign-In error: $e');
+    } on TimeoutException {
+      // Handle timeout specifically
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to sign in with Google: ${e.toString()}'),
+        const SnackBar(
+          content: Text('Operation timed out. Please check your connection and try again.'),
           backgroundColor: Colors.red,
         ),
       );
+    } catch (e) {
+      // Handle session state error specifically
+      if (e.toString().contains('missing initial state') || e.toString().contains('sessionStorage')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication session expired. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        print('Google Sign-In error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to sign in with Google: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  /// ✅ Helper method to perform Google sign-in with proper error handling
+  Future<fbAuth.UserCredential> _performGoogleSignIn(fbAuth.GoogleAuthProvider googleProvider) async {
+    if (kIsWeb) {
+      // For web platforms - use signInWithPopup with error handling for session state issues
+      try {
+        return await _firebaseAuth.signInWithPopup(googleProvider);
+      } catch (e) {
+        // If popup fails due to session state issues, try redirect as fallback
+        if (e is fbAuth.FirebaseAuthException && (e.message?.contains('sessionStorage') ?? false)) {
+          // For session state issues, we'll show a message to try again
+          rethrow;
+        } else {
+          rethrow;
+        }
+      }
+    } else {
+      // For mobile platforms (Android/iOS) - use signInWithProvider
+      return await _firebaseAuth.signInWithProvider(googleProvider);
+    }
+  }
+
+  /// ✅ Helper method to get user document with timeout
+  Future<DocumentSnapshot> _getUserDocument(String uid) async {
+    return await _firestore.collection('users').doc(uid).get();
   }
 
   /// ✅ Handle Google login errors
