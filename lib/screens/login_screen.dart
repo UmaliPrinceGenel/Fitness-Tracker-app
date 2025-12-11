@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb; // Add this import
 import '../screens/signup_screen.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/health_dashboard.dart';
@@ -314,46 +315,209 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// ✅ Login with Google - WITH FIREBASE CHECK
+  /// ✅ IMPROVED: Login with Google - Works on both Web and Mobile
   Future<void> _loginWithGoogle() async {
     setState(() => _isLoading = true);
+    
     try {
       final fbAuth.GoogleAuthProvider googleProvider = fbAuth.GoogleAuthProvider();
-
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
 
-      final userCredential = await _firebaseAuth.signInWithPopup(
-        googleProvider,
-      );
-      final user = userCredential.user;
+      fbAuth.UserCredential userCredential;
 
-      if (user != null) {
-        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (kIsWeb) {
+        // For web platforms - use signInWithPopup
+        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+      } else {
+        // For mobile platforms (Android/iOS) - use signInWithProvider
+        // This is the correct approach for mobile platforms
+        userCredential = await _firebaseAuth.signInWithProvider(googleProvider);
+      }
 
-        if (!userDoc.exists) {
+      // Wait a moment for the auth state to update
+      await Future.delayed(const Duration(milliseconds: 50));
+      
+      // Get the current user
+      final fbUser = _firebaseAuth.currentUser;
+
+      if (fbUser != null) {
+        // ✅ Check if this Google account has a Gmail email (based on your signup logic)
+        final userEmail = fbUser.email?.toLowerCase() ?? '';
+        if (!userEmail.endsWith('@gmail.com')) {
           await _firebaseAuth.signOut();
-
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please sign up first before logging in with Google.'),
+              content: Text('Only @gmail.com accounts are allowed'),
               backgroundColor: Colors.red,
             ),
           );
           return;
         }
 
-        await _handlePostLogin(user);
+        // ✅ Check if user exists in Firestore
+        final userDoc = await _firestore.collection('users').doc(fbUser.uid).get();
+
+        if (!userDoc.exists) {
+          // User doesn't exist - show message to sign up first
+          await _firebaseAuth.signOut();
+          
+          await showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: Colors.grey[900],
+                title: const Text(
+                  'Account Not Found',
+                  style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                ),
+                content: Text(
+                  'The Google account ${fbUser.email} is not registered.\n\nPlease sign up first before logging in with Google.',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SignupScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                    child: const Text(
+                      'GO TO SIGNUP',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+          return;
+        }
+
+        // ✅ User exists - proceed with login
+        await _handlePostLogin(fbUser);
+      } else {
+        throw Exception('Google sign-in failed: No user returned');
       }
+    } on fbAuth.FirebaseAuthException catch (e) {
+      await _handleGoogleLoginError(e);
     } catch (e) {
       print('Google Sign-In error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to sign in with Google: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  /// ✅ Handle Google login errors
+  Future<void> _handleGoogleLoginError(fbAuth.FirebaseAuthException e) async {
+    print('Google Sign-In error: $e');
+
+    String errorMessage = 'Failed to sign in with Google';
+    String errorDetails = '';
+
+    if (e.code == 'account-exists-with-different-credential') {
+      errorMessage = 'Account Already Exists';
+      errorDetails = 
+          'This email is already registered with a different sign-in method. Please try logging in with your original method.';
+    } else if (e.code == 'user-not-found') {
+      errorMessage = 'Account Not Found';
+      errorDetails = 
+          'No account found with this Google account. Please sign up first.';
+    } else if (e.code == 'user-disabled') {
+      errorMessage = 'Account Disabled';
+      errorDetails = 
+          'This account has been disabled. Please contact support for assistance.';
+    } else if (e.code == 'operation-not-allowed') {
+      errorMessage = 'Sign-in Method Not Available';
+      errorDetails = 
+          'Google sign-in is currently not available. Please try another method or contact support.';
+    } else if (e.code == 'invalid-credential') {
+      errorMessage = 'Invalid Credentials';
+      errorDetails = 
+          'The authentication credentials are invalid. Please try again.';
+    } else {
+      errorMessage = 'Sign-in Failed';
+      errorDetails = 'Failed to sign in with Google: ${e.message}';
+    }
+
+    // Show error dialog for important errors
+    if (e.code == 'account-exists-with-different-credential' || 
+        e.code == 'user-not-found') {
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: Text(
+              errorMessage,
+              style: const TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              errorDetails,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              if (e.code == 'user-not-found') ...[
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SignupScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  child: const Text(
+                    'GO TO SIGNUP',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  e.code == 'user-not-found' ? 'CANCEL' : 'OK',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorDetails),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 
@@ -485,9 +649,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                           if (value == null || value.isEmpty) {
                                             return 'Please enter your email';
                                           }
-                                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                                          
+                                          // Check if it's a valid email format
+                                          final trimmedValue = value.trim().toLowerCase();
+                                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(trimmedValue)) {
                                             return 'Please enter a valid email';
                                           }
+                                          
+                                          // Gmail-only validation (matching your signup logic)
+                                          if (!trimmedValue.endsWith('@gmail.com')) {
+                                            return 'Only @gmail.com addresses are allowed';
+                                          }
+                                          
                                           return null;
                                         },
                                       ),

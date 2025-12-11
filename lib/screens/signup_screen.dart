@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
+// Add this at the top of the file if not already present
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -776,22 +778,47 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  /// ✅ Google sign-up with enhanced duplicate account detection
+  /// ✅ FIXED: Google sign-up with platform-specific implementation
+ /// ✅ IMPROVED: Google sign-up with better mobile support
   Future<void> _signUpWithGoogle() async {
     setState(() => _isLoading = true);
     try {
       final fbAuth.GoogleAuthProvider googleProvider =
           fbAuth.GoogleAuthProvider();
-
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
 
-      final userCredential = await _firebaseAuth.signInWithPopup(
-        googleProvider,
-      );
-      final fbUser = userCredential.user;
+      fbAuth.UserCredential userCredential;
+
+      if (kIsWeb) {
+        // For web platforms
+        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+      } else {
+        // For mobile platforms (Android/iOS) - use signInWithProvider
+        // This is the correct approach for mobile platforms
+        userCredential = await _firebaseAuth.signInWithProvider(googleProvider);
+      }
+
+      // Wait a moment for the auth state to update
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Get the current user
+      final fbUser = _firebaseAuth.currentUser;
 
       if (fbUser != null) {
+        // ✅ Check if this Google account has a Gmail email
+        final userEmail = fbUser.email?.toLowerCase() ?? '';
+        if (!userEmail.endsWith('@gmail.com')) {
+          await _firebaseAuth.signOut();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Only @gmail.com accounts are allowed for Google sign-up'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
         // ✅ Check if this Google account is already registered in Firestore
         final userDoc = await _firestore
             .collection('users')
@@ -821,6 +848,8 @@ class _SignupScreenState extends State<SignupScreen> {
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
+      } else {
+        throw Exception('Google sign-in failed: No user returned');
       }
     } on fbAuth.FirebaseAuthException catch (e) {
       await _handleGoogleSignUpError(e);
@@ -1075,11 +1104,18 @@ class _SignupScreenState extends State<SignupScreen> {
                                           if (value == null || value.isEmpty) {
                                             return 'Please enter your email';
                                           }
-                                          if (!RegExp(
-                                            r'^[^@]+@[^@]+\.[^@]+',
-                                          ).hasMatch(value)) {
+                                          
+                                          // Check if it's a valid email format
+                                          final trimmedValue = value.trim().toLowerCase();
+                                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(trimmedValue)) {
                                             return 'Please enter a valid email';
                                           }
+                                          
+                                          // Gmail-only validation
+                                          if (!trimmedValue.endsWith('@gmail.com')) {
+                                            return 'Only @gmail.com addresses are allowed';
+                                          }
+                                          
                                           return null;
                                         },
                                       ),
