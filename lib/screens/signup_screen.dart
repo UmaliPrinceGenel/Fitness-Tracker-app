@@ -775,21 +775,9 @@ class _SignupScreenState extends State<SignupScreen> {
         // For web platforms
         userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
       } else {
-        // For mobile platforms (Android/iOS)
-        // Use signInWithRedirect which works better on mobile
-        await _firebaseAuth.signInWithRedirect(googleProvider);
-
-        // Try to get the redirect result
-        // Note: This might return null on first call, we need to handle this
-        try {
-          userCredential = await _firebaseAuth.getRedirectResult();
-        } catch (e) {
-          print('Redirect result error: $e');
-          // If redirect fails, try the direct method
-          userCredential = await _firebaseAuth.signInWithProvider(
-            googleProvider,
-          );
-        }
+        // For mobile platforms (Android/iOS) - use signInWithProvider
+        // This is the correct approach for mobile platforms
+        userCredential = await _firebaseAuth.signInWithProvider(googleProvider);
       }
 
       // Wait a moment for the auth state to update

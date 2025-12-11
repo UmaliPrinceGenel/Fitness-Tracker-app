@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/health_dashboard.dart';
 import 'screens/permissions_screen.dart';
-import 'screens/profile_screen.dart';
 import 'widgets/icon_sequence_animation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';

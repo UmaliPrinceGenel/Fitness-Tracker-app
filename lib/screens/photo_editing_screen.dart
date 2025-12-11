@@ -94,14 +94,14 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
           imageUrls.add(publicURL);
         } catch (e) {
           print('❌ Binary upload failed for image $i: $e');
-          throw e;
+          rethrow;
         }
       }
 
       return imageUrls;
     } catch (e) {
       print('❌ Error uploading images: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -128,7 +128,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
       await _firestore.collection('community_posts').add(postData);
     } catch (e) {
       print('Error creating post in Firestore: $e');
-      throw e;
+      rethrow;
     }
   }
 

@@ -25,11 +25,11 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   // Health data - will be loaded from Firestore
   double _calories = 0.0;
-  double _caloriesGoal = 600.0;
+  final double _caloriesGoal = 600.0;
   int _steps = 0;
-  int _stepsGoal = 7000;
+  final int _stepsGoal = 7000;
   double _movingMinutes = 0.0;
-  double _movingGoal = 60.0;
+  final double _movingGoal = 60.0;
 
   // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
   double _waistMeasurement = 0.0;
@@ -55,11 +55,11 @@ class _HealthDashboardState extends State<HealthDashboard>
   DateTime _currentDate = DateTime.now();
 
   // Improved accelerometer variables
-  List<double> _accelerometerValues = [0, 0, 0];
+  final List<double> _accelerometerValues = [0, 0, 0];
   DateTime _lastStepTime = DateTime.now();
   DateTime _lastMovementTime = DateTime.now();
   int _stepBuffer = 0;
-  List<double> _accelerationBuffer = [];
+  final List<double> _accelerationBuffer = [];
   static const int STEP_TIME_GAP = 300;
   static const double STEP_ACCEL_THRESHOLD = 12.0; // Increased threshold
   static const int MOVEMENT_TIME_THRESHOLD = 120; // 2 minutes
@@ -487,8 +487,9 @@ class _HealthDashboardState extends State<HealthDashboard>
         if (calories != null) updates['calories'] = calories;
         if (steps != null) updates['steps'] = steps;
         if (movingMinutes != null) updates['movingMinutes'] = movingMinutes;
-        if (waistMeasurement != null)
+        if (waistMeasurement != null) {
           updates['waistMeasurement'] = waistMeasurement; // UPDATED
+        }
         if (sleepHours != null) updates['sleepHours'] = sleepHours; // UPDATED
 
         await _firestore
@@ -712,7 +713,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                         const SizedBox(height: 10),
 
                         // PROPERLY CENTERED: Semi-circle progress
-                        Container(
+                        SizedBox(
                           width: double.infinity,
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1170,7 +1171,7 @@ class _ModernMetricItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF1111),
+          color: const Color(0x00ff1111),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -1338,7 +1339,8 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
                 onDragStarted: () {},
                 onDragEnd: (details) {},
                 child: DragTarget<int>(
-                  onAccept: (int oldIndex) {
+                  onAcceptWithDetails: (DragTargetDetails<int> details) {
+                    int oldIndex = details.data;
                     if (oldIndex != index) {
                       setState(() {
                         Widget card = cards.removeAt(oldIndex);
@@ -1638,12 +1640,11 @@ class ResponsiveBMIIndicator extends StatelessWidget {
   final double bmi;
   final double height;
 
-  const ResponsiveBMIIndicator({Key? key, required this.bmi, this.height = 32})
-    : super(key: key);
+  const ResponsiveBMIIndicator({super.key, required this.bmi, this.height = 32});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: height,
       child: Column(
         children: [
@@ -1698,25 +1699,34 @@ class ResponsiveBMIIndicator extends StatelessWidget {
   Widget _buildBMIIndicator(double totalWidth) {
     final double indicatorPosition = _calculateIndicatorPosition(totalWidth);
 
-    return Positioned(
-      left: indicatorPosition - 8, // Center the arrow above the position
-      child: Column(
+    return Container(
+      width: totalWidth,
+      height: 40, // Height to accommodate the indicator
+      child: Stack(
         children: [
-          Icon(Icons.arrow_drop_up, color: Colors.white, size: 20),
-          SizedBox(height: 2),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: _getBMIColor(bmi),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              bmi.toStringAsFixed(1),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
+          Positioned(
+            left: indicatorPosition - 8, // Center the arrow above the position
+            top: 0,
+            child: Column(
+              children: [
+                Icon(Icons.arrow_drop_up, color: Colors.white, size: 20),
+                SizedBox(height: 2),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _getBMIColor(bmi),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    bmi.toStringAsFixed(1),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

@@ -92,7 +92,7 @@ void didChangeDependencies() {
 
         // Get the most recent document
         final mostRecentDoc = sortedDocs.first;
-        final data = mostRecentDoc.data() as Map<String, dynamic>;
+        final data = mostRecentDoc.data();
         final images = data['urls'] as List<dynamic>?;
 
         if (images != null && images.isNotEmpty) {
@@ -252,7 +252,7 @@ void didChangeDependencies() {
       }
     } catch (e) {
       print('❌ Error uploading avatar: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -847,8 +847,9 @@ void didChangeDependencies() {
                                             _recentProgressImage!,
                                             fit: BoxFit.cover,
                                             loadingBuilder: (context, child, loadingProgress) {
-                                              if (loadingProgress == null)
+                                              if (loadingProgress == null) {
                                                 return child;
+                                              }
                                               return Center(
                                                 child: CircularProgressIndicator(
                                                   value:
@@ -1078,7 +1079,7 @@ void didChangeDependencies() {
             Stack(
               alignment: Alignment.center,
               children: [
-                Container(
+                SizedBox(
                   width: 80,
                   height: 80,
                   child: CircularProgressIndicator(

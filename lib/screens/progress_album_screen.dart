@@ -129,14 +129,12 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
           .from('progress-images')
           .list(path: userId);
 
-      if (response != null) {
-        print('📷 Found ${response.length} images in Supabase storage');
-        _groupImagesByDate(response);
+      print('📷 Found ${response.length} images in Supabase storage');
+      _groupImagesByDate(response);
 
-        // Save to Firestore subcollection for future use
-        await _saveProgressImagesToFirestore();
-      }
-    } catch (e) {
+      // Save to Firestore subcollection for future use
+      await _saveProgressImagesToFirestore();
+        } catch (e) {
       print('❌ Error loading from Supabase storage: $e');
     }
   }
@@ -702,6 +700,22 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                   ),
                 ),
                 PopupMenuButton<String>(
+                  color: Colors.grey[800],
+                  onSelected: (String result) {
+                    if (result == 'share_community') {
+                      _handleShareToCommunity(date);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(
+                          value: 'share_community',
+                          child: Text(
+                            'Share to Community',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -731,22 +745,6 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                             ),
                           ),
                   ),
-                  color: Colors.grey[800],
-                  onSelected: (String result) {
-                    if (result == 'share_community') {
-                      _handleShareToCommunity(date);
-                    }
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<String>>[
-                        PopupMenuItem<String>(
-                          value: 'share_community',
-                          child: Text(
-                            'Share to Community',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
                 ),
               ],
             ),
@@ -982,14 +980,14 @@ class _ProgressPhotoEditingScreenState
           imageUrls.add(publicURL);
         } catch (e) {
           print('❌ Binary upload failed for image $i: $e');
-          throw e;
+          rethrow;
         }
       }
 
       return imageUrls;
     } catch (e) {
       print('❌ Error uploading images: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -1016,7 +1014,7 @@ class _ProgressPhotoEditingScreenState
       await _firestore.collection('community_posts').add(postData);
     } catch (e) {
       print('Error creating post in Firestore: $e');
-      throw e;
+      rethrow;
     }
   }
 

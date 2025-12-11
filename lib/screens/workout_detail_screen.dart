@@ -6,7 +6,7 @@ import 'exercise_detail_screen.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
-  const WorkoutDetailScreen({Key? key, required this.workout}) : super(key: key);
+  const WorkoutDetailScreen({super.key, required this.workout});
 
   @override
   State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();

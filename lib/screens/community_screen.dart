@@ -313,8 +313,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                       width: 40,
                                       height: 40,
                                       loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null)
+                                        if (loadingProgress == null) {
                                           return child;
+                                        }
                                         return Center(
                                           child: CircularProgressIndicator(
                                             value:

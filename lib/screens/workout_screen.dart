@@ -160,7 +160,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           ),
                           const SizedBox(height: 10),
                           // Bar chart visualization
-                          Container(
+                          SizedBox(
                             height: 150,
                             child: BarChart(
                               BarChartData(
@@ -377,7 +377,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Container(
+                          SizedBox(
                             height: 20,
                             child: Row(
                               children: List.generate(7, (index) {

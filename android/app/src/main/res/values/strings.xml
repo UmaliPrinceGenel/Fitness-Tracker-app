@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="default_web_client_id" translatable="false">431719920653-7d5bf03a1f0d5bfd9a5144.apps.googleusercontent.com</string>
+    <string name="google_sign_in_web_client_id" translatable="false">431719920653-7d5bf03a1f0d5bfd9a5144.apps.googleusercontent.com</string>
+</resources>

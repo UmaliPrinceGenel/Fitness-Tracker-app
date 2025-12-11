@@ -709,7 +709,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 double value = entry.value;
                 DateTime date = _historicalDates[index];
                 return _buildWeightHistoryItem(date, value);
-              }).toList(),
+              }),
             if (_historicalData.isEmpty)
               const Center(
                 child: Text(
@@ -1343,7 +1343,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 double value = entry.value;
                 DateTime date = _historicalDates[index];
                 return _buildSleepHistoryItem(date, value);
-              }).toList(),
+              }),
             if (_historicalData.isEmpty)
               const Center(
                 child: Text(
@@ -1875,7 +1875,7 @@ class _DetailScreenState extends State<DetailScreen> {
             const SizedBox(height: 24),
 
             // CENTERED: Weight and BMI section
-            Container(
+            SizedBox(
               width: double.infinity,
               child: Row(
                 mainAxisAlignment:
@@ -2309,7 +2309,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 double value = entry.value;
                 DateTime date = _historicalDates[index];
                 return _buildCenteredHistoryItem(date, value);
-              }).toList(),
+              }),
             if (_historicalData.isEmpty)
               const Center(
                 child: Text(

@@ -366,7 +366,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   }
 
   Widget _buildDayLabel(String day) {
-    return Container(
+    return SizedBox(
       width: 30,
       height: 30,
       child: Center(

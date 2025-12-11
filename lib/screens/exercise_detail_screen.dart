@@ -6,10 +6,10 @@ class ExerciseDetailScreen extends StatelessWidget {
   final Workout workout;
 
   const ExerciseDetailScreen({
-    Key? key,
+    super.key,
     required this.exerciseNumber,
     required this.workout,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
