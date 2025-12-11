@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Add this import
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -625,9 +624,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _valueController,
         keyboardType: TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: InputDecoration(
           contentPadding: const EdgeInsets.all(18),
@@ -848,9 +844,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _ageController,
         keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: const InputDecoration(
           contentPadding: EdgeInsets.all(18),
@@ -886,9 +879,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _heightController,
         keyboardType: TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: const InputDecoration(
           contentPadding: EdgeInsets.all(18),
@@ -924,9 +914,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _weightController,
         keyboardType: TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: const InputDecoration(
           contentPadding: EdgeInsets.all(18),

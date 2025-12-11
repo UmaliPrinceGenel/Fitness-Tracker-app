@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'progress_album_screen.dart';
 import '../screens/login_screen.dart';
-import 'about_app_screen.dart';
+
 class MyProfile extends StatefulWidget {
   const MyProfile({super.key});
 
@@ -505,15 +505,7 @@ void didChangeDependencies() {
       );
     }
   }
-/// ✅ Navigate to About This App screen
-void _navigateToAboutApp() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => AboutThisAppScreen(),
-    ),
-  );
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -907,7 +899,7 @@ void _navigateToAboutApp() {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  "App Information",
+                                  "Settings",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -936,16 +928,19 @@ void _navigateToAboutApp() {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
+                                // Feedback
+                                _buildSettingsItem(
+                                  icon: Icons.feedback,
+                                  title: "Feedback",
+                                  color: Colors.deepOrange,
+                                ),
+                                const SizedBox(height: 12),
                                 // About this app
-                                // About this app (now clickable)
-GestureDetector(
-  onTap: _navigateToAboutApp,
-  child: _buildSettingsItem(
-    icon: Icons.info_outline,
-    title: "About this app",
-    color: Colors.lightBlue,
-  ),
-),
+                                _buildSettingsItem(
+                                  icon: Icons.info_outline,
+                                  title: "About this app",
+                                  color: Colors.lightBlue,
+                                ),
                               ],
                             ),
                           ),

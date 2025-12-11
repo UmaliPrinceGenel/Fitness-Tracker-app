@@ -1,16 +1,16 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/login_screen.dart';
 import '../screens/terms_and_conditions_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
-// Add this at the top of the file if not already present
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -140,7 +140,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return tempFile;
   }
 
-  /// ✅ Upload image to Supabase bucket
+  /// ✅ Upload image to Supabase bucket - COMPLETELY FIXED VERSION
   Future<String> _uploadImageToSupabase(
     Uint8List imageBytes,
     String userId,
@@ -178,11 +178,13 @@ class _SignupScreenState extends State<SignupScreen> {
       return publicURL;
     } catch (e) {
       print('❌ Error uploading image to Supabase: $e');
+
+      // Fallback: Use placeholder URL
       return 'https://via.placeholder.com/150/CCCCCC/000000?text=Profile';
     }
   }
 
-  /// ✅ Direct upload without file conversion
+  /// ✅ Alternative: Direct upload without file conversion
   Future<String> _directUploadToSupabase(
     Uint8List imageBytes,
     String userId,
@@ -196,7 +198,8 @@ class _SignupScreenState extends State<SignupScreen> {
       final String filePath =
           '$userId/${fileName}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
 
-      // Try uploadBinary method which accepts Uint8List directly
+      // Use uploadBinary method which accepts Uint8List directly
+      // Try uploadBinary method
       await _supabase.storage
           .from('profile-pictures')
           .uploadBinary(filePath, imageBytes);
@@ -235,6 +238,7 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } catch (e) {
       print('Error uploading default profile: $e');
+      // Fallback to placeholder
       return 'https://via.placeholder.com/150/CCCCCC/000000?text=Profile';
     }
   }
@@ -257,22 +261,26 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } catch (e) {
       print('Error uploading Google profile: $e');
+      // Fallback to default profile picture
       return await _uploadDefaultProfilePicture(userId);
     }
   }
 
-  /// ✅ Get user photo URL
+  /// ✅ Get user photo URL (Google photo uploaded to Supabase or default from Supabase)
   Future<String> _getUserPhotoURL(fbAuth.User user) async {
     try {
+      // If user has photo from Google, download and upload to Supabase
       if (user.photoURL != null && user.photoURL!.isNotEmpty) {
         print('🔄 Downloading Google profile picture: ${user.photoURL}');
         return await _uploadGoogleProfilePicture(user.photoURL!, user.uid);
       }
 
+      // For email sign-in or Google without photo, use default asset uploaded to Supabase
       print('🔄 Using default profile picture');
       return await _uploadDefaultProfilePicture(user.uid);
     } catch (e) {
       print('❌ Error getting user photo URL: $e');
+      // Ultimate fallback
       return 'https://via.placeholder.com/150/CCCCCC/000000?text=Profile';
     }
   }
@@ -280,14 +288,17 @@ class _SignupScreenState extends State<SignupScreen> {
   /// ✅ Sync Firebase user to Firestore with Supabase photo URLs
   Future<void> _syncUserWithFirestore(fbAuth.User fbUser) async {
     try {
+      // Check if user exists in Firestore
       final userDoc = await _firestore
           .collection('users')
           .doc(fbUser.uid)
           .get();
 
+      // Get photo URL from Supabase
       String photoURL = await _getUserPhotoURL(fbUser);
 
       if (!userDoc.exists) {
+        // New user - create document in Firestore
         await _firestore.collection('users').doc(fbUser.uid).set({
           'uid': fbUser.uid,
           'email': fbUser.email,
@@ -295,19 +306,21 @@ class _SignupScreenState extends State<SignupScreen> {
           'photoURL': photoURL,
           'provider': fbUser.providerData.first.providerId,
           'emailVerified': fbUser.emailVerified,
-          'hasCompletedProfile': false,
+          'hasCompletedProfile': false, // They still need to complete profile
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
         print('✅ User created in Firestore: ${fbUser.email}');
         print('✅ Profile picture saved to: $photoURL');
       } else {
+        // Existing user - update if needed
         await _firestore.collection('users').doc(fbUser.uid).update({
-          'photoURL': photoURL,
+          'photoURL': photoURL, // Update photo URL if needed
           'emailVerified': fbUser.emailVerified,
           'updatedAt': FieldValue.serverTimestamp(),
         });
         print('ℹ️ User updated in Firestore: ${fbUser.email}');
+        print('ℹ️ Profile picture updated to: $photoURL');
       }
     } catch (e) {
       print('❌ Error syncing user to Firestore: $e');
@@ -330,17 +343,21 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  /// ✅ Check email verification status manually
+  /// ✅ Check email verification status manually - FIXED VERSION
   Future<void> _checkEmailVerification() async {
     setState(() => _isLoading = true);
     try {
       final user = _firebaseAuth.currentUser;
       if (user != null) {
+        // Reload user to get latest verification status
         await user.reload();
         final updatedUser = _firebaseAuth.currentUser;
 
         if (updatedUser != null && updatedUser.emailVerified) {
+          // Update Firestore
           await _updateUserVerificationStatus(updatedUser);
+
+          // ✅ FIXED: Sign out user first, then navigate to login
           await _firebaseAuth.signOut();
 
           if (mounted) {
@@ -370,6 +387,7 @@ class _SignupScreenState extends State<SignupScreen> {
           }
         }
       } else {
+        // No user is logged in - show email input dialog
         _showEmailVerificationDialog();
       }
     } catch (e) {
@@ -386,7 +404,7 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  /// ✅ Show dialog for email verification check
+  /// ✅ NEW: Show dialog for email verification check
   void _showEmailVerificationDialog() {
     final emailController = TextEditingController();
 
@@ -430,13 +448,8 @@ class _SignupScreenState extends State<SignupScreen> {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your email';
                   }
-                  // Gmail-only validation
-                  final trimmedValue = value.trim().toLowerCase();
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(trimmedValue)) {
+                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                     return 'Please enter a valid email';
-                  }
-                  if (!trimmedValue.endsWith('@gmail.com')) {
-                    return 'Only @gmail.com addresses are allowed';
                   }
                   return null;
                 },
@@ -481,10 +494,11 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  /// ✅ Check verification by email
+  /// ✅ NEW: Check verification by email - FIXED VERSION (Just shows popup)
   Future<void> _checkVerificationByEmail(String email) async {
     setState(() => _isLoading = true);
     try {
+      // Try to find the user by email in Firestore to check verification status
       final usersQuery = await _firestore
           .collection('users')
           .where('email', isEqualTo: email)
@@ -495,8 +509,11 @@ class _SignupScreenState extends State<SignupScreen> {
         final userDoc = usersQuery.docs.first;
         final userData = userDoc.data();
         final bool isVerified = userData['emailVerified'] ?? false;
+
+        // Show result in a dialog
         _showVerificationResultDialog(email, isVerified);
       } else {
+        // No user found with this email
         _showVerificationResultDialog(email, false, userExists: false);
       }
     } catch (e) {
@@ -512,7 +529,7 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  /// ✅ Show verification result dialog
+  /// ✅ NEW: Show verification result dialog
   void _showVerificationResultDialog(
     String email,
     bool isVerified, {
@@ -585,6 +602,7 @@ class _SignupScreenState extends State<SignupScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
+                  // Optionally navigate to login with pre-filled email
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -613,35 +631,30 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  /// ✅ Sign up with email and password
+  /// ✅ Sign up with email and password (Firebase + Firestore sync)
   Future<void> _signUpWithEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailController.text.trim().toLowerCase();
-      
-      // Additional Gmail validation before Firebase call
-      if (!email.endsWith('@gmail.com')) {
-        throw fbAuth.FirebaseAuthException(
-          code: 'invalid-email',
-          message: 'Only @gmail.com addresses are allowed',
-        );
-      }
-
+      // Create user in Firebase Auth
       final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
+        email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       final fbUser = credential.user;
       if (fbUser != null) {
+        // Update display name
         await fbUser.updateDisplayName(
-          email.split('@')[0],
+          _emailController.text.trim().split('@')[0],
         );
 
+        // Send email verification
         await fbUser.sendEmailVerification();
+
+        // Sync to Firestore with Supabase profile picture
         await _syncUserWithFirestore(fbUser);
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -653,6 +666,7 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
 
+        // Show verification dialog
         _showVerificationDialog(fbUser);
       }
     } on fbAuth.FirebaseAuthException catch (e) {
@@ -663,7 +677,7 @@ class _SignupScreenState extends State<SignupScreen> {
       } else if (e.code == 'weak-password') {
         errorMessage = 'Password is too weak.';
       } else if (e.code == 'invalid-email') {
-        errorMessage = 'Invalid email address. Only @gmail.com addresses are allowed.';
+        errorMessage = 'Invalid email address.';
       } else {
         errorMessage = 'Signup failed: ${e.message}';
       }
@@ -729,7 +743,10 @@ class _SignupScreenState extends State<SignupScreen> {
           actions: [
             TextButton(
               onPressed: () async {
+                // Don't sign out - keep user logged in so we can detect verification
                 Navigator.of(context).pop();
+
+                // Show info that auto-detection is active
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
@@ -759,59 +776,22 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  /// ✅ FIXED: Google sign-up with platform-specific implementation
-  /// ✅ IMPROVED: Google sign-up with better mobile support
+  /// ✅ Google sign-up with enhanced duplicate account detection
   Future<void> _signUpWithGoogle() async {
     setState(() => _isLoading = true);
     try {
       final fbAuth.GoogleAuthProvider googleProvider =
           fbAuth.GoogleAuthProvider();
+
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
 
-      fbAuth.UserCredential userCredential;
-
-      if (kIsWeb) {
-        // For web platforms
-        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
-      } else {
-        // For mobile platforms (Android/iOS)
-        // Use signInWithRedirect which works better on mobile
-        await _firebaseAuth.signInWithRedirect(googleProvider);
-
-        // Try to get the redirect result
-        // Note: This might return null on first call, we need to handle this
-        try {
-          userCredential = await _firebaseAuth.getRedirectResult();
-        } catch (e) {
-          print('Redirect result error: $e');
-          // If redirect fails, try the direct method
-          userCredential = await _firebaseAuth.signInWithProvider(
-            googleProvider,
-          );
-        }
-      }
-
-      // Wait a moment for the auth state to update
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Get the current user
-      final fbUser = _firebaseAuth.currentUser;
+      final userCredential = await _firebaseAuth.signInWithPopup(
+        googleProvider,
+      );
+      final fbUser = userCredential.user;
 
       if (fbUser != null) {
-        // ✅ Check if this Google account has a Gmail email
-        final userEmail = fbUser.email?.toLowerCase() ?? '';
-        if (!userEmail.endsWith('@gmail.com')) {
-          await _firebaseAuth.signOut();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Only @gmail.com accounts are allowed for Google sign-up'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-
         // ✅ Check if this Google account is already registered in Firestore
         final userDoc = await _firestore
             .collection('users')
@@ -841,8 +821,6 @@ class _SignupScreenState extends State<SignupScreen> {
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
-      } else {
-        throw Exception('Google sign-in failed: No user returned');
       }
     } on fbAuth.FirebaseAuthException catch (e) {
       await _handleGoogleSignUpError(e);
@@ -857,59 +835,6 @@ class _SignupScreenState extends State<SignupScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  /// ✅ Handle Google sign-in result
-  Future<void> _handleGoogleSignInResult(fbAuth.User? fbUser) async {
-    if (fbUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to sign in with Google'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Check Gmail requirement for Google sign-in
-    final userEmail = fbUser.email?.toLowerCase() ?? '';
-    if (!userEmail.endsWith('@gmail.com')) {
-      await _firebaseAuth.signOut();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only @gmail.com accounts are allowed for Google sign-up'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Check if user already exists
-    final userDoc = await _firestore.collection('users').doc(fbUser.uid).get();
-
-    if (userDoc.exists) {
-      // User already exists - show message and go to login
-      await _firebaseAuth.signOut(); // Only sign out from Firebase
-      await _showAccountAlreadyRegisteredDialog(
-        fbUser.email ?? 'this Google account',
-      );
-      return;
-    }
-    // New user - sync with Firestore
-    await _syncUserWithFirestore(fbUser);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Signed up successfully with Google!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // Navigate to login screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-    );
   }
 
   /// ✅ Show dialog for already registered account
@@ -1030,6 +955,7 @@ class _SignupScreenState extends State<SignupScreen> {
         },
       );
     } else {
+      // Show snackbar for other errors
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorDetails),
@@ -1144,27 +1070,16 @@ class _SignupScreenState extends State<SignupScreen> {
                                               8,
                                             ),
                                           ),
-                                          hintText: "example@gmail.com",
-                                          hintStyle: TextStyle(
-                                            color: Colors.white.withOpacity(0.5),
-                                          ),
                                         ),
                                         validator: (value) {
                                           if (value == null || value.isEmpty) {
                                             return 'Please enter your email';
                                           }
-                                          
-                                          // Check if it's a valid email format
-                                          final trimmedValue = value.trim().toLowerCase();
-                                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(trimmedValue)) {
+                                          if (!RegExp(
+                                            r'^[^@]+@[^@]+\.[^@]+',
+                                          ).hasMatch(value)) {
                                             return 'Please enter a valid email';
                                           }
-                                          
-                                          // Gmail-only validation
-                                          if (!trimmedValue.endsWith('@gmail.com')) {
-                                            return 'Only @gmail.com addresses are allowed';
-                                          }
-                                          
                                           return null;
                                         },
                                       ),

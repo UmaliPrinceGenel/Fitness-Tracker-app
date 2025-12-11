@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Add this import
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -995,13 +994,10 @@ class _HealthDashboardState extends State<HealthDashboard>
           ),
           content: TextField(
             controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
+            keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'New $type Value (cm)',
+              labelText: 'New $type Value',
               labelStyle: const TextStyle(color: Colors.white70),
               enabledBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.orange),
@@ -1218,7 +1214,7 @@ class _ModernMetricItem extends StatelessWidget {
             ),
           ],
         ),
-      )
+      ),
     );
   }
 }
