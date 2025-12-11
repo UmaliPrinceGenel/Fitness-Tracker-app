@@ -323,6 +323,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final fbAuth.GoogleAuthProvider googleProvider = fbAuth.GoogleAuthProvider();
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
+      
+      // Force account selection prompt
+      if (kIsWeb) {
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+      } else {
+        googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+        googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      }
 
       fbAuth.UserCredential userCredential;
 

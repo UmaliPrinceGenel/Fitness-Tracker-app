@@ -779,7 +779,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   /// ✅ FIXED: Google sign-up with platform-specific implementation
- /// ✅ IMPROVED: Google sign-up with better mobile support
+  /// ✅ IMPROVED: Google sign-up with better mobile support
   Future<void> _signUpWithGoogle() async {
     setState(() => _isLoading = true);
     try {
@@ -787,6 +787,14 @@ class _SignupScreenState extends State<SignupScreen> {
           fbAuth.GoogleAuthProvider();
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
+      
+      // Force account selection prompt
+      if (kIsWeb) {
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+      } else {
+        googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+        googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      }
 
       fbAuth.UserCredential userCredential;
 
