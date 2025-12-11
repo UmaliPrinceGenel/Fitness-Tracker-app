@@ -27,6 +27,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     super.initState();
     heightController = TextEditingController(text: height.toStringAsFixed(0));
     weightController = TextEditingController(text: weight.toString());
+    
+    // Add listeners to handle text changes without causing excessive rebuilds
+    heightController.addListener(_handleHeightChange);
+    weightController.addListener(_handleWeightChange);
   }
 
   @override
@@ -47,6 +51,57 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       setState(() {
         dob = picked;
       });
+    }
+  }
+
+  // Handle height changes without causing excessive rebuilds
+  void _handleHeightChange() {
+    String value = heightController.text;
+    if (value.isNotEmpty) {
+      double? parsedValue = double.tryParse(value);
+      if (parsedValue != null) {
+        height = parsedValue;
+        // Format the value to remove decimals if needed
+        String formattedValue = height.toStringAsFixed(0);
+        if (heightController.text != formattedValue) {
+          int selectionIndex = heightController.selection.base.offset;
+          heightController.text = formattedValue;
+          // Keep cursor at the same relative position
+          int newSelectionIndex = selectionIndex <= formattedValue.length 
+              ? selectionIndex 
+              : formattedValue.length;
+          heightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: newSelectionIndex)
+          );
+        }
+      }
+    }
+  }
+
+  // Handle weight changes without causing excessive rebuilds
+  void _handleWeightChange() {
+    String value = weightController.text;
+    if (value.isNotEmpty) {
+      int? parsedValue = int.tryParse(value);
+      if (parsedValue != null) {
+        weight = parsedValue;
+        // Make sure the displayed value matches the stored value
+        String formattedValue = weight.toString();
+        if (weightController.text != formattedValue) {
+          int selectionIndex = weightController.selection.base.offset;
+          weightController.text = formattedValue;
+          // Keep cursor at the same relative position
+          int newSelectionIndex = selectionIndex <= formattedValue.length 
+              ? selectionIndex 
+              : formattedValue.length;
+          weightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: newSelectionIndex)
+          );
+        }
+      }
+    } else {
+      // If the field is empty, set weight to 0
+      weight = 0;
     }
   }
 
@@ -258,13 +313,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               ),
                               controller: heightController,
                               onChanged: (value) {
-                                if (value.isNotEmpty) {
-                                  setState(() {
-                                    height = double.tryParse(value) ?? 170;
-                                    heightController.text = height
-                                        .toStringAsFixed(0);
-                                  });
-                                }
+                                // Changes are now handled by the controller listener
+                                // This callback is kept for compatibility but doesn't trigger setState
                               },
                             ),
                           ),
@@ -309,28 +359,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               ),
                               controller: weightController,
                               onChanged: (value) {
-                                setState(() {
-                                  if (value.isNotEmpty) {
-                                    int? parsedValue = int.tryParse(value);
-                                    if (parsedValue != null) {
-                                      weight = parsedValue;
-                                    }
-                                  } else {
-                                    weight = 0;
-                                  }
-                                  if (value.isNotEmpty) {
-                                    int? parsedValue = int.tryParse(value);
-                                    if (parsedValue != null) {
-                                      weightController.text = weight.toString();
-                                      weightController.selection =
-                                          TextSelection.fromPosition(
-                                        TextPosition(
-                                          offset: weightController.text.length,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                });
+                                // Changes are now handled by the controller listener
+                                // This callback is kept for compatibility but doesn't trigger setState
                               },
                             ),
                           ),
