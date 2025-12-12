@@ -76,6 +76,18 @@ flutter:
     - assets/
     - assets/default_picture.jpg
     - assets/google.png
+    - assets/thumbnails/
+    - assets/thumbnails/Abs/
+    - assets/thumbnails/Biceps/
+    - assets/thumbnails/Calves/
+    - assets/thumbnails/Chest/
+    - assets/thumbnails/Forearms/
+    - assets/thumbnails/Glutes & Hamstrings/
+    - assets/thumbnails/Quads/
+    - assets/thumbnails/Rotational Core/
+    - assets/thumbnails/Shoulders/
+    - assets/thumbnails/Traps/
+    - assets/thumbnails/Triceps/
     - assets/videos/
     - assets/videos/Back/
     - assets/videos/Back/Lats/

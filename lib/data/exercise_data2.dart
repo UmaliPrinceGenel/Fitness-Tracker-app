@@ -10,7 +10,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Chest",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Chest/chest_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell Bench Press",
@@ -64,7 +64,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Chest",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Chest/chest_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Incline Dumbbell Bench Press",
@@ -106,7 +106,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Chest",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Chest/chest_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Push-ups",
@@ -138,7 +138,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Back/back_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Pull-ups Chin-ups",
@@ -174,7 +174,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Back/back_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Lat Pulldowns",
@@ -204,7 +204,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Back/back_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Lat Pulldowns",
@@ -230,7 +230,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Back/back_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell Rows",
@@ -272,7 +272,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Back/back_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Barbell Rows",
@@ -308,7 +308,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Back/back_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Seated Cable Rows",
@@ -334,7 +334,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Traps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Traps/traps_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell Deadlift",
@@ -364,7 +364,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Traps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Traps/traps_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Shrugs",
@@ -390,7 +390,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Shoulders",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Shoulders/shoulders_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Overhead Press",
@@ -438,7 +438,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Shoulders",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Shoulders/shoulders_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Overhead Press",
@@ -480,7 +480,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Shoulders",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Shoulders/shoulders_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Dumbbell Lateral Raises",
@@ -512,7 +512,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Triceps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Triceps/triceps_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Overhead Tricep Extension",
@@ -548,7 +548,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Triceps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Triceps/triceps_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Tricep Pushdowns",
@@ -578,7 +578,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Triceps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Triceps/triceps_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Tricep Pushdowns",
@@ -604,7 +604,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Biceps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Biceps/biceps_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Bicep Curls",
@@ -646,7 +646,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Biceps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Biceps/biceps_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Bicep Curls",
@@ -682,7 +682,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Biceps",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Biceps/biceps_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Barbell/Dumbbell Bicep Curls",
@@ -708,7 +708,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Forearms",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Forearms/forearms_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Wrist Curls",
@@ -726,7 +726,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Quads Workouts
-  Workout(
+ Workout(
     id: "quads_001",
     title: "Quads Training HARD",
     duration: "30 min",
@@ -734,7 +734,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Quads/quads_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell Squat",
@@ -770,7 +770,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Quads/quads_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Leg Press",
@@ -806,7 +806,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Quads/quads_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Bodyweight Squats",
@@ -838,7 +838,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell Deadlift Glutes",
@@ -880,7 +880,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Romanian Deadlifts",
@@ -916,7 +916,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Glute Bridges",
@@ -948,7 +948,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Calves/calves_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Standing Calf Raises",
@@ -978,7 +978,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Calves/calves_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Standing Calf Raises",
@@ -1004,7 +1004,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Abs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Abs/abs_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Cable Crunches",
@@ -1046,7 +1046,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Abs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Abs/abs_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Cable Crunches",
@@ -1082,7 +1082,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Abs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Abs/abs_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Reverse Crunches",
@@ -1114,7 +1114,7 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Core",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Rotational Core/rotational_core_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Russian Twists",
@@ -1162,7 +1162,7 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Core",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Rotational Core/rotational_core_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Russian Twists",
@@ -1198,7 +1198,7 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Core",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/abs.png",
+    thumbnailAsset: "assets/thumbnails/Rotational Core/rotational_core_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Russian Twists",
