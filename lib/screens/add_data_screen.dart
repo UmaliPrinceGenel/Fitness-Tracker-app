@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,7 +21,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
   final TextEditingController _weightController = TextEditingController();
   String? _selectedGender;
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+ final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
@@ -29,7 +30,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     _selectedDate = DateTime.now();
   }
 
-  @override
+ @override
   void dispose() {
     _valueController.dispose();
     _ageController.dispose();
@@ -89,7 +90,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
   }
 
-  Future<void> _saveWeightData(double weight) async {
+ Future<void> _saveWeightData(double weight) async {
     final user = _auth.currentUser!;
     final timestamp = _selectedDate.millisecondsSinceEpoch;
 
@@ -286,7 +287,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
   }
 
-  String _getInputLabel() {
+ String _getInputLabel() {
     switch (widget.title) {
       case "Weight":
         return "weight in kg";
@@ -323,7 +324,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
       default:
         return Icons.edit;
     }
-  }
+ }
 
   Color _getInputColor() {
     switch (widget.title) {
@@ -336,7 +337,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
       default:
         return Colors.orange;
     }
-  }
+ }
 
   List<Color> _getDateGradientColors() {
     switch (widget.title) {
@@ -351,7 +352,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
@@ -504,7 +505,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
               gradient: const LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [Color(0xFF1A1A1A), Color(0xFF121212)],
+                colors: [Color(0xFF1A1A1A), Color(0xFF1212)],
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
@@ -531,7 +532,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
   }
 
-  Widget _buildTimeSelection() {
+ Widget _buildTimeSelection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -604,7 +605,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
   }
 
-  Widget _buildValueInput() {
+ Widget _buildValueInput() {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -624,6 +625,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _valueController,
         keyboardType: TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: InputDecoration(
           contentPadding: const EdgeInsets.all(18),
@@ -644,7 +648,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
   }
 
-  String _getSuffixText() {
+ String _getSuffixText() {
     switch (widget.title) {
       case "Weight":
         return "kg";
@@ -722,7 +726,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
   }
 
-  Widget _buildGenderSelection() {
+ Widget _buildGenderSelection() {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -844,6 +848,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _ageController,
         keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: const InputDecoration(
           contentPadding: EdgeInsets.all(18),
@@ -879,6 +886,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _heightController,
         keyboardType: TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: const InputDecoration(
           contentPadding: EdgeInsets.all(18),
@@ -894,7 +904,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     );
   }
 
-  Widget _buildWeightInput() {
+ Widget _buildWeightInput() {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -914,6 +924,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
       child: TextField(
         controller: _weightController,
         keyboardType: TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        ],
         style: const TextStyle(color: Colors.white, fontSize: 20),
         decoration: const InputDecoration(
           contentPadding: EdgeInsets.all(18),

@@ -7,7 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'progress_album_screen.dart';
-import '../screens/login_screen.dart';
+import 'login_screen.dart';
+import 'about_app_screen.dart';
 
 class MyProfile extends StatefulWidget {
   const MyProfile({super.key});
@@ -16,7 +17,7 @@ class MyProfile extends StatefulWidget {
   State<MyProfile> createState() => _MyProfileState();
 }
 
-class _MyProfileState extends State<MyProfile>{
+class _MyProfileState extends State<MyProfile> {
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -33,13 +34,15 @@ class _MyProfileState extends State<MyProfile>{
     _loadUserData();
     _loadRecentProgressImage();
   }
-@override
-void didChangeDependencies() {
-  super.didChangeDependencies();
-  print('🔄 Profile tab opened - refreshing data');
-  _loadUserData();
-  _loadRecentProgressImage();
-}
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print('🔄 Profile tab opened - refreshing data');
+    _loadUserData();
+    _loadRecentProgressImage();
+  }
+
   /// ✅ Load user data from Firestore
   Future<void> _loadUserData() async {
     try {
@@ -506,6 +509,16 @@ void didChangeDependencies() {
     }
   }
 
+  /// ✅ Navigate to About This App screen
+  void _navigateToAboutApp() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AboutThisAppScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -788,8 +801,7 @@ void didChangeDependencies() {
                                       ],
                                     ),
                                     GestureDetector(
-                                      onTap:
-                                          _navigateToProgressAlbum, // Use the new method
+                                      onTap: _navigateToProgressAlbum,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 16,
@@ -899,7 +911,7 @@ void didChangeDependencies() {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  "Settings",
+                                  "App Information",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -907,8 +919,6 @@ void didChangeDependencies() {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                       
-                                const SizedBox(height: 12),
                                 // Version
                                 _buildSettingsItem(
                                   icon: Icons.info,
@@ -928,18 +938,14 @@ void didChangeDependencies() {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                // Feedback
-                                _buildSettingsItem(
-                                  icon: Icons.feedback,
-                                  title: "Feedback",
-                                  color: Colors.deepOrange,
-                                ),
-                                const SizedBox(height: 12),
                                 // About this app
-                                _buildSettingsItem(
-                                  icon: Icons.info_outline,
-                                  title: "About this app",
-                                  color: Colors.lightBlue,
+                                GestureDetector(
+                                  onTap: _navigateToAboutApp,
+                                  child: _buildSettingsItem(
+                                    icon: Icons.info_outline,
+                                    title: "About this app",
+                                    color: Colors.lightBlue,
+                                  ),
                                 ),
                               ],
                             ),

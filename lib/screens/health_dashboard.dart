@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Add this import
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -28,7 +29,7 @@ class _HealthDashboardState extends State<HealthDashboard>
   double _caloriesGoal = 600.0;
   int _steps = 0;
   int _stepsGoal = 7000;
-  double _movingMinutes = 0.0;
+ double _movingMinutes = 0.0;
   double _movingGoal = 60.0;
 
   // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
@@ -51,22 +52,18 @@ class _HealthDashboardState extends State<HealthDashboard>
   bool _isTrackingSteps = false;
   String _status = 'Waiting...';
 
-  // Date tracking for daily reset
+ // Date tracking for daily reset
   DateTime _currentDate = DateTime.now();
 
   // Improved accelerometer variables
-  List<double> _accelerometerValues = [0, 0, 0];
+  List<double> _accelerometerValues = [0, 0];
   DateTime _lastStepTime = DateTime.now();
   DateTime _lastMovementTime = DateTime.now();
   int _stepBuffer = 0;
   List<double> _accelerationBuffer = [];
-  List<double> _accelerationTimeBuffer = []; // Track timing for pattern recognition
   static const int STEP_TIME_GAP = 300;
-  static const double STEP_ACCEL_THRESHOLD = 15.0; // Increased threshold to reduce false positives
+  static const double STEP_ACCEL_THRESHOLD = 12.0; // Increased threshold
   static const int MOVEMENT_TIME_THRESHOLD = 120; // 2 minutes
-  static const double EMULATOR_NOISE_THRESHOLD = 0.5; // Threshold to detect potential emulator noise
-  double _lastAccelerationMagnitude = 0.0;
-  DateTime _lastAccelerationTime = DateTime.now();
 
   @override
   void initState() {
@@ -178,7 +175,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
-  Future<void> _initPedometer() async {
+ Future<void> _initPedometer() async {
     try {
       Pedometer.stepCountStream.listen(_onStepCount).onError(_onStepCountError);
       Pedometer.pedestrianStatusStream
@@ -194,7 +191,7 @@ class _HealthDashboardState extends State<HealthDashboard>
         _status = 'Pedometer not available';
       });
     }
-  }
+ }
 
   // FIXED: Prevent duplicate step counting
   void _onStepCount(StepCount event) {
@@ -239,37 +236,27 @@ class _HealthDashboardState extends State<HealthDashboard>
   // FIXED: Improved step detection algorithm
   void _detectStepFromAccelerometer(AccelerometerEvent event) {
     // Calculate magnitude of acceleration vector
-    double acceleration = (event.x * event.x + event.y * event.y + event.z * event.z);
-    
-    // Calculate difference from last acceleration to detect rapid changes (emulator noise)
-    double accelerationDiff = (acceleration - _lastAccelerationMagnitude).abs();
-    DateTime now = DateTime.now();
-    int timeDiffFromLastReading = now.difference(_lastAccelerationTime).inMilliseconds;
-    
-    // Update tracking variables
-    _lastAccelerationMagnitude = acceleration;
-    _lastAccelerationTime = now;
-    
-    // Skip processing if acceleration changes are too rapid (likely emulator noise)
-    if (timeDiffFromLastReading < 50 && accelerationDiff > EMULATOR_NOISE_THRESHOLD) {
-      return; // Skip this reading as it might be emulator noise
-    }
+    double acceleration =
+        (event.x * event.x + event.y * event.y + event.z * event.z);
 
     // Add to buffer for smoothing
     _accelerationBuffer.add(acceleration);
-    _accelerationTimeBuffer.add(now.millisecondsSinceEpoch.toDouble());
-    if (_accelerationBuffer.length > 15) { // Increased buffer size for better smoothing
+    if (_accelerationBuffer.length > 10) {
+      // Increased buffer size
       _accelerationBuffer.removeAt(0);
-      _accelerationTimeBuffer.removeAt(0);
     }
 
     // Calculate smoothed acceleration
-    double smoothedAcceleration = _accelerationBuffer.reduce((a, b) => a + b) / _accelerationBuffer.length;
+    double smoothedAcceleration =
+        _accelerationBuffer.reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
 
+    DateTime now = DateTime.now();
     int timeDiff = now.difference(_lastStepTime).inMilliseconds;
 
     // Only count step if enough time has passed and acceleration exceeds threshold
-    if (timeDiff > STEP_TIME_GAP && smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
+    if (timeDiff > STEP_TIME_GAP &&
+        smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
       // Additional validation: check if this is a valid step pattern
       if (_isValidStepPattern(smoothedAcceleration)) {
         _stepBuffer++;
@@ -277,8 +264,8 @@ class _HealthDashboardState extends State<HealthDashboard>
         _lastMovementTime = now; // Update movement time for moving minutes
 
         // Process steps in batches to reduce UI updates
-        if (_stepBuffer >= 5) { // Increased batch size to reduce sensitivity
-          // Process every 5 steps instead of 3
+        if (_stepBuffer >= 3) {
+          // Process every 3 steps
           final newSteps = _steps + _stepBuffer;
           setState(() {
             _steps = newSteps;
@@ -292,40 +279,23 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
-  // FIXED: Add step pattern validation
+ // FIXED: Add step pattern validation
   bool _isValidStepPattern(double acceleration) {
     // Check if we have enough data in buffer
     if (_accelerationBuffer.length < 5) return true;
 
     // Calculate variance to detect consistent movement vs random shakes
-    double mean = _accelerationBuffer.reduce((a, b) => a + b) / _accelerationBuffer.length;
-    double variance = _accelerationBuffer
-        .map((x) => (x - mean) * (x - mean))
-        .reduce((a, b) => a + b) / _accelerationBuffer.length;
+    double mean =
+        _accelerationBuffer.reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
+    double variance =
+        _accelerationBuffer
+            .map((x) => (x - mean) * (x - mean))
+            .reduce((a, b) => a + b) /
+        _accelerationBuffer.length;
 
     // If variance is too high, it might be random shaking, not walking
-    if (variance > 100.0) return false; // More restrictive variance check
-
-    // Additional check: ensure acceleration values are not all too similar (indicating noise)
-    double maxVal = _accelerationBuffer.reduce((a, b) => a > b ? a : b);
-    double minVal = _accelerationBuffer.reduce((a, b) => a < b ? a : b);
-    double range = maxVal - minVal;
-    
-    // If the range is too small, it might be constant noise rather than actual steps
-    if (range < 2.0) return false;
-
-    // Additional check: look for peaks in the acceleration data that would indicate steps
-    int peakCount = 0;
-    for (int i = 1; i < _accelerationBuffer.length - 1; i++) {
-      // Check if current value is a peak (higher than neighbors)
-      if (_accelerationBuffer[i] > _accelerationBuffer[i - 1] && 
-          _accelerationBuffer[i] > _accelerationBuffer[i + 1]) {
-        peakCount++;
-      }
-    }
-
-    // For valid walking pattern, we should have some peaks (at least 1 in the buffer)
-    return peakCount >= 1;
+    return variance < 50.0; // Adjust this threshold as needed
   }
 
   // FIXED: New moving minutes timer
@@ -373,12 +343,13 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
-  // REMOVED: Old _updateMovingMinutes method as it's now handled by timer
+ // REMOVED: Old _updateMovingMinutes method as it's now handled by timer
 
-  // Automatic BMI Calculation
+ // Automatic BMI Calculation
   void _calculateBMI() {
     if (_height > 0 && _weight > 0) {
-      double newBmi = _weight / ((_height / 100) * (_height / 100));
+      double heightInMeters = _height / 100;
+      double newBmi = _weight / (heightInMeters * heightInMeters);
       if (newBmi != _bmi) {
         setState(() {
           _bmi = double.parse(newBmi.toStringAsFixed(1));
@@ -471,7 +442,7 @@ class _HealthDashboardState extends State<HealthDashboard>
         _isLoading = false;
       });
     }
-  }
+ }
 
   Future<void> _initializeNewUserHealthData(String userId) async {
     try {
@@ -498,7 +469,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     } catch (e) {
       print('Error initializing health data: $e');
     }
-  }
+ }
 
   Future<void> _updateHealthData({
     double? calories,
@@ -570,7 +541,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     } catch (e) {
       print('Error updating health data: $e');
     }
-  }
+ }
 
   // Get activity data for different time periods
   List<DailyActivity> _getWeeklyActivity() {
@@ -578,7 +549,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     return _dailyActivityHistory
         .where((activity) => activity.date.isAfter(oneWeekAgo))
         .toList();
-  }
+ }
 
   List<DailyActivity> _getMonthlyActivity() {
     final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
@@ -598,7 +569,7 @@ class _HealthDashboardState extends State<HealthDashboard>
   }
 
   // FIXED: Improved app lifecycle handling
-  @override
+ @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Reload data when app comes to foreground
@@ -613,7 +584,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
-  void _onItemTapped(int index) {
+ void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -1025,10 +996,13 @@ class _HealthDashboardState extends State<HealthDashboard>
           ),
           content: TextField(
             controller: controller,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'New $type Value',
+              labelText: 'New $type Value (cm)',
               labelStyle: const TextStyle(color: Colors.white70),
               enabledBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.orange),
@@ -1245,9 +1219,9 @@ class _ModernMetricItem extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      )
     );
-  }
+ }
 }
 
 // UPDATED: Changed parameters to waistMeasurement and sleepHours
@@ -1702,7 +1676,7 @@ class ResponsiveBMIIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildBMIScale(double totalWidth) {
+ Widget _buildBMIScale(double totalWidth) {
     // Define BMI ranges and their widths
     final bmiRanges = [
       _BMIRange(15.0, 18.5, Colors.blue), // Underweight
@@ -1755,7 +1729,7 @@ class ResponsiveBMIIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildBMILabels() {
+ Widget _buildBMILabels() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1809,7 +1783,7 @@ class _BMIRange {
 
 class _BMICard extends StatelessWidget {
   final double bmi;
-  final VoidCallback onDataSaved; // ADD THIS
+ final VoidCallback onDataSaved; // ADD THIS
   const _BMICard({required this.bmi, required this.onDataSaved});
 
   @override
@@ -1872,7 +1846,7 @@ class _BMICard extends StatelessWidget {
     );
   }
 
-  String _getBMICategory(double bmi) {
+ String _getBMICategory(double bmi) {
     if (bmi < 18.5) return "Underweight";
     if (bmi < 25) return "Normal";
     if (bmi < 30) return "Overweight";
@@ -2096,7 +2070,7 @@ class WeightLineChartPainter extends CustomPainter {
     canvas.drawPath(path, Paint()..shader = gradient);
   }
 
-  @override
+ @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
 
