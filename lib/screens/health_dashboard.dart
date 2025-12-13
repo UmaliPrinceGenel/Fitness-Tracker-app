@@ -348,7 +348,8 @@ class _HealthDashboardState extends State<HealthDashboard>
  // Automatic BMI Calculation
   void _calculateBMI() {
     if (_height > 0 && _weight > 0) {
-      double newBmi = _weight / ((_height / 10) * (_height / 100));
+      double heightInMeters = _height / 100;
+      double newBmi = _weight / (heightInMeters * heightInMeters);
       if (newBmi != _bmi) {
         setState(() {
           _bmi = double.parse(newBmi.toStringAsFixed(1));
