@@ -15,9 +15,11 @@ class WorkoutDetailScreen extends StatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  bool _isWorkoutCompleted = false;
+   bool _isWorkoutCompleted = false;
   String _currentButtonState = 'start'; // 'start', 'done', 'again'
   DateTime? _workoutStartTime;
+  Set<int> _viewedExercises = {}; // Track which exercises have been viewed
+  Set<int> _exercisesWithWeightInput = {}; // Track which exercises have had weight input
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -28,46 +30,57 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   // Check if the workout has already been completed by the user today
-  Future<void> _checkWorkoutCompletionStatus() async {
+ Future<void> _checkWorkoutCompletionStatus() async {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        final workoutRef = _firestore
+        // Check both collections for workout completion status
+        final completedWorkoutsRef = _firestore
             .collection('users')
             .doc(user.uid)
             .collection('completed_workouts')
             .doc(widget.workout.title);
 
-        final workoutDoc = await workoutRef.get();
-        if (workoutDoc.exists) {
-          final data = workoutDoc.data();
+        final doneInfosRef = _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('doneInfos')
+            .doc(widget.workout.title);
+
+        // Check both documents
+        final completedWorkoutsDoc = await completedWorkoutsRef.get();
+        final doneInfosDoc = await doneInfosRef.get();
+
+        bool isCompletedToday = false;
+
+        // Check if either collection has the workout completed today
+        if (completedWorkoutsDoc.exists) {
+          final data = completedWorkoutsDoc.data();
           if (data != null && data['completedAt'] != null) {
             final completedAt = (data['completedAt'] as Timestamp).toDate();
             final today = DateTime.now();
-            
-            // Check if the workout was completed today (same date)
-            final isCompletedToday = completedAt.year == today.year &&
+            isCompletedToday = completedAt.year == today.year &&
                 completedAt.month == today.month &&
                 completedAt.day == today.day;
-                
-            setState(() {
-              _isWorkoutCompleted = isCompletedToday;
-              _currentButtonState = isCompletedToday ? 'again' : 'start';
-            });
-          } else {
-            // If completedAt field is missing or null, consider it not completed today
-            setState(() {
-              _isWorkoutCompleted = false;
-              _currentButtonState = 'start';
-            });
           }
-        } else {
-          // Workout was never completed
-          setState(() {
-            _isWorkoutCompleted = false;
-            _currentButtonState = 'start';
-          });
         }
+
+        // Also check doneInfos collection if not already found in completed_workouts
+        if (!isCompletedToday && doneInfosDoc.exists) {
+          final data = doneInfosDoc.data();
+          if (data != null && data['completedAt'] != null) {
+            final completedAt = (data['completedAt'] as Timestamp).toDate();
+            final today = DateTime.now();
+            isCompletedToday = completedAt.year == today.year &&
+                completedAt.month == today.month &&
+                completedAt.day == today.day;
+          }
+        }
+
+        setState(() {
+          _isWorkoutCompleted = isCompletedToday;
+          _currentButtonState = isCompletedToday ? 'again' : 'start';
+        });
       }
     } catch (e) {
       print('Error checking workout completion status: $e');
@@ -188,11 +201,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              _buildInfoItem(
-                                icon: Icons.timer,
-                                label: _getTotalExerciseDuration(),
-                              ),
-                              const SizedBox(width: 16),
                               _buildInfoItem(
                                 icon: Icons.fitness_center,
                                 label: "${widget.workout.exerciseList.length} exercises",
@@ -362,8 +370,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   // Handle back button press to properly manage workout state
   Future<bool> _onBackPressed() async {
-    // If the workout is in progress (button state is 'done'), ask for confirmation
-    if (_currentButtonState == 'done' && _workoutStartTime != null) {
+    // If the workout is in progress (timer running) but not all exercises viewed, ask for confirmation
+    if (_workoutStartTime != null && !areAllExercisesViewed()) {
       return await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -445,6 +453,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 builder: (context) => ExerciseDetailScreen(
                   exerciseNumber: i + 1, // Use 1-based indexing for display
                   workout: widget.workout,
+                  onExerciseViewed: markExerciseAsViewed, // Pass the callback to mark exercises as viewed
+                  onWeightInput: markExerciseWithWeightInput, // Pass the callback to mark exercises as having weight input
                 ),
               ),
             );
@@ -496,13 +506,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        "${exercise.duration ~/ 60}:${(exercise.duration % 60).toString().padLeft(2, '0')} | ${caloriesBurned.toStringAsFixed(1)} cal",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -550,7 +553,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       default:
         return 'Start Workout';
     }
-  }
+ }
 
   Color _getButtonColor() {
     // Always show orange color for active buttons, grey when disabled
@@ -594,61 +597,107 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return 0; // Default to 0 seconds if format is unexpected
   }
 
+   // Method to mark an exercise as viewed
+  void markExerciseAsViewed(int exerciseIndex) {
+    setState(() {
+      _viewedExercises.add(exerciseIndex);
+      // Check if all exercises have been viewed
+      if (_viewedExercises.length == widget.workout.exerciseList.length) {
+        _currentButtonState = 'done';
+      }
+    });
+  }
+
+  // Check if all exercises have been viewed
+  bool areAllExercisesViewed() {
+    return _viewedExercises.length == widget.workout.exerciseList.length;
+  }
+
   // New methods for handling the different button states with popups
   void _onStartWorkoutPressed() {
-    // Show "You may Start Now" popup
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            "Start Workout",
-            style: TextStyle(color: Colors.white),
-          ),
-          content: const Text(
-            "You may Start Now",
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog and do nothing
-              },
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                // Record start time and change button to "Done"
-                setState(() {
-                  _workoutStartTime = DateTime.now();
-                  _currentButtonState = 'done';
-                });
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: const Text(
-                "Start",
-                style: TextStyle(color: Colors.orange),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    // Record start time and navigate to the first exercise
+    setState(() {
+      _workoutStartTime = DateTime.now();
+      _viewedExercises.clear(); // Reset viewed exercises when starting
+      _exercisesWithWeightInput.clear(); // Reset weight input tracking when starting
+      _currentButtonState = 'start'; // Keep as start initially, will change when all exercises are viewed
+    });
+
+    // Navigate to the first exercise
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExerciseDetailScreen(
+          exerciseNumber: 1, // Always start with the first exercise
+          workout: widget.workout,
+          onExerciseViewed: markExerciseAsViewed, // Pass the callback to mark exercises as viewed
+          onWeightInput: markExerciseWithWeightInput, // Pass the callback to mark exercises as having weight input
+        ),
+      ),
+    ).then((_) {
+      // When returning from exercises, check if all exercises have been viewed to update button state
+      if (mounted && areAllExercisesViewed()) {
+        setState(() {
+          _currentButtonState = 'done';
+        });
+      }
+    });
+  }
+
+  // Check if all exercises have had weight input
+  bool areAllExercisesWithWeightInput() {
+    return _exercisesWithWeightInput.length == widget.workout.exerciseList.length;
+  }
+
+  // Mark an exercise as having weight input
+  void markExerciseWithWeightInput(int exerciseIndex) {
+    setState(() {
+      _exercisesWithWeightInput.add(exerciseIndex);
+    });
   }
 
   void _onDoneWorkoutPressed() async {
+    // Check if all exercises have weight input before allowing completion
+    if (!areAllExercisesWithWeightInput()) {
+      // Show notification that not all exercises have weight input
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: const Text(
+              "Weight Input Required",
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Text(
+              "Please input weight for all exercises before completing the workout. ${widget.workout.exerciseList.length - _exercisesWithWeightInput.length} exercises still need weight input.",
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close dialog
+                },
+                child: const Text(
+                  "OK",
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      return; // Don't proceed with completion
+    }
+
     // Check if workout was started to calculate duration
     int actualDurationSeconds = 0;
     if (_workoutStartTime != null) {
       actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
     }
 
-    // Get expected workout duration in seconds
-    int expectedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
+    // Set expected workout duration to 30 minutes (1800 seconds) for anti-cheating
+    int expectedDurationSeconds = 30 * 60; // 30 minutes in seconds
 
     // Determine if user might be cheating based on time
     bool isCheating = expectedDurationSeconds > 0 && actualDurationSeconds < expectedDurationSeconds;
@@ -665,7 +714,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               style: TextStyle(color: Colors.white),
             ),
             content: Text(
-              "Are you sure you are not cheating? The ${widget.workout.title} workout is expected to take ${widget.workout.duration}, but you completed it in ${_formatSecondsToMinutes(actualDurationSeconds)}.",
+              "Are you sure you are not cheating? The ${widget.workout.title} workout is expected to take at least 30 minutes, but you completed it in ${_formatSecondsToMinutes(actualDurationSeconds)}.",
               style: const TextStyle(color: Colors.white70),
             ),
             actions: [
@@ -793,15 +842,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
         }
 
-        // Get expected workout duration in seconds
-        int expectedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
+        // Set expected workout duration to 30 minutes (1800 seconds) for anti-cheating
+        int expectedDurationSeconds = 30 * 60; // 30 minutes in seconds
         bool isCheated = expectedDurationSeconds > 0 && actualDurationSeconds < expectedDurationSeconds;
 
-        // Update workout completion status in Firebase
+        // Update workout completion status in Firebase under "doneInfos" collection
         await _firestore
             .collection('users')
             .doc(user.uid)
-            .collection('completed_workouts')
+            .collection('doneInfos')
             .doc(widget.workout.title)
             .set({
           'title': widget.workout.title,
@@ -864,11 +913,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        // Delete the workout completion document from Firestore
+        // Delete the workout completion document from both collections
         await _firestore
             .collection('users')
             .doc(user.uid)
             .collection('completed_workouts')
+            .doc(widget.workout.title)
+            .delete();
+
+        // Also delete from doneInfos collection
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('doneInfos')
             .doc(widget.workout.title)
             .delete();
 

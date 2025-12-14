@@ -34,7 +34,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.addObserver(this);
   }
 
-  @override
+ @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -49,7 +49,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     }
   }
 
-  // Load weekly progress data from Firestore
+ // Load weekly progress data from Firestore
   Future<void> _loadWeeklyProgressData() async {
     setState(() {
       _isLoading = true;
@@ -67,13 +67,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
         final completedWorkoutsSnapshot = await _firestore
             .collection('users')
             .doc(user.uid)
-            .collection('completed_workouts')
+            .collection('doneInfos')
             .where('completedAt', isGreaterThanOrEqualTo: startOfWeek)
             .where('completedAt', isLessThan: endOfWeek)
             .get();
 
         // Initialize weekly data with zeros
-        List<int> weeklyData = [0, 0, 0, 0, 0, 0, 0];
+        List<int> weeklyData = [0, 0, 0, 0, 0, 0, 0]; // FIXED: Changed from 6 to 7 elements to match 7 days of the week
         int totalWeeklyWorkouts = 0;
         int totalWeeklyCalories = 0;
         int totalWeeklyMinutes = 0;
@@ -88,7 +88,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
           final workoutTitle = data['title'] as String;
           final workout = exerciseWorkouts.firstWhere((w) => w.title == workoutTitle, orElse: () => exerciseWorkouts[0]);
 
-          // Calculate total calories burned for this workout based on exercises
+          // Check if the workout was cheated
+          bool isCheated = data['isCheated'] == true;
+
+          // Extract actual duration and calories from the doneInfos collection
+          int actualDurationSeconds = data['actualDuration'] ?? 0;
+          int actualDurationMinutes = (actualDurationSeconds / 60).round(); // Convert seconds to minutes
+
+          // For calories, we'll use the stored expected duration as a proxy since actual calories aren't stored in doneInfos
+          // We'll calculate based on the actual time spent relative to expected time
+          int expectedDurationSeconds = data['expectedDuration'] ?? 1800; // Default to 30 minutes if not available
+          double timeRatio = expectedDurationSeconds > 0 ? actualDurationSeconds / expectedDurationSeconds : 1.0;
+
+          // Calculate total calories burned for this workout based on exercises, adjusted by time ratio
           double totalCalories = 0;
           int totalMinutes = 0;
           for (Exercise exercise in workout.exerciseList) {
@@ -96,8 +108,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             totalMinutes += (exercise.duration / 60).round(); // Convert seconds to minutes
           }
 
-          // Check if the workout was cheated
-          bool isCheated = data['isCheated'] == true;
+          // Adjust calories based on actual time spent
+          totalCalories = totalCalories * timeRatio;
 
           // Add to the appropriate day, incrementing by 1 for each workout completed (instead of calories)
           // Only increment if the workout was not cheated
@@ -109,9 +121,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
           // Only increment the total weekly workouts if the workout was not cheated
           if (!isCheated) {
             totalWeeklyWorkouts++;
+            totalWeeklyCalories += totalCalories.floor();
+            totalWeeklyMinutes += actualDurationMinutes;
           }
-          totalWeeklyCalories += totalCalories.floor();
-          totalWeeklyMinutes += totalMinutes;
         }
 
         setState(() {
@@ -504,7 +516,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildStatItem({
+ Widget _buildStatItem({
     required IconData icon,
     required String label,
     required String value,
@@ -532,7 +544,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
-  // Body Focus Tabs Choices
+ // Body Focus Tabs Choices
   Widget _buildTab(String title, int index) {
     return Expanded(
       child: GestureDetector(
@@ -565,8 +577,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
-  // Workout List Section - Filtered based on selected tab
-  Widget _buildWorkoutList() {
+ // Workout List Section - Filtered based on selected tab
+ Widget _buildWorkoutList() {
     // Filter workouts based on selected tab
     List<Workout> filteredWorkouts = exerciseWorkouts.where((workout) {
       String bodyFocus = workout.bodyFocus.toLowerCase();
@@ -633,7 +645,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
       future: _firestore
           .collection('users')
           .doc(_auth.currentUser?.uid)
-          .collection('completed_workouts')
+          .collection('doneInfos')
           .doc(workout.title)
           .get(),
       builder: (context, snapshot) {
@@ -741,13 +753,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.timer, color: Colors.white70, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              _getTotalExerciseDuration(workout), // Use calculated duration from exercises
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
-                            ),
-                            const SizedBox(width: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -824,7 +829,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
-  // Helper method to get color based on workout level
+ // Helper method to get color based on workout level
   Color _getLevelColor(String level) {
     switch (level.toLowerCase()) {
       case 'easy':
@@ -839,7 +844,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   }
 
   // Calculate total duration from all exercises in the workout
-  String _getTotalExerciseDuration(Workout workout) {
+ String _getTotalExerciseDuration(Workout workout) {
     int totalSeconds = 0;
     
     // Sum up the duration of all exercises

@@ -16,13 +16,13 @@ class ProgressTrackingService {
       final snapshot = await _firestore
           .collection('users')
           .doc(user.uid)
-          .collection('completed_workouts')
+          .collection('doneInfos')
           .get();
 
       final dates = <DateTime>[];
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        if (data['completedAt'] != null) {
+        if (data['completedAt'] != null && (data['isCheated'] != true)) {
           final timestamp = data['completedAt'] as Timestamp;
           dates.add(timestamp.toDate());
         }
