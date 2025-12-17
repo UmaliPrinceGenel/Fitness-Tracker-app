@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:intl/intl.dart'; // Add this import for DateFormat
+import 'dart:ui' as ui; // Add this import for ui.TextStyle
 import '../widgets/semi_circle_progress.dart';
 import 'detail_screen.dart';
 import 'my_profile.dart';
@@ -171,36 +173,183 @@ class _HealthDashboardState extends State<HealthDashboard>
               .limit(30)
               .get();
 
+          // Load weight history from weight_history subcollection (for Android compatibility)
+          final weightHistorySnapshot = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('weight_history')
+              .orderBy('timestamp', descending: true)
+              .limit(10)
+              .get();
+
+          // Process weight history data - SAFE PARSING
+          List<double> weightHistoryFromSubcollection = [];
+          for (var doc in weightHistorySnapshot.docs) {
+            final data = doc.data();
+            // SAFE PARSING: Handle dynamic values properly
+            var weightValue = data['weight'];
+            if (weightValue != null) {
+              if (weightValue is num) {
+                weightHistoryFromSubcollection.add(weightValue.toDouble());
+              } else if (weightValue is String) {
+                double? parsedValue = double.tryParse(weightValue);
+                weightHistoryFromSubcollection.add(parsedValue ?? 0.0);
+              } else {
+                weightHistoryFromSubcollection.add(0.0);
+              }
+            } else {
+              weightHistoryFromSubcollection.add(0.0);
+            }
+          }
+          weightHistoryFromSubcollection = weightHistoryFromSubcollection.reversed.toList(); // Chronological order
+
+          // Load waist history from waist_history subcollection (for Android compatibility) - SAFE PARSING
+          final waistHistorySnapshot = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('waist_history')
+              .orderBy('timestamp', descending: true)
+              .limit(10)
+              .get();
+
+          // Process waist history data - SAFE PARSING
+          List<double> waistHistoryFromSubcollection = [];
+          for (var doc in waistHistorySnapshot.docs) {
+            final data = doc.data();
+            // SAFE PARSING: Handle dynamic values properly
+            var waistValue = data['waist'];
+            if (waistValue != null) {
+              if (waistValue is num) {
+                waistHistoryFromSubcollection.add(waistValue.toDouble());
+              } else if (waistValue is String) {
+                double? parsedValue = double.tryParse(waistValue);
+                waistHistoryFromSubcollection.add(parsedValue ?? 0.0);
+              } else {
+                waistHistoryFromSubcollection.add(0.0);
+              }
+            } else {
+              waistHistoryFromSubcollection.add(0.0);
+            }
+          }
+          waistHistoryFromSubcollection = waistHistoryFromSubcollection.reversed.toList(); // Chronological order
+
+          // Load sleep history from sleep_history subcollection (for Android compatibility) - SAFE PARSING
+          final sleepHistorySnapshot = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('sleep_history')
+              .orderBy('timestamp', descending: true)
+              .limit(10)
+              .get();
+
+          // Process sleep history data - SAFE PARSING
+          List<double> sleepHistoryFromSubcollection = [];
+          for (var doc in sleepHistorySnapshot.docs) {
+            final data = doc.data();
+            // SAFE PARSING: Handle dynamic values properly
+            var sleepValue = data['sleepHours'];
+            if (sleepValue != null) {
+              if (sleepValue is num) {
+                sleepHistoryFromSubcollection.add(sleepValue.toDouble());
+              } else if (sleepValue is String) {
+                double? parsedValue = double.tryParse(sleepValue);
+                sleepHistoryFromSubcollection.add(parsedValue ?? 0.0);
+              } else {
+                sleepHistoryFromSubcollection.add(0.0);
+              }
+            } else {
+              sleepHistoryFromSubcollection.add(0.0);
+            }
+          }
+          sleepHistoryFromSubcollection = sleepHistoryFromSubcollection.reversed.toList(); // Chronological order
+
           setState(() {
-            _weight = (userData['profile']?['weight'] ?? 0.0).toDouble();
-            _height = (userData['profile']?['height'] ?? 0.0).toDouble();
+            // SAFE PARSING: Handle profile data safely
+            var weightData = userData['profile']?['weight'];
+            var heightData = userData['profile']?['height'];
+            _weight = (weightData != null && weightData is num) ? weightData.toDouble() : (weightData != null && weightData is String) ? double.tryParse(weightData) ?? 0.0 : 0.0;
+            _height = (heightData != null && heightData is num) ? heightData.toDouble() : (heightData != null && heightData is String) ? double.tryParse(heightData) ?? 0.0 : 0.0;
 
             if (healthDoc.exists) {
               final healthData = healthDoc.data()!;
-              _weeklyCalories = (healthData['weeklyCalories'] ?? 0).toInt();
-              _weeklyMinutes = (healthData['weeklyMinutes'] ?? 0).toInt();
-              _weeklyWorkoutsCount = (healthData['weeklyWorkoutsCount'] ?? 0).toInt();
-              // UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
-              _waistMeasurement = (healthData['waistMeasurement'] ?? 0.0)
-                  .toDouble();
-              _sleepHours = (healthData['sleepHours'] ?? 0.0).toDouble();
+              
+              // SAFE PARSING: Handle health metrics safely
+              var weeklyCaloriesData = healthData['weeklyCalories'];
+              var weeklyMinutesData = healthData['weeklyMinutes'];
+              var weeklyWorkoutsCountData = healthData['weeklyWorkoutsCount'];
+              var waistMeasurementData = healthData['waistMeasurement'];
+              var sleepHoursData = healthData['sleepHours'];
+              
+              _weeklyCalories = (weeklyCaloriesData != null && weeklyCaloriesData is int) ? weeklyCaloriesData : (weeklyCaloriesData != null && weeklyCaloriesData is double) ? weeklyCaloriesData.toInt() : 0;
+              _weeklyMinutes = (weeklyMinutesData != null && weeklyMinutesData is int) ? weeklyMinutesData : (weeklyMinutesData != null && weeklyMinutesData is double) ? weeklyMinutesData.toInt() : 0;
+              _weeklyWorkoutsCount = (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is int) ? weeklyWorkoutsCountData : (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is double) ? weeklyWorkoutsCountData.toInt() : 0;
+              
+              _waistMeasurement = (waistMeasurementData != null && waistMeasurementData is num) ? waistMeasurementData.toDouble() : (waistMeasurementData != null && waistMeasurementData is String) ? double.tryParse(waistMeasurementData) ?? 0.0 : 0.0;
+              _sleepHours = (sleepHoursData != null && sleepHoursData is num) ? sleepHoursData.toDouble() : (sleepHoursData != null && sleepHoursData is String) ? double.tryParse(sleepHoursData) ?? 0.0 : 0.0;
 
-              // UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
-              _waistHistory = List<double>.from(
-                healthData['waistHistory'] ?? [],
-              );
-              _weightHistory = List<double>.from(
-                healthData['weightHistory'] ?? [],
-              );
-              _sleepHistory = List<double>.from(
-                healthData['sleepHistory'] ?? [],
-              );
+              // SAFE PARSING: Handle history lists safely
+              var waistHistoryData = healthData['waistHistory'];
+              var weightHistoryData = healthData['weightHistory'];
+              var sleepHistoryData = healthData['sleepHistory'];
 
-              // Load daily activity history
-              if (healthData['dailyActivityHistory'] != null) {
-                _dailyActivityHistory = List<Map<String, dynamic>>.from(
-                  healthData['dailyActivityHistory'],
-                ).map((e) => DailyActivity.fromMap(e)).toList();
+              // Use subcollection data if main history is empty (Android compatibility) - SAFE PARSING
+              if (waistHistoryData != null && waistHistoryData is List) {
+                _waistHistory = [];
+                for (var item in waistHistoryData) {
+                  if (item is num) {
+                    _waistHistory.add(item.toDouble());
+                  } else if (item is String) {
+                    double? parsedValue = double.tryParse(item);
+                    _waistHistory.add(parsedValue ?? 0.0);
+                  } else {
+                    _waistHistory.add(0.0);
+                  }
+                }
+              } else {
+                _waistHistory = waistHistoryFromSubcollection.isEmpty ? [] : waistHistoryFromSubcollection;
+              }
+
+              if (weightHistoryData != null && weightHistoryData is List) {
+                _weightHistory = [];
+                for (var item in weightHistoryData) {
+                  if (item is num) {
+                    _weightHistory.add(item.toDouble());
+                  } else if (item is String) {
+                    double? parsedValue = double.tryParse(item);
+                    _weightHistory.add(parsedValue ?? 0.0);
+                  } else {
+                    _weightHistory.add(0.0);
+                  }
+                }
+              } else {
+                _weightHistory = weightHistoryFromSubcollection.isEmpty ? [] : weightHistoryFromSubcollection;
+              }
+
+              if (sleepHistoryData != null && sleepHistoryData is List) {
+                _sleepHistory = [];
+                for (var item in sleepHistoryData) {
+                  if (item is num) {
+                    _sleepHistory.add(item.toDouble());
+                  } else if (item is String) {
+                    double? parsedValue = double.tryParse(item);
+                    _sleepHistory.add(parsedValue ?? 0.0);
+                  } else {
+                    _sleepHistory.add(0.0);
+                  }
+                }
+              } else {
+                _sleepHistory = sleepHistoryFromSubcollection.isEmpty ? [] : sleepHistoryFromSubcollection;
+              }
+
+              // Load daily activity history - SAFE PARSING
+              var dailyActivityHistoryData = healthData['dailyActivityHistory'];
+              if (dailyActivityHistoryData != null && dailyActivityHistoryData is List) {
+                _dailyActivityHistory = [];
+                for (var item in dailyActivityHistoryData) {
+                  if (item is Map<String, dynamic>) {
+                    _dailyActivityHistory.add(DailyActivity.fromMap(item));
+                  }
+                }
               }
             } else {
               _initializeNewUserHealthData(user.uid);
@@ -228,7 +377,7 @@ class _HealthDashboardState extends State<HealthDashboard>
         _isLoading = false;
       });
     }
- }
+  }
 
   Future<void> _initializeNewUserHealthData(String userId) async {
     try {
@@ -264,7 +413,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     double? waistMeasurement, // UPDATED
     double? weight,
     double? sleepHours, // UPDATED
-  }) async {
+ }) async {
     try {
       final user = _auth.currentUser;
       if (user != null) {
@@ -292,6 +441,18 @@ class _HealthDashboardState extends State<HealthDashboard>
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
+          // Add to weight history subcollection for Android compatibility
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('weight_history')
+              .doc(DateTime.now().toIso8601String())
+              .set({
+                'weight': weight,
+                'date': DateTime.now(),
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+
           _weightHistory.add(weight);
           if (_weightHistory.length > 10) _weightHistory.removeAt(0);
 
@@ -315,7 +476,18 @@ class _HealthDashboardState extends State<HealthDashboard>
         }
 
         if (waistMeasurement != null) {
-          // UPDATED
+          // UPDATED - Add to waist history subcollection for Android compatibility
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('waist_history')
+              .doc(DateTime.now().toIso8601String())
+              .set({
+                'waist': waistMeasurement,
+                'date': DateTime.now(),
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+
           _waistHistory.add(waistMeasurement);
           if (_waistHistory.length > 10) _waistHistory.removeAt(0);
         }
@@ -1270,7 +1442,14 @@ class _WaistCard extends StatelessWidget {
                     ),
                     child: waistHistory.length >= 2
                         ? CustomPaint(
-                            painter: LineChartPainter(data: waistHistory),
+                            painter: LineChartPainter(
+                              data: waistHistory,
+                              dates: List.generate(
+                                waistHistory.length,
+                                (index) => DateTime.now()
+                                    .subtract(Duration(days: waistHistory.length - 1 - index)),
+                              ), // Add dates for proper charting
+                            ),
                             size: const Size(double.infinity, 30),
                           )
                         : Center(
@@ -1406,6 +1585,11 @@ class _WeightCard extends StatelessWidget {
                         ? CustomPaint(
                             painter: WeightLineChartPainter(
                               data: weightHistory,
+                              dates: List.generate(
+                                weightHistory.length,
+                                (index) => DateTime.now()
+                                    .subtract(Duration(days: weightHistory.length - 1 - index)),
+                              ), // Add dates for proper charting
                             ),
                             size: const Size(double.infinity, 30),
                           )
@@ -1737,6 +1921,11 @@ class _SleepCard extends StatelessWidget {
                 child: CustomPaint(
                   painter: SleepGraphPainter(
                     data: sleepHistory,
+                    dates: List.generate(
+                      sleepHistory.length,
+                      (index) => DateTime.now()
+                          .subtract(Duration(days: sleepHistory.length - 1 - index)),
+                    ), // Add dates for proper charting
                   ), // UPDATED: Changed painter
                   size: const Size(double.infinity, 40),
                 ),
@@ -1781,52 +1970,92 @@ class _SleepCard extends StatelessWidget {
   }
 }
 
-// Chart painters
+// Updated chart painters to use RealDataChartPainter approach with safe parsing
 class LineChartPainter extends CustomPainter {
   final List<double> data;
+  final List<DateTime> dates;
 
-  const LineChartPainter({required this.data});
+  const LineChartPainter({required this.data, this.dates = const []});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.length < 2) return;
+    if (data.isEmpty) {
+      _drawNoDataMessage(canvas, size);
+      return;
+    }
 
     final paint = Paint()
       ..color = Colors.blue
-      ..strokeWidth = 2
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
-    double minValue = data.reduce((a, b) => a < b ? a : b);
-    double maxValue = data.reduce((a, b) => a > b ? a : b);
-    double range = maxValue - minValue;
-    if (range == 0) range = 1;
+    // Calculate max value for scaling - SAFE PARSING
+    double maxValue = 1.0; // Default to 1 to avoid division by zero
+    if (data.isNotEmpty) {
+      maxValue = data.reduce((a, b) => a > b ? a : b);
+      maxValue = maxValue > 0 ? maxValue * 1.1 : 1;
+    }
 
-    double xStep = size.width / (data.length - 1);
-
+    // Draw data points and lines
     List<Offset> points = [];
+    double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
+
     for (int i = 0; i < data.length; i++) {
       double x = i * xStep;
-      double y = size.height - ((data[i] - minValue) / range) * size.height;
+      double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
 
-    for (int i = 0; i < points.length - 1; i++) {
-      canvas.drawLine(points[i], points[i + 1], paint);
+    // Draw line
+    if (points.length > 1) {
+      for (int i = 0; i < points.length - 1; i++) {
+        canvas.drawLine(points[i], points[i + 1], paint);
+      }
     }
 
-    final gradient = LinearGradient(
-      colors: [Colors.blue.shade300, Colors.blue.shade800],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final path = Path();
-    path.moveTo(0, size.height);
+    // Draw points
     for (int i = 0; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    path.lineTo(size.width, size.height);
-    path.close();
+      Offset point = points[i];
 
-    canvas.drawPath(path, Paint()..shader = gradient);
+      // Draw point
+      canvas.drawCircle(point, 4, paint);
+      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
+    }
+
+    // Draw area under curve
+    if (points.length > 1) {
+      final gradient = LinearGradient(
+        colors: [Colors.blue.withOpacity(0.4), Colors.blue.withOpacity(0.1)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+      Path path = Path();
+      path.moveTo(points[0].dx, points[0].dy);
+      for (int i = 1; i < points.length; i++) {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+      path.lineTo(points.last.dx, size.height);
+      path.lineTo(points.first.dx, size.height);
+      path.close();
+      canvas.drawPath(path, Paint()..shader = gradient);
+    }
+  }
+
+  void _drawNoDataMessage(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: "No data",
+        style: TextStyle(color: Colors.white54, fontSize: 14),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        size.width / 2 - textPainter.width / 2,
+        size.height / 2 - textPainter.height / 2,
+      ),
+    );
   }
 
   @override
@@ -1835,104 +2064,181 @@ class LineChartPainter extends CustomPainter {
 
 class WeightLineChartPainter extends CustomPainter {
   final List<double> data;
+  final List<DateTime> dates;
 
-  const WeightLineChartPainter({required this.data});
+  const WeightLineChartPainter({required this.data, this.dates = const []});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.length < 2) return;
+    if (data.isEmpty) {
+      _drawNoDataMessage(canvas, size);
+      return;
+    }
 
     final paint = Paint()
       ..color = Colors.green
-      ..strokeWidth = 2
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
-    double minValue = data.reduce((a, b) => a < b ? a : b);
-    double maxValue = data.reduce((a, b) => a > b ? a : b);
-    double range = maxValue - minValue;
-    if (range == 0) range = 1;
+    // Calculate max value for scaling - SAFE PARSING
+    double maxValue = 1.0; // Default to 1 to avoid division by zero
+    if (data.isNotEmpty) {
+      maxValue = data.reduce((a, b) => a > b ? a : b);
+      maxValue = maxValue > 0 ? maxValue * 1.1 : 1;
+    }
 
-    double xStep = size.width / (data.length - 1);
-
+    // Draw data points and lines
     List<Offset> points = [];
+    double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
+
     for (int i = 0; i < data.length; i++) {
       double x = i * xStep;
-      double y = size.height - ((data[i] - minValue) / range) * size.height;
+      double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
 
-    for (int i = 0; i < points.length - 1; i++) {
-      canvas.drawLine(points[i], points[i + 1], paint);
+    // Draw line
+    if (points.length > 1) {
+      for (int i = 0; i < points.length - 1; i++) {
+        canvas.drawLine(points[i], points[i + 1], paint);
+      }
     }
 
-    final gradient = LinearGradient(
-      colors: [Colors.green.shade300, Colors.green.shade800],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final path = Path();
-    path.moveTo(0, size.height);
+    // Draw points
     for (int i = 0; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    path.lineTo(size.width, size.height);
-    path.close();
+      Offset point = points[i];
 
-    canvas.drawPath(path, Paint()..shader = gradient);
+      // Draw point
+      canvas.drawCircle(point, 4, paint);
+      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
+    }
+
+    // Draw area under curve
+    if (points.length > 1) {
+      final gradient = LinearGradient(
+        colors: [Colors.green.withOpacity(0.4), Colors.green.withOpacity(0.1)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+      Path path = Path();
+      path.moveTo(points[0].dx, points[0].dy);
+      for (int i = 1; i < points.length; i++) {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+      path.lineTo(points.last.dx, size.height);
+      path.lineTo(points.first.dx, size.height);
+      path.close();
+      canvas.drawPath(path, Paint()..shader = gradient);
+    }
   }
 
- @override
+  void _drawNoDataMessage(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: "No data",
+        style: TextStyle(color: Colors.white54, fontSize: 14),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        size.width / 2 - textPainter.width / 2,
+        size.height / 2 - textPainter.height / 2,
+      ),
+    );
+  }
+
+  @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
 
-// UPDATED: Changed from VitalityGraphPainter to SleepGraphPainter
+// Updated SleepGraphPainter to use RealDataChartPainter approach with safe parsing
 class SleepGraphPainter extends CustomPainter {
   final List<double> data;
+  final List<DateTime> dates;
 
-  const SleepGraphPainter({required this.data});
+  const SleepGraphPainter({required this.data, this.dates = const []});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.length < 2) return;
+    if (data.isEmpty) {
+      _drawNoDataMessage(canvas, size);
+      return;
+    }
 
     final paint = Paint()
       ..color = Colors.purple
-      ..strokeWidth = 2
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
-    double minValue = data.reduce((a, b) => a < b ? a : b);
-    double maxValue = data.reduce((a, b) => a > b ? a : b);
-    double range = maxValue - minValue;
-    if (range == 0) range = 1; // Avoid division by zero if all values are the same
+    // Calculate max value for scaling - SAFE PARSING
+    double maxValue = 1.0; // Default to 1 to avoid division by zero
+    if (data.isNotEmpty) {
+      maxValue = data.reduce((a, b) => a > b ? a : b);
+      maxValue = maxValue > 0 ? maxValue * 1.1 : 1;
+    }
 
-    double xStep = size.width / (data.length - 1);
-
+    // Draw data points and lines
     List<Offset> points = [];
+    double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
+
     for (int i = 0; i < data.length; i++) {
       double x = i * xStep;
-      // Invert y-axis (0 at top, max at bottom)
-      double y = size.height - ((data[i] - minValue) / range) * size.height;
+      double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
 
-    // Draw the line connecting all points
-    for (int i = 0; i < points.length - 1; i++) {
-      canvas.drawLine(points[i], points[i + 1], paint);
+    // Draw line
+    if (points.length > 1) {
+      for (int i = 0; i < points.length - 1; i++) {
+        canvas.drawLine(points[i], points[i + 1], paint);
+      }
     }
 
-    // Draw filled area under the line
-    final gradient = LinearGradient(
-      colors: [Colors.purple.shade300, Colors.purple.shade800],
-    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final path = Path();
-    path.moveTo(0, size.height); // Start at bottom left
+    // Draw points
     for (int i = 0; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    path.lineTo(size.width, size.height); // Close at bottom right
-    path.close();
+      Offset point = points[i];
 
-    canvas.drawPath(path, Paint()..shader = gradient);
+      // Draw point
+      canvas.drawCircle(point, 4, paint);
+      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
+    }
+
+    // Draw area under curve
+    if (points.length > 1) {
+      final gradient = LinearGradient(
+        colors: [Colors.purple.withOpacity(0.4), Colors.purple.withOpacity(0.1)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+      Path path = Path();
+      path.moveTo(points[0].dx, points[0].dy);
+      for (int i = 1; i < points.length; i++) {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+      path.lineTo(points.last.dx, size.height);
+      path.lineTo(points.first.dx, size.height);
+      path.close();
+      canvas.drawPath(path, Paint()..shader = gradient);
+    }
+  }
+
+  void _drawNoDataMessage(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: "No data",
+        style: TextStyle(color: Colors.white54, fontSize: 14),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        size.width / 2 - textPainter.width / 2,
+        size.height / 2 - textPainter.height / 2,
+      ),
+    );
   }
 
   @override

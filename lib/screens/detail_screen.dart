@@ -87,6 +87,15 @@ class _DetailScreenState extends State<DetailScreen> {
             .limit(30)
             .get();
 
+        // Load waist history from subcollection (for Android compatibility)
+        final waistHistorySnapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('waist_history')
+            .orderBy('timestamp', descending: true)
+            .limit(30)
+            .get();
+
         // Load sleep history with real dates
         final sleepHistorySnapshot = await _firestore
             .collection('users')
@@ -129,12 +138,20 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData = (healthData['waistMeasurement'] ?? 0.0)
                     .toDouble();
                 _goalData = 80.0;
-                _historicalData = List<double>.from(
-                  healthData['waistHistory'] ?? [],
-                );
-                _historicalDates = _generateDatesForHistory(
-                  _historicalData.length,
-                );
+                // Use subcollection data if main history is empty (Android compatibility)
+                List<double> waistHistoryFromSubcollection = [];
+                for (var doc in waistHistorySnapshot.docs) {
+                  final data = doc.data();
+                  waistHistoryFromSubcollection.add((data['waist'] ?? 0.0).toDouble());
+                }
+                waistHistoryFromSubcollection = waistHistoryFromSubcollection.reversed.toList(); // Chronological order
+
+                _historicalData = waistHistoryFromSubcollection.isEmpty
+                    ? List<double>.from(healthData['waistHistory'] ?? [])
+                    : waistHistoryFromSubcollection;
+
+                // Generate dates for the historical data
+                _historicalDates = _generateDatesForHistory(_historicalData.length);
                 break;
               case "Weight":
                 _currentData = (healthData['weight'] ?? _weight).toDouble();
@@ -206,7 +223,7 @@ class _DetailScreenState extends State<DetailScreen> {
         _isLoading = false;
       });
     }
-  }
+ }
 
   List<DateTime> _generateDatesForHistory(int length) {
     List<DateTime> dates = [];
@@ -578,6 +595,99 @@ class _DetailScreenState extends State<DetailScreen> {
       _isLoading = true;
     });
     _loadDataFromFirebase();
+  }
+
+  // Add method to update waist measurement data in subcollection
+  Future<void> _updateWaistMeasurementData(double newValue) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // Update in health metrics collection
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'waistMeasurement': newValue,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      // Add to waist history subcollection for Android compatibility
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('waist_history')
+          .doc(DateTime.now().toIso8601String())
+          .set({
+            'waist': newValue,
+            'date': DateTime.now(),
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+    }
+  }
+
+  // Add method to update weight data in subcollection
+  Future<void> _updateWeightData(double newValue) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // Update in health metrics collection
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'weight': newValue,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      // Update in user profile
+      await _firestore.collection('users').doc(user.uid).set({
+        'profile.weight': newValue,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Add to weight history subcollection for Android compatibility
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('weight_history')
+          .doc(DateTime.now().toIso8601String())
+          .set({
+            'weight': newValue,
+            'date': DateTime.now(),
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+    }
+  }
+
+  // Add method to update sleep hours data in subcollection
+  Future<void> _updateSleepHoursData(double newValue) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // Update in health metrics collection
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'sleepHours': newValue,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      // Add to sleep history subcollection for Android compatibility
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('sleep_history')
+          .doc(DateTime.now().toIso8601String())
+          .set({
+            'sleepHours': newValue,
+            'date': DateTime.now(),
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+    }
   }
 
   Widget _buildContent() {

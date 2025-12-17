@@ -43,6 +43,12 @@ class _MyProfileState extends State<MyProfile> {
     _loadRecentProgressImage();
   }
 
+  @override
+  void dispose() {
+    // Clean up any resources here if needed
+    super.dispose();
+  }
+
   /// ✅ Load user data from Firestore
   Future<void> _loadUserData() async {
     try {
@@ -53,19 +59,21 @@ class _MyProfileState extends State<MyProfile> {
             .doc(user.uid)
             .get();
 
-        if (userDoc.exists) {
+        if (userDoc.exists && mounted) {
           setState(() {
             _userData = userDoc.data();
-            _profileImageUrl = _userData?['photoURL'];
+            _profileImageUrl = _userData?['photoURL'] ?? _userData?['profile']?['photoURL'];
           });
         }
       }
     } catch (e) {
       print('Error loading user data: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -86,7 +94,7 @@ class _MyProfileState extends State<MyProfile> {
       // Get all documents from the subcollection
       final querySnapshot = await progressImagesRef.get();
 
-      if (querySnapshot.docs.isNotEmpty) {
+      if (querySnapshot.docs.isNotEmpty && mounted) {
         // Sort documents by date (newest first)
         final sortedDocs = querySnapshot.docs.toList()
           ..sort(
@@ -98,7 +106,7 @@ class _MyProfileState extends State<MyProfile> {
         final data = mostRecentDoc.data() as Map<String, dynamic>;
         final images = data['urls'] as List<dynamic>?;
 
-        if (images != null && images.isNotEmpty) {
+        if (images != null && images.isNotEmpty && mounted) {
           // Get the first image from the most recent date
           setState(() {
             _recentProgressImage = images.first as String;
@@ -106,21 +114,27 @@ class _MyProfileState extends State<MyProfile> {
           print('📸 Loaded recent progress image: $_recentProgressImage');
         } else {
           print('ℹ️ No images found in the most recent document');
+          if (mounted) {
+            setState(() {
+              _recentProgressImage = null;
+            });
+          }
+        }
+      } else {
+        print('ℹ️ No progress images found in subcollection');
+        if (mounted) {
           setState(() {
             _recentProgressImage = null;
           });
         }
-      } else {
-        print('ℹ️ No progress images found in subcollection');
+      }
+    } catch (e) {
+      print('❌ Error loading recent progress image: $e');
+      if (mounted) {
         setState(() {
           _recentProgressImage = null;
         });
       }
-    } catch (e) {
-      print('❌ Error loading recent progress image: $e');
-      setState(() {
-        _recentProgressImage = null;
-      });
     }
   }
 
@@ -260,7 +274,7 @@ class _MyProfileState extends State<MyProfile> {
   }
 
   /// ✅ FIXED: Change profile picture - USE BYTES LIKE SIGNUP SCREEN
-  Future<void> _changeProfilePicture() async {
+ Future<void> _changeProfilePicture() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -269,7 +283,7 @@ class _MyProfileState extends State<MyProfile> {
         imageQuality: 80,
       );
 
-      if (pickedFile != null) {
+      if (pickedFile != null && mounted) {
         setState(() {
           _isLoading = true;
         });
@@ -306,29 +320,37 @@ class _MyProfileState extends State<MyProfile> {
         });
 
         // Update local state
-        setState(() {
-          _profileImageUrl = newAvatarUrl;
-        });
+        if (mounted) {
+          setState(() {
+            _profileImageUrl = newAvatarUrl;
+          });
+        }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile picture updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       print('Error changing profile picture: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update profile picture: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile picture: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -405,9 +427,11 @@ class _MyProfileState extends State<MyProfile> {
       final user = _firebaseAuth.currentUser;
       if (user == null) return;
 
-      setState(() {
-        _isLoading = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
 
       await _firestore.collection('users').doc(user.uid).update({
         'displayName': newName,
@@ -416,28 +440,34 @@ class _MyProfileState extends State<MyProfile> {
 
       await user.updateDisplayName(newName);
 
-      setState(() {
-        _userData = {...?_userData, 'displayName': newName};
-      });
+      if (mounted) {
+        setState(() {
+          _userData = {...?_userData, 'displayName': newName};
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Display name updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Display name updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       print('Error updating display name: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update display name: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update display name: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

@@ -6,12 +6,14 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/health_dashboard.dart';
 import 'screens/permissions_screen.dart';
-import 'screens/profile_screen.dart';
+import 'screens/my_profile.dart';
 import 'widgets/icon_sequence_animation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Remove the duplicate main function - keeping only one
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
