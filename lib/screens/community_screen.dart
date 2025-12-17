@@ -13,7 +13,7 @@ class CommunityScreen extends StatefulWidget {
  State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
+class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingObserver {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -28,12 +28,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _loadCurrentUserData();
-  }
+    WidgetsBinding.instance.addObserver(this);
+ }
 
   @override
   void dispose() {
     _commentController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when the app resumes
+      _refreshCommunityData();
+    }
   }
 
   /// ✅ Load current user data for the avatar
@@ -268,218 +279,229 @@ class _CommunityScreenState extends State<CommunityScreen> {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Post input card
-            Container(
-              margin: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF191919),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: GestureDetector(
-                onTap: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PhotoEditingScreen(),
-                    ),
-                  );
+        child: RefreshIndicator(
+          onRefresh: _refreshCommunityData,
+          child: Column(
+            children: [
+              // Post input card
+              Container(
+                margin: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191919),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: GestureDetector(
+                  onTap: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PhotoEditingScreen(),
+                      ),
+                    );
 
-                  if (result != null && result['success'] == true) {
-                    setState(() {});
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          // ✅ Profile avatar with user's photoURL
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey[700],
-                            ),
-                            child: _isLoadingUser
-                                ? const Center(
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
+                    if (result != null && result['success'] == true) {
+                      setState(() {});
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            // ✅ Profile avatar with user's photoURL
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[700],
+                              ),
+                              child: _isLoadingUser
+                                  ? const Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      ),
+                                    )
+                                  : _profileImageUrl != null
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        _profileImageUrl!,
+                                        fit: BoxFit.cover,
+                                        width: 40,
+                                        height: 40,
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null)
+                                            return child;
+                                          return Center(
+                                            child: CircularProgressIndicator(
+                                              value:
+                                                  loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                            .cumulativeBytesLoaded /
+                                                        loadingProgress
+                                                            .expectedTotalBytes!
+                                                  : null,
+                                              valueColor:
+                                                  const AlwaysStoppedAnimation<
+                                                    Color
+                                                  >(Colors.blue),
                                             ),
+                                          );
+                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return const Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 20,
+                                              );
+                                            },
                                       ),
+                                    )
+                                  : const Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 20,
                                     ),
-                                  )
-                                : _profileImageUrl != null
-                                ? ClipOval(
-                                    child: Image.network(
-                                      _profileImageUrl!,
-                                      fit: BoxFit.cover,
-                                      width: 40,
-                                      height: 40,
-                                      loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null)
-                                          return child;
-                                        return Center(
-                                          child: CircularProgressIndicator(
-                                            value:
-                                                loadingProgress
-                                                        .expectedTotalBytes !=
-                                                    null
-                                                ? loadingProgress
-                                                          .cumulativeBytesLoaded /
-                                                      loadingProgress
-                                                          .expectedTotalBytes!
-                                                : null,
-                                            valueColor:
-                                                const AlwaysStoppedAnimation<
-                                                  Color
-                                                >(Colors.blue),
-                                          ),
-                                        );
-                                      },
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.person,
-                                              color: Colors.white,
-                                              size: 20,
-                                            );
-                                          },
+                            ),
+                            const SizedBox(width: 12),
+                            // Text input with gallery icon inside
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const PhotoEditingScreen(),
                                     ),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Text input with gallery icon inside
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PhotoEditingScreen(),
-                                  ),
-                                );
+                                  );
 
-                                if (result != null &&
-                                    result['success'] == true) {
-                                  setState(() {});
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[800],
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        "What's on your mind?",
-                                        style: TextStyle(color: Colors.white70),
+                                  if (result != null &&
+                                      result['success'] == true) {
+                                    setState(() {});
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[800],
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          "What's on your mind?",
+                                          style: TextStyle(color: Colors.white70),
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(
-                                      Icons.image,
-                                      color: Colors.blue,
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Icon(
-                                      Icons.videocam,
-                                      color: Colors.red,
-                                      size: 20,
-                                    ),
-                                  ],
+                                      SizedBox(width: 8),
+                                      Icon(
+                                        Icons.image,
+                                        color: Colors.blue,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(
+                                        Icons.videocam,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            // Posts list from Firestore
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _firestore
-                    .collection('community_posts')
-                    .orderBy('timePosted', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
-
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.orange,
+              // Posts list from Firestore
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _firestore
+                      .collection('community_posts')
+                      .orderBy('timePosted', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.white),
                         ),
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No posts yet',
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (context, index) {
-                      final post = snapshot.data!.docs[index];
-                      final postData = post.data() as Map<String, dynamic>;
-                      return PostCard(
-                        postId: post.id,
-                        postData: postData,
-                        onLike: _likePost,
-                        onComment: _showCommentsBottomSheet,
-                        onDelete: _deletePost,
-                        onImageTap: _showImageZoom,
-                        onVideoTap: _showVideoPlayer,
-                        onShowLikes: _showLikesBottomSheet,
                       );
-                    },
-                  );
-                },
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.orange,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No posts yet',
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index) {
+                        final post = snapshot.data!.docs[index];
+                        final postData = post.data() as Map<String, dynamic>;
+                        return PostCard(
+                          postId: post.id,
+                          postData: postData,
+                          onLike: _likePost,
+                          onComment: _showCommentsBottomSheet,
+                          onDelete: _deletePost,
+                          onImageTap: _showImageZoom,
+                          onVideoTap: _showVideoPlayer,
+                          onShowLikes: _showLikesBottomSheet,
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  // Refresh function for community data
+  Future<void> _refreshCommunityData() async {
+    // Reload user data for avatar
+    await _loadCurrentUserData();
+    // The StreamBuilder will automatically refresh the posts list
+    // We don't need to manually reload the posts since they are handled by the StreamBuilder
   }
 
   void _showCommentsBottomSheet(BuildContext context, String postId) {
