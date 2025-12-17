@@ -11,170 +11,301 @@ class WaistMeasurementInfoScreen extends StatelessWidget {
         backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'About Waist Measurement',
+          "Waist Measurement Info",
           style: TextStyle(color: Colors.white),
         ),
-        centerTitle: true,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191919),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Waist Measurement",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Tracking your waist measurement is important for monitoring your health and fitness progress. It helps assess changes in your body composition and overall health.",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.withOpacity(0.4)),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Why Track Waist Measurement?",
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            "• Indicates abdominal fat levels\n• Helps assess health risks\n• Tracks fitness progress\n• Monitors changes in body composition",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191919),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Measurement Guidelines",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildGuidelineItem(
+                      "Proper Position",
+                      "Measure at the narrowest part of your waist, typically just above the belly button.",
+                      Colors.green,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildGuidelineItem(
+                      "Consistent Timing",
+                      "Measure at the same time each day, preferably in the morning before eating.",
+                      Colors.orange,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildGuidelineItem(
+                      "Correct Posture",
+                      "Stand straight and relaxed, breathe normally while measuring.",
+                      Colors.blue,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191919),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Health Implications",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildHealthItem(
+                      "Healthy Range",
+                      "For men: less than 94cm (37in)\nFor women: less than 80cm (31.5in)\nHigher measurements may indicate increased health risks.",
+                      Colors.orange,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildHealthItem(
+                      "Health Risks",
+                      "Excess abdominal fat is linked to increased risk of heart disease, diabetes, and other health conditions.",
+                      Colors.red,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191919),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Tips for Accurate Measurement",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTipItem(
+                      "Use a Flexible Tape",
+                      "Use a soft, flexible measuring tape for accurate measurements.",
+                      Icons.straighten,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTipItem(
+                      "Proper Positioning",
+                      "Place the tape around your waist, parallel to the floor, not too tight or loose.",
+                      Icons.linear_scale,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTipItem(
+                      "Breathe Normally",
+                      "Don't hold your breath or suck in your stomach while measuring.",
+                      Icons.air_outlined,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTipItem(
+                      "Record Consistently",
+                      "Take measurements under the same conditions each time for consistency.",
+                      Icons.edit_calendar,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuidelineItem(String title, String description, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthItem(String title, String description, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipItem(String title, String description, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.orange, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Waist Measurement Details",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "What is Waist Measurement?",
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Waist measurement is a key indicator of abdominal fat and overall health risk. It provides important information about your body composition that goes beyond just weight or BMI. Regularly monitoring your waist circumference can help assess your risk for various health conditions.",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Excess abdominal fat is associated with increased risk of heart disease, type 2 diabetes, high blood pressure, and certain cancers. Maintaining a healthy waist measurement is crucial for long-term health and well-being.",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "How to Measure Correctly?",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "1. Stand straight and breathe normally\n2. Locate your hip bone and the bottom of your ribs\n3. Place the measuring tape midway between these points\n4. Ensure the tape is parallel to the floor\n5. Keep the tape snug but not compressing the skin\n6. Take the measurement at the end of a normal breath",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Why is Waist Measurement Important?",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Waist measurement is a better predictor of health risks than BMI alone because it specifically measures abdominal fat. Visceral fat around your organs is metabolically active and can release inflammatory substances that increase disease risk.",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Healthy Waist Measurement Guidelines",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "For Men:\n• Low risk: Less than 94 cm (37 inches)\n• Increased risk: 94-102 cm (37-40 inches)\n• High risk: More than 102 cm (40 inches)",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "For Women:\n• Low risk: Less than 80 cm (31.5 inches)\n• Increased risk: 80-88 cm (31.5-34.6 inches)\n• High risk: More than 88 cm (34.6 inches)",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "How Often Should I Measure?",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "We recommend measuring your waist:\n• Once a week for general monitoring\n• At the same time of day (preferably morning)\n• Under similar conditions (before eating)\n• Using the same measuring tape for consistency",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Tips for Reducing Waist Measurement",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "• Engage in regular aerobic exercise\n• Include strength training 2-3 times per week\n• Reduce refined carbohydrates and added sugars\n• Increase fiber intake from vegetables and whole grains\n• Manage stress levels and get adequate sleep\n• Stay hydrated and limit alcohol consumption",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "When to Consult a Healthcare Professional",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "If your waist measurement falls into the 'high risk' category or if you notice rapid changes in your waist size, it's recommended to consult with a healthcare provider. They can provide personalized advice and help develop a plan to improve your health metrics.",
-                  style: TextStyle(
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                     height: 1.4,
@@ -183,7 +314,7 @@ class WaistMeasurementInfoScreen extends StatelessWidget {
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
