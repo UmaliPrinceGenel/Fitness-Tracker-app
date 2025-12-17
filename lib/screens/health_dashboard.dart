@@ -25,12 +25,12 @@ class _HealthDashboardState extends State<HealthDashboard>
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Health data - will be loaded from Firestore
-  double _calories = 0.0;
-  double _caloriesGoal = 600.0;
-  int _steps = 0;
-  int _stepsGoal = 7000;
- double _movingMinutes = 0.0;
-  double _movingGoal = 60.0;
+  int _weeklyCalories = 0; // Replaced calories with weeklyCalories from workout screen
+  int _weeklyCaloriesGoal = 2500; // Weekly goal for calories burned
+  int _weeklyMinutes = 0; // Replaced steps with weeklyMinutes from workout screen
+  int _weeklyMinutesGoal = 300; // Weekly goal for minutes exercised
+  int _weeklyWorkoutsCount = 0; // Replaced moving with weeklyWorkouts from workout screen
+ int _weeklyWorkoutsGoal = 5; // Weekly goal for workouts completed
 
   // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
   double _waistMeasurement = 0.0;
@@ -50,27 +50,16 @@ class _HealthDashboardState extends State<HealthDashboard>
   // Step tracking variables
   bool _isLoading = true;
   bool _isTrackingSteps = false;
-  String _status = 'Waiting...';
 
  // Date tracking for daily reset
   DateTime _currentDate = DateTime.now();
 
-  // Improved accelerometer variables
-  List<double> _accelerometerValues = [0, 0];
-  DateTime _lastStepTime = DateTime.now();
-  DateTime _lastMovementTime = DateTime.now();
-  int _stepBuffer = 0;
-  List<double> _accelerationBuffer = [];
-  static const int STEP_TIME_GAP = 300;
-  static const double STEP_ACCEL_THRESHOLD = 12.0; // Increased threshold
-  static const int MOVEMENT_TIME_THRESHOLD = 120; // 2 minutes
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
-    _initStepTracking();
     _checkDailyReset();
   }
 
@@ -90,13 +79,13 @@ class _HealthDashboardState extends State<HealthDashboard>
   // Reset daily activity data and save to history
   Future<void> _resetDailyData() async {
     final user = _auth.currentUser;
-    if (user != null && (_steps > 0 || _calories > 0 || _movingMinutes > 0)) {
+    if (user != null && (_weeklyMinutes > 0 || _weeklyCalories > 0 || _weeklyWorkoutsCount > 0)) {
       // Save current day's data to history
       final dailyActivity = DailyActivity(
         date: _currentDate,
-        steps: _steps,
-        calories: _calories,
-        movingMinutes: _movingMinutes,
+        weeklyMinutes: _weeklyMinutes,
+        weeklyCalories: _weeklyCalories,
+        weeklyWorkoutsCount: _weeklyWorkoutsCount,
       );
 
       _dailyActivityHistory.add(dailyActivity);
@@ -131,230 +120,27 @@ class _HealthDashboardState extends State<HealthDashboard>
     // Reset daily counters
     setState(() {
       _currentDate = DateTime.now();
-      _steps = 0;
-      _calories = 0;
-      _movingMinutes = 0;
-      _stepBuffer = 0;
+      _weeklyMinutes = 0;
+      _weeklyCalories = 0;
+      _weeklyWorkoutsCount = 0;
     });
 
     // Update Firestore with reset data
-    _updateHealthData(steps: 0, calories: 0, movingMinutes: 0);
+    _updateHealthData(weeklyMinutes: 0, weeklyCalories: 0, weeklyWorkoutsCount: 0);
   }
 
-  // FIXED: Improved step tracking initialization
-  Future<void> _initStepTracking() async {
-    await _requestPermissions();
-    await _initPedometer();
-    _startAccelerometerTracking();
-    _startMovingMinutesTimer(); // ADD THIS
-  }
-
-  // FIXED: Improved permission request
-  Future<void> _requestPermissions() async {
-    try {
-      var status = await Permission.activityRecognition.request();
-      if (status.isGranted) {
-        setState(() {
-          _isTrackingSteps = true;
-          _status = 'Step tracking active';
-        });
-      } else {
-        setState(() {
-          _status = 'Activity permission required for step tracking';
-        });
-        // Fall back to accelerometer only
-        _startAccelerometerTracking();
-      }
-    } catch (e) {
-      print('Permission error: $e');
-      setState(() {
-        _status = 'Using basic motion detection';
-      });
-      // Fall back to accelerometer only
-      _startAccelerometerTracking();
-    }
-  }
-
- Future<void> _initPedometer() async {
-    try {
-      Pedometer.stepCountStream.listen(_onStepCount).onError(_onStepCountError);
-      Pedometer.pedestrianStatusStream
-          .listen(_onPedestrianStatusChanged)
-          .onError(_onPedestrianStatusError);
-
-      setState(() {
-        _status = 'Pedometer initialized';
-      });
-    } catch (e) {
-      print('Pedometer init error: $e');
-      setState(() {
-        _status = 'Pedometer not available';
-      });
-    }
- }
-
-  // FIXED: Prevent duplicate step counting
-  void _onStepCount(StepCount event) {
-    final newSteps = event.steps;
-
-    // Only update if the pedometer reports significantly more steps
-    // This prevents small fluctuations from causing issues
-    if (newSteps > _steps + 5) {
-      // Only update if at least 5 new steps
-      setState(() {
-        _steps = newSteps;
-        _lastMovementTime = DateTime.now(); // Update movement time
-        _updateCaloriesFromSteps();
-      });
-      _updateHealthData(steps: _steps);
-    }
-  }
-
-  void _onStepCountError(error) {
-    print('Step count error: $error');
-    setState(() {
-      _status = 'Step counter error';
-    });
-  }
-
-  void _onPedestrianStatusChanged(PedestrianStatus event) {
-    setState(() {
-      _status = event.status;
-    });
-  }
-
-  void _onPedestrianStatusError(error) {
-    print('Pedestrian status error: $error');
-  }
-
-  void _startAccelerometerTracking() {
-    accelerometerEvents.listen((AccelerometerEvent event) {
-      _detectStepFromAccelerometer(event);
-    });
-  }
-
-  // FIXED: Improved step detection algorithm
-  void _detectStepFromAccelerometer(AccelerometerEvent event) {
-    // Calculate magnitude of acceleration vector
-    double acceleration =
-        (event.x * event.x + event.y * event.y + event.z * event.z);
-
-    // Add to buffer for smoothing
-    _accelerationBuffer.add(acceleration);
-    if (_accelerationBuffer.length > 10) {
-      // Increased buffer size
-      _accelerationBuffer.removeAt(0);
-    }
-
-    // Calculate smoothed acceleration
-    double smoothedAcceleration =
-        _accelerationBuffer.reduce((a, b) => a + b) /
-        _accelerationBuffer.length;
-
-    DateTime now = DateTime.now();
-    int timeDiff = now.difference(_lastStepTime).inMilliseconds;
-
-    // Only count step if enough time has passed and acceleration exceeds threshold
-    if (timeDiff > STEP_TIME_GAP &&
-        smoothedAcceleration > STEP_ACCEL_THRESHOLD) {
-      // Additional validation: check if this is a valid step pattern
-      if (_isValidStepPattern(smoothedAcceleration)) {
-        _stepBuffer++;
-        _lastStepTime = now;
-        _lastMovementTime = now; // Update movement time for moving minutes
-
-        // Process steps in batches to reduce UI updates
-        if (_stepBuffer >= 3) {
-          // Process every 3 steps
-          final newSteps = _steps + _stepBuffer;
-          setState(() {
-            _steps = newSteps;
-            _updateCaloriesFromSteps();
-          });
-
-          _updateHealthData(steps: _steps);
-          _stepBuffer = 0;
-        }
-      }
-    }
-  }
-
- // FIXED: Add step pattern validation
-  bool _isValidStepPattern(double acceleration) {
-    // Check if we have enough data in buffer
-    if (_accelerationBuffer.length < 5) return true;
-
-    // Calculate variance to detect consistent movement vs random shakes
-    double mean =
-        _accelerationBuffer.reduce((a, b) => a + b) /
-        _accelerationBuffer.length;
-    double variance =
-        _accelerationBuffer
-            .map((x) => (x - mean) * (x - mean))
-            .reduce((a, b) => a + b) /
-        _accelerationBuffer.length;
-
-    // If variance is too high, it might be random shaking, not walking
-    return variance < 50.0; // Adjust this threshold as needed
-  }
-
-  // FIXED: New moving minutes timer
-  void _startMovingMinutesTimer() {
-    // Check every 30 seconds if user has been active
-    Future.delayed(const Duration(seconds: 30), () {
-      if (mounted) {
-        final now = DateTime.now();
-        final timeSinceLastMovement = now
-            .difference(_lastMovementTime)
-            .inSeconds;
-
-        // If movement occurred within the last 2 minutes, count as active time
-        if (timeSinceLastMovement <= MOVEMENT_TIME_THRESHOLD) {
-          setState(() {
-            _movingMinutes += 0.5; // Add 0.5 minutes (30 seconds)
-          });
-
-          // Update Firestore every 5 minutes of movement
-          if (_movingMinutes % 5 < 0.1) {
-            _updateHealthData(movingMinutes: _movingMinutes);
-          }
-        }
-
-        // Continue the timer
-        _startMovingMinutesTimer();
-      }
-    });
-  }
-
-  // FIXED: Improved calorie calculation
-  void _updateCaloriesFromSteps() {
-    if (_steps <= 0) return;
-
-    // More accurate calorie calculation based on weight and steps
-    double caloriesPerStep = _weight > 0 ? _weight * 0.0004 : 0.04;
-    double newCalories = _steps * caloriesPerStep;
-
-    // Only update if there's a meaningful change
-    if ((newCalories - _calories).abs() > 0.1) {
-      setState(() {
-        _calories = newCalories;
-      });
-      _updateHealthData(calories: _calories);
-    }
-  }
-
- // REMOVED: Old _updateMovingMinutes method as it's now handled by timer
-
- // Automatic BMI Calculation
+  // Automatic BMI Calculation
   void _calculateBMI() {
     if (_height > 0 && _weight > 0) {
       double heightInMeters = _height / 100;
       double newBmi = _weight / (heightInMeters * heightInMeters);
-      if (newBmi != _bmi) {
-        setState(() {
-          _bmi = double.parse(newBmi.toStringAsFixed(1));
-        });
-      }
+      setState(() {
+        _bmi = double.parse(newBmi.toStringAsFixed(1));
+      });
+    } else {
+      setState(() {
+        _bmi = 0.0; // Reset BMI if height or weight is not available
+      });
     }
   }
 
@@ -391,9 +177,9 @@ class _HealthDashboardState extends State<HealthDashboard>
 
             if (healthDoc.exists) {
               final healthData = healthDoc.data()!;
-              _calories = (healthData['calories'] ?? 0.0).toDouble();
-              _steps = (healthData['steps'] ?? 0).toInt();
-              _movingMinutes = (healthData['movingMinutes'] ?? 0.0).toDouble();
+              _weeklyCalories = (healthData['weeklyCalories'] ?? 0).toInt();
+              _weeklyMinutes = (healthData['weeklyMinutes'] ?? 0).toInt();
+              _weeklyWorkoutsCount = (healthData['weeklyWorkoutsCount'] ?? 0).toInt();
               // UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
               _waistMeasurement = (healthData['waistMeasurement'] ?? 0.0)
                   .toDouble();
@@ -454,9 +240,9 @@ class _HealthDashboardState extends State<HealthDashboard>
           .collection('health_metrics')
           .doc('current')
           .set({
-            'calories': 0,
-            'steps': 0,
-            'movingMinutes': 0,
+            'weeklyCalories': 0,
+            'weeklyMinutes': 0,
+            'weeklyWorkoutsCount': 0,
             'waistMeasurement': _waistMeasurement, // UPDATED
             'sleepHours': _sleepHours, // UPDATED
             'waistHistory': [_waistMeasurement], // UPDATED
@@ -472,9 +258,9 @@ class _HealthDashboardState extends State<HealthDashboard>
  }
 
   Future<void> _updateHealthData({
-    double? calories,
-    int? steps,
-    double? movingMinutes,
+    int? weeklyCalories,
+    int? weeklyMinutes,
+    int? weeklyWorkoutsCount,
     double? waistMeasurement, // UPDATED
     double? weight,
     double? sleepHours, // UPDATED
@@ -486,9 +272,9 @@ class _HealthDashboardState extends State<HealthDashboard>
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
-        if (calories != null) updates['calories'] = calories;
-        if (steps != null) updates['steps'] = steps;
-        if (movingMinutes != null) updates['movingMinutes'] = movingMinutes;
+        if (weeklyCalories != null) updates['weeklyCalories'] = weeklyCalories;
+        if (weeklyMinutes != null) updates['weeklyMinutes'] = weeklyMinutes;
+        if (weeklyWorkoutsCount != null) updates['weeklyWorkoutsCount'] = weeklyWorkoutsCount;
         if (waistMeasurement != null)
           updates['waistMeasurement'] = waistMeasurement; // UPDATED
         if (sleepHours != null) updates['sleepHours'] = sleepHours; // UPDATED
@@ -523,6 +309,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                 'weightHistory': _weightHistory,
                 'waistHistory': _waistHistory, // UPDATED
                 'sleepHistory': _sleepHistory, // UPDATED
+                'bmi': _bmi, // Add BMI to health metrics
                 'updatedAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
         }
@@ -541,7 +328,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     } catch (e) {
       print('Error updating health data: $e');
     }
- }
+  }
 
   // Get activity data for different time periods
   List<DailyActivity> _getWeeklyActivity() {
@@ -577,9 +364,9 @@ class _HealthDashboardState extends State<HealthDashboard>
     } else if (state == AppLifecycleState.paused) {
       // Save current state when app goes to background
       _updateHealthData(
-        steps: _steps,
-        calories: _calories,
-        movingMinutes: _movingMinutes,
+        weeklyMinutes: _weeklyMinutes,
+        weeklyCalories: _weeklyCalories,
+        weeklyWorkoutsCount: _weeklyWorkoutsCount,
       );
     }
   }
@@ -729,24 +516,24 @@ class _HealthDashboardState extends State<HealthDashboard>
                                 ),
                                 child: SemiCircleProgress(
                                   caloriesPercent:
-                                      (_calories / _caloriesGoal * 100).clamp(
+                                      (_weeklyCalories / _weeklyCaloriesGoal * 100).clamp(
                                         0.0,
                                         100.0,
                                       ),
-                                  stepsPercent: (_steps / _stepsGoal * 100)
+                                  stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 10)
                                       .clamp(0.0, 100.0),
                                   movingPercent:
-                                      (_movingMinutes / _movingGoal * 100)
+                                      (_weeklyWorkoutsCount / _weeklyWorkoutsGoal * 100)
                                           .clamp(0.0, 100.0),
-                                  caloriesValue: _calories.toStringAsFixed(0),
+                                  caloriesValue: _weeklyCalories.toStringAsFixed(0),
                                   caloriesGoal:
-                                      "/${_caloriesGoal.toInt()} kcal",
-                                  stepsValue: _steps.toString(),
-                                  stepsGoal: "/$_stepsGoal steps",
-                                  movingValue: _movingMinutes.toStringAsFixed(
+                                      "/${_weeklyCaloriesGoal.toInt()} kcal",
+                                  stepsValue: _weeklyMinutes.toString(),
+                                  stepsGoal: "/$_weeklyMinutesGoal mins",
+                                  movingValue: _weeklyWorkoutsCount.toStringAsFixed(
                                     0,
                                   ),
-                                  movingGoal: "/${_movingGoal.toInt()} mins",
+                                  movingGoal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
                                 ),
                               ),
                             ],
@@ -774,14 +561,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                                   size: 16,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  'Step Tracking: $_status',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
@@ -821,19 +600,19 @@ class _HealthDashboardState extends State<HealthDashboard>
                                         child: _ModernMetricItem(
                                           icon: Icons.local_fire_department,
                                           iconColor: const Color(0xFFFF6B35),
-                                          label: "Calories",
-                                          value: _calories.toStringAsFixed(0),
+                                          label: "kcal",
+                                          value: _weeklyCalories.toStringAsFixed(0),
                                           goal:
-                                              "/${_caloriesGoal.toInt()} kcal",
+                                              "/${_weeklyCaloriesGoal.toInt()} kcal",
                                           onTap: () {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     DetailScreen(
-                                                      title: "Calories",
-                                                      currentValue: _calories,
-                                                      goalValue: _caloriesGoal,
+                                                      title: "kcal",
+                                                      currentValue: _weeklyCalories.toDouble(),
+                                                      goalValue: _weeklyCaloriesGoal.toDouble(),
                                                       onDataSaved:
                                                           _loadUserData,
                                                     ),
@@ -844,22 +623,20 @@ class _HealthDashboardState extends State<HealthDashboard>
                                       ),
                                       Expanded(
                                         child: _ModernMetricItem(
-                                          icon: Icons.directions_walk,
+                                          icon: Icons.timer,
                                           iconColor: const Color(0xFFFF9800),
-                                          label: "Steps",
-                                          value: _steps.toString(),
-                                          goal: "/$_stepsGoal steps",
+                                          label: "Minutes",
+                                          value: _weeklyMinutes.toString(),
+                                          goal: "/$_weeklyMinutesGoal mins",
                                           onTap: () {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     DetailScreen(
-                                                      title: "Steps",
-                                                      currentValue: _steps
-                                                          .toDouble(),
-                                                      goalValue: _stepsGoal
-                                                          .toDouble(),
+                                                      title: "Minutes",
+                                                      currentValue: _weeklyMinutes.toDouble(),
+                                                      goalValue: _weeklyMinutesGoal.toDouble(),
                                                       onDataSaved:
                                                           _loadUserData,
                                                     ),
@@ -870,23 +647,22 @@ class _HealthDashboardState extends State<HealthDashboard>
                                       ),
                                       Expanded(
                                         child: _ModernMetricItem(
-                                          icon: Icons.directions_run,
+                                          icon: Icons.fitness_center,
                                           iconColor: const Color(0xFF2196F3),
-                                          label: "Moving",
-                                          value: _movingMinutes.toStringAsFixed(
+                                          label: "Workouts",
+                                          value: _weeklyWorkoutsCount.toStringAsFixed(
                                             0,
                                           ),
-                                          goal: "/${_movingGoal.toInt()} mins",
+                                          goal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
                                           onTap: () {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     DetailScreen(
-                                                      title: "Moving",
-                                                      currentValue:
-                                                          _movingMinutes,
-                                                      goalValue: _movingGoal,
+                                                      title: "Workouts",
+                                                      currentValue: _weeklyWorkoutsCount.toDouble(),
+                                                      goalValue: _weeklyWorkoutsGoal.toDouble(),
                                                       onDataSaved:
                                                           _loadUserData,
                                                     ),
@@ -973,6 +749,21 @@ class _HealthDashboardState extends State<HealthDashboard>
                   _showUpdateDialog('Height', _height, 250.0);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.monitor_weight, color: Colors.green),
+                title: const Text(
+                  'Update Weight',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Manual weight input',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showUpdateDialog('Weight', _weight, 300.0);
+                },
+              ),
             ],
           ),
         );
@@ -1056,29 +847,19 @@ class _HealthDashboardState extends State<HealthDashboard>
     try {
       switch (type) {
         case 'Height':
-          // Get current user data to calculate BMI
-          final userDoc = await _firestore
-              .collection('users')
-              .doc(user.uid)
-              .get();
-          final userData = userDoc.data();
+          // Update the local state first
+          setState(() {
+            _height = newValue;
+          });
 
-          double weight = 0.0;
-          if (userData != null && userData['profile'] != null) {
-            weight = (userData['profile']['weight'] ?? 0.0).toDouble();
-          }
-
-          double bmi = 0.0;
-          if (newValue > 0 && weight > 0) {
-            double heightInMeters = newValue / 100;
-            bmi = weight / (heightInMeters * heightInMeters);
-          }
+          // Calculate BMI based on current weight and new height
+          _calculateBMI();
 
           // Update user profile with height AND recalculated BMI
           await _firestore.collection('users').doc(user.uid).set({
             'profile': {
               'height': newValue,
-              'bmi': double.parse(bmi.toStringAsFixed(1)),
+              'bmi': _bmi, // Use the locally calculated BMI
               'lastUpdated': FieldValue.serverTimestamp(),
             },
           }, SetOptions(merge: true));
@@ -1090,12 +871,41 @@ class _HealthDashboardState extends State<HealthDashboard>
               .collection('health_metrics')
               .doc('current')
               .set({
-                'bmi': bmi,
+                'bmi': _bmi, // Use the locally calculated BMI
+                'height': newValue, // Also save height to health metrics
                 'lastUpdated': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
 
-          // Refresh local data
-          _loadUserData();
+          break;
+        case 'Weight':
+          // Update the local state first
+          setState(() {
+            _weight = newValue;
+          });
+
+          // Calculate BMI based on new weight and current height
+          _calculateBMI();
+
+          // Update user profile with weight AND recalculated BMI
+          await _firestore.collection('users').doc(user.uid).set({
+            'profile': {
+              'weight': newValue,
+              'bmi': _bmi, // Use the locally calculated BMI
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
+          }, SetOptions(merge: true));
+
+          // Update health metrics with new BMI
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_metrics')
+              .doc('current')
+              .set({
+                'bmi': _bmi, // Use the locally calculated BMI
+                'weight': newValue, // Also save weight to health metrics
+                'lastUpdated': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
 
           break;
       }
@@ -1121,32 +931,32 @@ class _HealthDashboardState extends State<HealthDashboard>
 // Daily Activity Model
 class DailyActivity {
   final DateTime date;
-  final int steps;
-  final double calories;
-  final double movingMinutes;
+  final int weeklyMinutes;
+  final int weeklyCalories;
+  final int weeklyWorkoutsCount;
 
   DailyActivity({
     required this.date,
-    required this.steps,
-    required this.calories,
-    required this.movingMinutes,
+    required this.weeklyMinutes,
+    required this.weeklyCalories,
+    required this.weeklyWorkoutsCount,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'date': date.toIso8601String(),
-      'steps': steps,
-      'calories': calories,
-      'movingMinutes': movingMinutes,
+      'weeklyMinutes': weeklyMinutes,
+      'weeklyCalories': weeklyCalories,
+      'weeklyWorkoutsCount': weeklyWorkoutsCount,
     };
   }
 
   factory DailyActivity.fromMap(Map<String, dynamic> map) {
     return DailyActivity(
       date: DateTime.parse(map['date']),
-      steps: map['steps'],
-      calories: (map['calories'] ?? 0).toDouble(),
-      movingMinutes: (map['movingMinutes'] ?? 0).toDouble(),
+      weeklyMinutes: (map['weeklyMinutes'] ?? 0).toInt(),
+      weeklyCalories: (map['weeklyCalories'] ?? 0).toInt(),
+      weeklyWorkoutsCount: (map['weeklyWorkoutsCount'] ?? 0).toInt(),
     );
   }
 }

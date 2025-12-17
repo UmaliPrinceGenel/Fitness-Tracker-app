@@ -18,23 +18,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   int _selectedTabIndex = 0;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  List<int> _weeklyWorkoutData = [0, 0, 0, 0, 0, 0, 0]; // Initialize with zeros for each day of the week
-  int _weeklyWorkoutsCount = 0; // Track weekly completed workouts
-  int _weeklyCalories = 0; // Track weekly calories burned
-  int _weeklyMinutes = 0; // Track weekly minutes exercised
+  List<int> _monthlyCategoryCounts = [0, 0, 0, 0, 0]; // Count for each category: Chest, Arms, Core, Lower Body, Shoulders
   bool _isLoading = true;
 
- // List of tab titles
+  // List of tab titles and corresponding colors
   final List<String> _tabTitles = ["Chest", "Arms", "Core", "Lower Body", "Shoulders"];
+  final List<Color> _categoryColors = [
+    Colors.red,      // Chest
+    Colors.blue,     // Arms
+    Colors.green,    // Core
+    Colors.orange,   // Lower Body
+    Colors.purple,   // Shoulders
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadWeeklyProgressData();
+    _loadMonthlyCategoryData();
     WidgetsBinding.instance.addObserver(this);
   }
 
- @override
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -45,12 +49,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       // Refresh data when the app resumes (e.g., when returning from workout detail screen)
-      _loadWeeklyProgressData();
+      _loadMonthlyCategoryData();
     }
   }
 
- // Load weekly progress data from Firestore
-  Future<void> _loadWeeklyProgressData() async {
+  // Load monthly category data from Firestore
+  Future<void> _loadMonthlyCategoryData() async {
     setState(() {
       _isLoading = true;
     });
@@ -58,31 +62,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        // Get the start of the current week (Monday)
+        // Get the start of the current month
         DateTime now = DateTime.now();
-        DateTime startOfWeek = _getStartOfWeek(now);
-        DateTime endOfWeek = startOfWeek.add(const Duration(days: 7));
+        DateTime startOfMonth = DateTime(now.year, now.month, 1);
+        DateTime endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of current month
 
-        // Query completed workouts for the current week
+        // Query completed workouts for the current month
         final completedWorkoutsSnapshot = await _firestore
             .collection('users')
             .doc(user.uid)
             .collection('doneInfos')
-            .where('completedAt', isGreaterThanOrEqualTo: startOfWeek)
-            .where('completedAt', isLessThan: endOfWeek)
+            .where('completedAt', isGreaterThanOrEqualTo: startOfMonth)
+            .where('completedAt', isLessThan: endOfMonth.add(const Duration(days: 1)))
             .get();
 
-        // Initialize weekly data with zeros
-        List<int> weeklyData = [0, 0, 0, 0, 0, 0, 0]; // FIXED: Changed from 6 to 7 elements to match 7 days of the week
-        int totalWeeklyWorkouts = 0;
-        int totalWeeklyCalories = 0;
-        int totalWeeklyMinutes = 0;
+        // Initialize category counts with zeros
+        List<int> categoryCounts = [0, 0, 0, 0, 0]; // For Chest, Arms, Core, Lower Body, Shoulders respectively
 
-        // Process completed workouts to calculate weekly data
+        // Process completed workouts to calculate category counts
         for (var doc in completedWorkoutsSnapshot.docs) {
           final data = doc.data();
           final completedAt = (data['completedAt'] as Timestamp).toDate();
-          final dayOfWeek = completedAt.weekday - 1; // Monday = 0, Sunday = 6
 
           // Extract workout title to get the actual exercise list from our workout data
           final workoutTitle = data['title'] as String;
@@ -91,46 +91,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
           // Check if the workout was cheated
           bool isCheated = data['isCheated'] == true;
 
-          // Extract actual duration and calories from the doneInfos collection
-          int actualDurationSeconds = data['actualDuration'] ?? 0;
-          int actualDurationMinutes = (actualDurationSeconds / 60).round(); // Convert seconds to minutes
-
-          // For calories, we'll use the stored expected duration as a proxy since actual calories aren't stored in doneInfos
-          // We'll calculate based on the actual time spent relative to expected time
-          int expectedDurationSeconds = data['expectedDuration'] ?? 1800; // Default to 30 minutes if not available
-          double timeRatio = expectedDurationSeconds > 0 ? actualDurationSeconds / expectedDurationSeconds : 1.0;
-
-          // Calculate total calories burned for this workout based on exercises, adjusted by time ratio
-          double totalCalories = 0;
-          int totalMinutes = 0;
-          for (Exercise exercise in workout.exerciseList) {
-            totalCalories += exercise.getCaloriesBurned();
-            totalMinutes += (exercise.duration / 60).round(); // Convert seconds to minutes
-          }
-
-          // Adjust calories based on actual time spent
-          totalCalories = totalCalories * timeRatio;
-
-          // Add to the appropriate day, incrementing by 1 for each workout completed (instead of calories)
-          // Only increment if the workout was not cheated
-          if (dayOfWeek >= 0 && dayOfWeek < 7 && !isCheated) {
-            weeklyData[dayOfWeek] += 1; // Increment by 1 for each workout completed on that day - this is used for the daily chart
-          }
-
-          // Add to weekly totals (include cheated workouts in count but potentially handle them differently)
-          // Only increment the total weekly workouts if the workout was not cheated
+          // Determine the category of the workout and increment the count if not cheated
           if (!isCheated) {
-            totalWeeklyWorkouts++;
-            totalWeeklyCalories += totalCalories.floor();
-            totalWeeklyMinutes += actualDurationMinutes;
+            String bodyFocus = workout.bodyFocus.toLowerCase();
+            
+            // Map exercises to the new categories and increment the count
+            if (bodyFocus == "chest") {
+              categoryCounts[0]++; // Chest
+            } else if (bodyFocus == "arm" || bodyFocus == "triceps" || bodyFocus == "biceps" || bodyFocus == "forearms") {
+              categoryCounts[1]++; // Arms
+            } else if (bodyFocus == "abs" || bodyFocus == "core") {
+              categoryCounts[2]++; // Core
+            } else if (bodyFocus == "legs" || bodyFocus == "calves" || bodyFocus == "glutes & hamstrings") {
+              categoryCounts[3]++; // Lower Body
+            } else if (bodyFocus == "shoulders" || bodyFocus == "traps") {
+              categoryCounts[4]++; // Shoulders
+            }
           }
         }
 
         setState(() {
-          _weeklyWorkoutData = weeklyData;
-          _weeklyWorkoutsCount = totalWeeklyWorkouts;
-          _weeklyCalories = totalWeeklyCalories;
-          _weeklyMinutes = totalWeeklyMinutes;
+          _monthlyCategoryCounts = categoryCounts;
           _isLoading = false;
         });
       } else {
@@ -139,17 +120,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
         });
       }
     } catch (e) {
-      print('Error loading weekly progress data: $e');
+      print('Error loading monthly category data: $e');
       setState(() {
         _isLoading = false;
       });
     }
-  }
-
-  // Helper function to get the start of the week (Monday)
-  DateTime _getStartOfWeek(DateTime date) {
-    int daysFromMonday = date.weekday - 1; // Monday is 1, so subtract 1
-    return DateTime(date.year, date.month, date.day - daysFromMonday);
   }
 
   @override
@@ -171,16 +146,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _loadWeeklyProgressData,
+          onRefresh: _loadMonthlyCategoryData,
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Statistics Card
+                  // Monthly Category Chart
                   Container(
                     width: double.infinity,
+                    height: 300, // Increased height to accommodate the chart
                     decoration: BoxDecoration(
                       color: const Color(0xFF191919),
                       borderRadius: BorderRadius.circular(20),
@@ -193,280 +169,81 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildStatItem(
-                            icon: Icons.fitness_center,
-                            label: "Workouts",
-                            value: _weeklyWorkoutsCount.toString(),
-                            color: Colors.orange, // Orange for workouts
+                          const Text(
+                            "Monthly Category Tracking",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          _buildStatItem(
-                            icon: Icons.local_fire_department,
-                            label: "kcal",
-                            value: _weeklyCalories.toString(),
-                            color: const Color(0xFFFF6B35), // Red orange for kcal
-                          ),
-                          _buildStatItem(
-                            icon: Icons.timer,
-                            label: "Minutes",
-                            value: _weeklyMinutes.toString(),
-                            color: Colors.blue, // Blue for minutes
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Weekly Goal
-                  const Text(
-                    "Weekly Goal",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Progress Tracking Card
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ProgressTrackingScreen(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF191919),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  "Progress Tracking",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ProgressTrackingScreen(),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: _isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                    ),
+                                  )
+                                : PieChart(
+                                    PieChartData(
+                                      sections: List.generate(_tabTitles.length, (i) {
+                                        return PieChartSectionData(
+                                          color: _categoryColors[i],
+                                          value: _monthlyCategoryCounts[i].toDouble(),
+                                          title: '${_monthlyCategoryCounts[i]}',
+                                          radius: 50,
+                                          titleStyle: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        );
+                                      }),
+                                      centerSpaceRadius: 30, // Creates the donut hole effect
+                                      sectionsSpace: 2, // Space between sections
+                                      pieTouchData: PieTouchData(
+                                        enabled: true,
+                                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                          // Handle touch events if needed
+                                        },
                                       ),
-                                    );
-                                  },
-                                  child: const Text(
-                                    "More",
-                                    style: TextStyle(
-                                      color: Colors.orange,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Bar chart visualization - now shows number of workouts per day instead of calories
-                            Container(
-                              height: 150,
-                              child: _isLoading
-                                  ? const Center(
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                                      ),
-                                    )
-                                  : BarChart(
-                                      BarChartData(
-                                        alignment: BarChartAlignment.spaceAround,
-                                        maxY: _weeklyWorkoutData.isNotEmpty
-                                            ? (_weeklyWorkoutData.reduce((a, b) => a > b ? a : b) + 2).toDouble()
-                                            : 5, // Dynamic maxY based on data, with appropriate increment for workout counts
-                                        gridData: FlGridData(
-                                          show: true,
-                                          drawVerticalLine: false,
-                                          horizontalInterval: 1,
-                                          getDrawingHorizontalLine: (value) {
-                                            return FlLine(
-                                              color: Colors.grey.withOpacity(0.3),
-                                              strokeWidth: 0.5,
-                                            );
-                                          },
-                                        ),
-                                        titlesData: FlTitlesData(
-                                          show: true,
-                                          bottomTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              getTitlesWidget: (value, meta) {
-                                                switch (value.toInt()) {
-                                                  case 0:
-                                                    return Text(
-                                                      'Mon',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  case 1:
-                                                    return Text(
-                                                      'Tue',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  case 2:
-                                                    return Text(
-                                                      'Wed',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  case 3:
-                                                    return Text(
-                                                      'Thu',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  case 4:
-                                                    return Text(
-                                                      'Fri',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  case 5:
-                                                    return Text(
-                                                      'Sat',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  case 6:
-                                                    return Text(
-                                                      'Sun',
-                                                      style: TextStyle(
-                                                        color: Colors.white70,
-                                                        fontSize: 10,
-                                                      ),
-                                                    );
-                                                  default:
-                                                    return Text('');
-                                                }
-                                              },
-                                              reservedSize: 30,
-                                            ),
-                                          ),
-                                          leftTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              getTitlesWidget: (value, meta) {
-                                                return Text(
-                                                  value.toInt().toString(),
-                                                  style: TextStyle(
-                                                    color: Colors.white70,
-                                                    fontSize: 10,
-                                                  ),
-                                                );
-                                              },
-                                              reservedSize: 35,
-                                              interval: 1,
-                                            ),
-                                          ),
-                                          topTitles: AxisTitles(
-                                            sideTitles: SideTitles(showTitles: false),
-                                          ),
-                                          rightTitles: AxisTitles(
-                                            sideTitles: SideTitles(showTitles: false),
-                                          ),
-                                        ),
-                                        borderData: FlBorderData(show: false),
-                                        barGroups: List.generate(7, (i) {
-                                          return BarChartGroupData(
-                                            x: i,
-                                            barRods: [
-                                              BarChartRodData(
-                                                toY: _weeklyWorkoutData[i].toDouble(),
-                                                color: i == DateTime.now().weekday - 1
-                                                    ? const Color(0xFFFF6B35) // Today's color
-                                                    : const Color(0xFFFF6B35).withOpacity(0.5), // Other days color
-                                                width: 10,
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                            ],
-                                          );
-                                        }),
-                                      ),
+                          ),
+                          const SizedBox(height: 10),
+                          // Legend for categories
+                          Wrap(
+                            spacing: 10,
+                            children: List.generate(_tabTitles.length, (i) {
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: _categoryColors[i],
+                                      shape: BoxShape.circle,
                                     ),
-                            ),
-                            const SizedBox(height: 15),
-                            // Streaks visualization
-                            const Text(
-                              "Streaks",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              height: 20,
-                              child: Row(
-                                children: List.generate(7, (index) {
-                                  bool hasWorkout = _weeklyWorkoutData[index] > 0;
-                                  return Expanded(
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: hasWorkout
-                                            ? Colors.green
-                                            : Colors.grey[800],
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${_tabTitles[i]}: ${_monthlyCategoryCounts[i]}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
                                     ),
-                                  );
-                                }),
-                              ),
-                            ),
-                          ],
-                        ),
+                                  ),
+                                ],
+                              );
+                            }),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -513,34 +290,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
           ),
         ),
       ),
-    );
-  }
-
- Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? color,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ],
     );
   }
 
@@ -665,8 +414,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
               MaterialPageRoute(
                 builder: (context) => WorkoutDetailScreen(
                   workout: workout,
-                  onWorkoutCompleted: _loadWeeklyProgressData, // Pass callback to refresh data when workout is completed
-                  onWorkoutReset: _loadWeeklyProgressData, // Pass callback to refresh data when workout is reset
+                  onWorkoutCompleted: _loadMonthlyCategoryData, // Pass callback to refresh data when workout is completed
+                  onWorkoutReset: _loadMonthlyCategoryData, // Pass callback to refresh data when workout is reset
                 ),
               ),
             );
