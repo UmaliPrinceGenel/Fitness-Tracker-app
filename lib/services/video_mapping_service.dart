@@ -8,6 +8,7 @@ class VideoMappingService {
     'Incline Dumbbell Bench Press': 'assets/videos/Chest/incline_dumbbell_bench_press.mp4',
     'Dumbbell Flyes': 'assets/videos/Chest/dumbbell_flyes.mp4',
     'Cable Crossover': 'assets/videos/Chest/cable_crossover.mp4',
+    'Decline Bench Press': 'assets/videos/Chest/decline_bench_press.mp4',
     'Push-ups': 'assets/videos/Chest/push_ups.mp4',
     
     // Biceps exercises

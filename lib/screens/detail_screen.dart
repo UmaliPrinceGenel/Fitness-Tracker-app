@@ -599,16 +599,24 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
-  Widget _buildWeightContent() {
+   Widget _buildWeightContent() {
     return SingleChildScrollView(
       child: Column(
         children: [
+          // Current weight display
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -623,13 +631,31 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Weight",
+                  "Weight (kg)",
                   style: TextStyle(color: Colors.white70, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.green.withOpacity(0.4)),
+                  ),
+                  child: Text(
+                    "Goal: ${_goalData.toStringAsFixed(1)} kg",
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
+          // Weight chart
           Container(
             height: 220,
             decoration: BoxDecoration(
@@ -645,22 +671,32 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: CustomPaint(
-                painter: RealDataChartPainter(
-                  data: _historicalData,
-                  dates: _historicalDates,
-                  color: Colors.green, // Changed to green for weight
-                  goal: _goalData,
-                  timeTab: 2, // Always show full history for weight
-                ),
-                size: const Size(double.infinity, 180),
-              ),
+              child: _historicalData.isNotEmpty
+                  ? CustomPaint(
+                      painter: RealDataChartPainter(
+                        data: _historicalData,
+                        dates: _historicalDates,
+                        color: Colors.green, // Changed to green for weight
+                        goal: _goalData,
+                        timeTab: 2, // Always show full history for weight
+                      ),
+                      size: const Size(double.infinity, 180),
+                    )
+                  : const Center(
+                      child: Text(
+                        "No historical data available",
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 20),
+          // Weight history section
           _buildWeightHistorySection(), // New method for weight history
           const SizedBox(height: 20),
+          // Body composition card
           _buildBodyCompositionCard(), // Keep the BMI card
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -683,20 +719,31 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start, // Changed to start alignment
           children: [
-            // Centered header
+            // Header with proper alignment
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.history, color: Colors.green, size: 24),
-                const SizedBox(width: 8),
-                const Text(
-                  "Weight History",
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    Icon(Icons.history, color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Weight History",
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  "${_historicalData.length} entries",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
                   ),
                 ),
               ],

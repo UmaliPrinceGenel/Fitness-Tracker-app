@@ -171,6 +171,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       if (videoPath != null) {
         _controller = VideoPlayerController.asset(videoPath);
         await _controller!.initialize();
+        // Mute the video by setting volume to 0
+        _controller!.setVolume(0.0);
         setState(() {});
       }
     } catch (e) {

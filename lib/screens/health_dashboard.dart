@@ -1892,48 +1892,47 @@ class SleepGraphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
+    if (data.length < 2) return;
 
-    final currentHours = data.last;
-    // Normalize to 12 hours max for sleep
-    final normalizedHeight = (currentHours / 12) * size.height;
-
-    final gradient =
-        LinearGradient(
-          colors: [
-            Colors.purple.shade300,
-            Colors.purple.shade800,
-          ], // UPDATED: Changed colors
-        ).createShader(
-          Rect.fromLTWH(
-            0,
-            size.height - normalizedHeight,
-            size.width,
-            normalizedHeight,
-          ),
-        );
-
-    canvas.drawRect(
-      Rect.fromLTWH(
-        0,
-        size.height - normalizedHeight,
-        size.width,
-        normalizedHeight,
-      ),
-      Paint()..shader = gradient,
-    );
-
-    final linePaint = Paint()
-      ..color = Colors
-          .purple // UPDATED: Changed color
+    final paint = Paint()
+      ..color = Colors.purple
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(
-      Offset(0, size.height - normalizedHeight),
-      Offset(size.width, size.height - normalizedHeight),
-      linePaint,
-    );
+    double minValue = data.reduce((a, b) => a < b ? a : b);
+    double maxValue = data.reduce((a, b) => a > b ? a : b);
+    double range = maxValue - minValue;
+    if (range == 0) range = 1; // Avoid division by zero if all values are the same
+
+    double xStep = size.width / (data.length - 1);
+
+    List<Offset> points = [];
+    for (int i = 0; i < data.length; i++) {
+      double x = i * xStep;
+      // Invert y-axis (0 at top, max at bottom)
+      double y = size.height - ((data[i] - minValue) / range) * size.height;
+      points.add(Offset(x, y));
+    }
+
+    // Draw the line connecting all points
+    for (int i = 0; i < points.length - 1; i++) {
+      canvas.drawLine(points[i], points[i + 1], paint);
+    }
+
+    // Draw filled area under the line
+    final gradient = LinearGradient(
+      colors: [Colors.purple.shade300, Colors.purple.shade800],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path();
+    path.moveTo(0, size.height); // Start at bottom left
+    for (int i = 0; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    path.lineTo(size.width, size.height); // Close at bottom right
+    path.close();
+
+    canvas.drawPath(path, Paint()..shader = gradient);
   }
 
   @override

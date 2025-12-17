@@ -189,31 +189,42 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
                                     ),
                                   )
-                                : PieChart(
-                                    PieChartData(
-                                      sections: List.generate(_tabTitles.length, (i) {
-                                        return PieChartSectionData(
-                                          color: _categoryColors[i],
-                                          value: _monthlyCategoryCounts[i].toDouble(),
-                                          title: '${_monthlyCategoryCounts[i]}',
-                                          radius: 50,
-                                          titleStyle: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                : _hasData()
+                                    ? PieChart(
+                                        PieChartData(
+                                          sections: List.generate(_tabTitles.length, (i) {
+                                            return PieChartSectionData(
+                                              color: _categoryColors[i],
+                                              value: _monthlyCategoryCounts[i].toDouble(),
+                                              title: '${_monthlyCategoryCounts[i]}',
+                                              radius: 50,
+                                              titleStyle: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            );
+                                          }),
+                                          centerSpaceRadius: 30, // Creates the donut hole effect
+                                          sectionsSpace: 2, // Space between sections
+                                          pieTouchData: PieTouchData(
+                                            enabled: true,
+                                            touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                              // Handle touch events if needed
+                                            },
                                           ),
-                                        );
-                                      }),
-                                      centerSpaceRadius: 30, // Creates the donut hole effect
-                                      sectionsSpace: 2, // Space between sections
-                                      pieTouchData: PieTouchData(
-                                        enabled: true,
-                                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                          // Handle touch events if needed
-                                        },
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Text(
+                                          "Complete a workout to see your progress",
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
-                                    ),
-                                  ),
                           ),
                           const SizedBox(height: 10),
                           // Legend for categories
@@ -590,6 +601,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
       default:
         return Colors.grey;
     }
+  }
+
+  // Helper method to check if there's data to display in the pie chart
+  bool _hasData() {
+    return _monthlyCategoryCounts.any((count) => count > 0);
   }
 
   // Calculate total duration from all exercises in the workout
