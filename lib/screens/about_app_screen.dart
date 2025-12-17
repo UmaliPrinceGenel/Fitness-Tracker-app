@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'admin_login_screen.dart'; // Import the admin login screen
 
-class AboutThisAppScreen extends StatelessWidget {
+class AboutThisAppScreen extends StatefulWidget {
   const AboutThisAppScreen({super.key});
+
+  @override
+  _AboutThisAppScreenState createState() => _AboutThisAppScreenState();
+}
+
+class _AboutThisAppScreenState extends State<AboutThisAppScreen> {
+  int _tapCount = 0; // Counter for logo taps
 
   Future<void> _launchURL(String url) async {
     final uri = Uri.parse(url);
@@ -36,41 +44,58 @@ class AboutThisAppScreen extends StatelessWidget {
           children: [
             // App Logo and Name
             Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: const LinearGradient(
-                        colors: [Colors.orange, Colors.red],
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _tapCount++;
+                    if (_tapCount >= 10) {
+                      // Navigate to admin login screen after 10 taps
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminLoginScreen(),
+                        ),
+                      );
+                      _tapCount = 0; // Reset the counter after navigation
+                    }
+                  });
+                },
+                child: Column(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          colors: [Colors.orange, Colors.red],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.fitness_center,
+                        size: 60,
+                        color: Colors.white,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.fitness_center,
-                      size: 60,
-                      color: Colors.white,
+                    const SizedBox(height: 16),
+                    const Text(
+                      "FitTrack Pro",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "FitTrack Pro",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Your Personal Fitness Companion",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Your Personal Fitness Companion",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             
