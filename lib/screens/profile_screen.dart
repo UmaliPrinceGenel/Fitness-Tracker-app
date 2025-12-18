@@ -442,44 +442,42 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                   ),
                           ),
                         ),
-                      ),
-                      
-                      // Version information at the bottom
-                      const SizedBox(height: 30),
-                      GestureDetector(
-                        onTap: () {
-                          final now = DateTime.now();
-                          // Reset tap count if more than 2 seconds have passed since the last tap
-                          if (_lastTapTime != null && now.difference(_lastTapTime!) > const Duration(seconds: 2)) {
-                            _tapCount = 0;
-                          }
-                          
-                          _tapCount++;
-                          _lastTapTime = now;
-                          
-                          if (_tapCount == 7) {
-                            // Show admin login screen after 7 taps
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
-                            );
-                            // Reset the tap count after showing the admin screen
-                            _tapCount = 0;
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(
-                            'Version 1.0.1+2', // Using the version from pubspec.yaml
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
+                        
+                        // Version information at the bottom
+                        const SizedBox(height: 30),
+                        GestureDetector(
+                          onTap: () {
+                            final now = DateTime.now();
+                            // Reset tap count if more than 2 seconds have passed since the last tap
+                            if (_lastTapTime != null && now.difference(_lastTapTime!) > const Duration(seconds: 2)) {
+                              _tapCount = 0;
+                            }
+                            
+                            _tapCount++;
+                            _lastTapTime = now;
+                            
+                            if (_tapCount == 7) {
+                              // Show admin login screen after 7 taps
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
+                              );
+                              // Reset the tap count after showing the admin screen
+                              _tapCount = 0;
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              'Version 1.0.1+2', // Using the version from pubspec.yaml
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
-                    ],
                       ],
                     ),
                   ),
