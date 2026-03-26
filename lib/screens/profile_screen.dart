@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'health_dashboard.dart';
 import 'admin_login_screen.dart';
+import 'permissions_screen.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -24,6 +25,18 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
 
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  void _handleBackNavigation() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const PermissionsScreen()),
+    );
+  }
 
   @override
   void initState() {
@@ -187,9 +200,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: _isLoading
                           ? null
-                          : () {
-                              Navigator.pop(context);
-                            },
+                          : _handleBackNavigation,
                     ),
                   ),
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
+import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
 
 class PermissionsScreen extends StatefulWidget {
@@ -17,6 +18,31 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
 
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> _exitOnboarding() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await _firebaseAuth.signOut();
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error exiting setup: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   /// ✅ Save permission data to Firestore
   Future<void> _savePermissionData() async {
@@ -47,7 +73,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
         print('✅ Permission data saved for user: ${user.uid}');
 
         // Navigate to profile screen
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const MyProfileScreen()),
         );
@@ -230,9 +256,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                       ),
                       onPressed: _isLoading
                           ? null
-                          : () {
-                              Navigator.pop(context);
-                            },
+                          : _exitOnboarding,
                       child: const Text(
                         "Exit",
                         style: TextStyle(

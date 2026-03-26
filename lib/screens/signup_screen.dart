@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -45,13 +44,6 @@ class _SignupScreenState extends State<SignupScreen> {
     return _firestore.collection('users').doc(uid).get();
   }
 
-  Future<File> _convertToFile(Uint8List bytes, String fileName) async {
-    final tempDir = Directory.systemTemp;
-    final tempFile = File('${tempDir.path}/$fileName');
-    await tempFile.writeAsBytes(bytes);
-    return tempFile;
-  }
-
   Future<String> _uploadDefaultProfilePicture(String userId) async {
     try {
       final byteData = await rootBundle.load('assets/default_picture.jpg');
@@ -61,17 +53,17 @@ class _SignupScreenState extends State<SignupScreen> {
       );
       final filePath =
           '$userId/default_picture_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final imageFile = await _convertToFile(imageBytes, 'default_picture.jpg');
 
-      await _supabase.storage.from('profile-pictures').upload(filePath, imageFile);
+      await _supabase.storage
+          .from('profile-pictures')
+          .uploadBinary(filePath, imageBytes);
       final publicUrl = _supabase.storage
           .from('profile-pictures')
           .getPublicUrl(filePath);
 
-      await imageFile.delete();
       return publicUrl;
     } catch (e) {
-      return 'https://via.placeholder.com/150/CCCCCC/000000?text=Profile';
+      return '';
     }
   }
 
@@ -162,12 +154,11 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
 
-      Navigator.pushAndRemoveUntil(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => LoginScreen(prefilledEmail: fbUser.email),
         ),
-        (route) => false,
       );
     } on fbAuth.FirebaseAuthException catch (e) {
       var errorMessage = 'Signup failed';

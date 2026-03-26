@@ -49,6 +49,39 @@ class _MyProfileState extends State<MyProfile> {
     super.dispose();
   }
 
+  Widget _buildDefaultProfileImage(double size) {
+    return Image.asset(
+      'assets/default_picture.jpg',
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+    );
+  }
+
+  bool _isPlaceholderProfileUrl(String? url) {
+    final normalizedUrl = url?.trim() ?? '';
+    return normalizedUrl.isEmpty || normalizedUrl.contains('via.placeholder.com');
+  }
+
+  Widget _buildProfileAvatar(double size) {
+    final profileImageUrl = _profileImageUrl?.trim();
+    if (_isPlaceholderProfileUrl(profileImageUrl)) {
+      return _buildDefaultProfileImage(size);
+    }
+
+    final imageUrl = profileImageUrl!;
+
+    return Image.network(
+      imageUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return _buildDefaultProfileImage(size);
+      },
+    );
+  }
+
   /// ✅ Load user data from Firestore
   Future<void> _loadUserData() async {
     try {
@@ -60,9 +93,23 @@ class _MyProfileState extends State<MyProfile> {
             .get();
 
         if (userDoc.exists && mounted) {
+          final userData = userDoc.data();
+          final storedPhotoUrl =
+              userData?['photoURL'] ?? userData?['profile']?['photoURL'];
+          final hasPlaceholderPhoto =
+              !_isPlaceholderProfileUrl(storedPhotoUrl) ? false : (storedPhotoUrl?.toString().trim().isNotEmpty ?? false);
+
+          if (hasPlaceholderPhoto) {
+            await _firestore.collection('users').doc(user.uid).update({
+              'photoURL': '',
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
+
           setState(() {
-            _userData = userDoc.data();
-            _profileImageUrl = _userData?['photoURL'] ?? _userData?['profile']?['photoURL'];
+            _userData = userData;
+            _profileImageUrl =
+                _isPlaceholderProfileUrl(storedPhotoUrl) ? null : storedPhotoUrl;
           });
         }
       }
@@ -298,19 +345,13 @@ class _MyProfileState extends State<MyProfile> {
 
         // Delete old avatar if exists and is from Supabase
         final oldAvatarUrl = _profileImageUrl;
-        if (oldAvatarUrl != null && oldAvatarUrl.contains('supabase')) {
-          await _deleteOldAvatar(oldAvatarUrl);
-        }
-
-        String newAvatarUrl;
+        late final String newAvatarUrl;
         try {
           // ✅ USE BYTES UPLOAD LIKE YOUR WORKING SIGNUP SCREEN
           newAvatarUrl = await _uploadAvatarToSupabase(imageBytes, user.uid);
         } catch (uploadError) {
           print('❌ Upload failed: $uploadError');
-          newAvatarUrl =
-              oldAvatarUrl ??
-              'https://via.placeholder.com/150/CCCCCC/000000?text=Profile';
+          throw Exception('Profile picture upload failed: $uploadError');
         }
 
         // Update Firestore
@@ -318,6 +359,10 @@ class _MyProfileState extends State<MyProfile> {
           'photoURL': newAvatarUrl,
           'updatedAt': FieldValue.serverTimestamp(),
         });
+
+        if (oldAvatarUrl != null && oldAvatarUrl.contains('supabase')) {
+          await _deleteOldAvatar(oldAvatarUrl);
+        }
 
         // Update local state
         if (mounted) {
@@ -614,32 +659,7 @@ class _MyProfileState extends State<MyProfile> {
                                         ],
                                       ),
                                       child: ClipOval(
-                                        child: _profileImageUrl != null
-                                            ? Image.network(
-                                                _profileImageUrl!,
-                                                width: 80,
-                                                height: 80,
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (
-                                                      context,
-                                                      error,
-                                                      stackTrace,
-                                                    ) {
-                                                      return Image.asset(
-                                                        'assets/lakano.png',
-                                                        width: 80,
-                                                        height: 80,
-                                                        fit: BoxFit.cover,
-                                                      );
-                                                    },
-                                              )
-                                            : Image.asset(
-                                                'assets/lakano.png',
-                                                width: 80,
-                                                height: 80,
-                                                fit: BoxFit.cover,
-                                              ),
+                                        child: _buildProfileAvatar(80),
                                       ),
                                     ),
                                     Positioned(
