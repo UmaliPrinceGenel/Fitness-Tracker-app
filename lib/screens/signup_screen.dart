@@ -11,9 +11,7 @@ import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:io';
-// Add this at the top of the file if not already present
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:async'; // Add this import for TimeoutException
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -34,92 +32,16 @@ class _SignupScreenState extends State<SignupScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  StreamSubscription<fbAuth.User?>? _authStateSubscription;
-  Timer? _verificationCheckTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Start checking for verification immediately for any existing users
-    _startVerificationChecker();
-  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _authStateSubscription?.cancel();
-    _verificationCheckTimer?.cancel();
     super.dispose();
   }
 
-  /// ✅ Start automatic verification checking
-  void _startVerificationChecker() {
-    // Check every 3 seconds if there's a logged-in user who needs verification
-    _verificationCheckTimer = Timer.periodic(const Duration(seconds: 3), (
-      timer,
-    ) {
-      _checkForVerifiedUser();
-    });
-  }
 
-  /// ✅ Check if current user is verified
-  Future<void> _checkForVerifiedUser() async {
-    try {
-      final user = _firebaseAuth.currentUser;
-      if (user != null && !user.emailVerified) {
-        // Reload user to get latest status
-        await user.reload();
-        final updatedUser = _firebaseAuth.currentUser;
-
-        if (updatedUser != null && updatedUser.emailVerified) {
-          // User just got verified!
-          print(
-            '🎉 Auto-detected email verification for: ${updatedUser.email}',
-          );
-          await _handleVerifiedUser(updatedUser);
-        }
-      }
-    } catch (e) {
-      print('Error in auto verification check: $e');
-    }
-  }
-
-  /// ✅ Handle verified user - FIXED VERSION
-  Future<void> _handleVerifiedUser(fbAuth.User user) async {
-    try {
-      // Update Firestore
-      await _updateUserVerificationStatus(user);
-
-      // Stop the timer
-      _verificationCheckTimer?.cancel();
-
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Email verified successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // ✅ FIXED: Sign out user first, then navigate to login
-        await _firebaseAuth.signOut();
-
-        // Navigate to login
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      print('Error handling verified user: $e');
-    }
-  }
-
-  /// ✅ Download image from URL and convert to bytes
   Future<Uint8List> _downloadImage(String imageUrl) async {
     try {
       final response = await http.get(Uri.parse(imageUrl));
@@ -333,315 +255,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  /// ✅ Update user verification status in Firestore
-  Future<void> _updateUserVerificationStatus(fbAuth.User user) async {
-    try {
-      await _firestore.collection('users').doc(user.uid).update({
-        'emailVerified': user.emailVerified,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Firestore operation timed out. Please check your connection and try again.');
-        },
-      );
-      print(
-        '✅ Updated verification status for ${user.email}: ${user.emailVerified}',
-      );
-    } catch (e) {
-      print('❌ Error updating verification status: $e');
-    }
-  }
-
-  /// ✅ Check email verification status manually - FIXED VERSION
-  Future<void> _checkEmailVerification() async {
-    setState(() => _isLoading = true);
-    try {
-      final user = _firebaseAuth.currentUser;
-      if (user != null) {
-        // Reload user to get latest verification status
-        await user.reload();
-        final updatedUser = _firebaseAuth.currentUser;
-
-        if (updatedUser != null && updatedUser.emailVerified) {
-          // Update Firestore
-          await _updateUserVerificationStatus(updatedUser);
-
-          // ✅ FIXED: Sign out user first, then navigate to login
-          await _firebaseAuth.signOut();
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Email verified successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-              (route) => false,
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Email not verified yet. Please check your inbox.',
-                ),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-        }
-      } else {
-        // No user is logged in - show email input dialog
-        _showEmailVerificationDialog();
-      }
-    } catch (e) {
-      print('Error checking verification: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error checking verification: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  /// ✅ NEW: Show dialog for email verification check
-  void _showEmailVerificationDialog() {
-    final emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            'Check Email Verification',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Please enter your email address to check verification status:',
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.grey[800],
-                  labelText: "Email",
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Colors.orange),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.orange),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final email = emailController.text.trim();
-                if (email.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter your email address'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.of(context).pop();
-                await _checkVerificationByEmail(email);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text(
-                'Check Status',
-                style: TextStyle(color: Colors.black),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// ✅ NEW: Check verification by email - FIXED VERSION (Just shows popup)
-  Future<void> _checkVerificationByEmail(String email) async {
-    setState(() => _isLoading = true);
-    try {
-      // Try to find the user by email in Firestore to check verification status
-      final usersQuery = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .limit(1)
-          .get();
-
-      if (usersQuery.docs.isNotEmpty) {
-        final userDoc = usersQuery.docs.first;
-        final userData = userDoc.data();
-        final bool isVerified = userData['emailVerified'] ?? false;
-
-        // Show result in a dialog
-        _showVerificationResultDialog(email, isVerified);
-      } else {
-        // No user found with this email
-        _showVerificationResultDialog(email, false, userExists: false);
-      }
-    } catch (e) {
-      print('Error checking verification by email: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error checking verification status: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  /// ✅ NEW: Show verification result dialog
-  void _showVerificationResultDialog(
-    String email,
-    bool isVerified, {
-    bool userExists = true,
-  }) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: Text(
-            'Verification Status',
-            style: TextStyle(color: isVerified ? Colors.green : Colors.orange),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Email: $email',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (!userExists) ...[
-                const Text(
-                  '❌ No account found with this email address.',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ] else if (isVerified) ...[
-                const Row(
-                  children: [
-                    Icon(Icons.verified, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text(
-                      '✅ Email is verified!',
-                      style: TextStyle(color: Colors.green),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'You can now log in to your account.',
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ] else ...[
-                const Row(
-                  children: [
-                    Icon(Icons.pending, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Text(
-                      '⏳ Email not verified yet',
-                      style: TextStyle(color: Colors.orange),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Please check your inbox for the verification link and click it to verify your email.',
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            if (isVerified && userExists) ...[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  // Optionally navigate to login with pre-filled email
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LoginScreen(prefilledEmail: email),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Go to Login',
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ),
-            ],
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                isVerified && userExists ? 'Stay Here' : 'OK',
-                style: const TextStyle(color: Colors.orange),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// ✅ Sign up with email and password (Firebase + Firestore sync)
   Future<void> _signUpWithEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -677,6 +290,8 @@ class _SignupScreenState extends State<SignupScreen> {
           },
         );
 
+        await _firebaseAuth.signOut();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -686,8 +301,15 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
 
-        // Show verification dialog
-        _showVerificationDialog(fbUser);
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(
+              prefilledEmail: fbUser.email,
+            ),
+          ),
+          (route) => false,
+        );
       }
     } on fbAuth.FirebaseAuthException catch (e) {
       print('Firebase signup error: $e');
@@ -726,86 +348,6 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   /// ✅ Show verification dialog after signup
-  void _showVerificationDialog(fbAuth.User user) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            'Verify Your Email',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'We sent a verification link to your email. Please check your inbox and verify your email address to continue.',
-                style: TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info, color: Colors.orange, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'We\'ll automatically detect when you verify your email',
-                        style: TextStyle(
-                          color: Colors.orange[100],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                // Don't sign out - keep user logged in so we can detect verification
-                Navigator.of(context).pop();
-
-                // Show info that auto-detection is active
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Auto-verification detection is active. You can verify your email anytime.',
-                    ),
-                    backgroundColor: Colors.blue,
-                    duration: Duration(seconds: 4),
-                  ),
-                );
-              },
-              child: const Text('OK', style: TextStyle(color: Colors.orange)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _checkEmailVerification();
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text(
-                'Check Now',
-                style: TextStyle(color: Colors.black),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   /// ✅ FIXED: Google sign-up with platform-specific implementation
    /// ✅ IMPROVED: Google sign-up with better mobile support
   Future<void> _signUpWithGoogle() async {
@@ -850,7 +392,7 @@ class _SignupScreenState extends State<SignupScreen> {
           await _firebaseAuth.signOut();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Only @gmail.com accounts are allowed for Google sign-up'),
+              content: Text('Only @gmail.com accounts are allowed for sign-up'),
               backgroundColor: Colors.red,
             ),
           );
@@ -1359,21 +901,6 @@ class _SignupScreenState extends State<SignupScreen> {
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
-                                      ),
-                                    ),
-
-                                    // Updated verification check button
-                                    const SizedBox(height: 10),
-                                    TextButton(
-                                      onPressed: _isLoading
-                                          ? null
-                                          : _checkEmailVerification,
-                                      child: const Text(
-                                        "Check Email Verification Status",
-                                        style: TextStyle(
-                                          color: Colors.orange,
-                                          fontSize: 12,
-                                        ),
                                       ),
                                     ),
 
