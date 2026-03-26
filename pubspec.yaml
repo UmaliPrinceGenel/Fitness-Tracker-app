@@ -37,7 +37,6 @@ dependencies:
   supabase_flutter: ^2.10.3
   firebase_core: ^4.2.0
   firebase_auth: ^6.1.1
-  google_sign_in: ^7.2.0
   cloud_firestore: ^6.0.3
   image_picker: ^1.2.0
   sensors_plus: ^7.0.0
@@ -83,7 +82,6 @@ flutter:
   assets:
     - assets/
     - assets/default_picture.jpg
-    - assets/google.png
     - assets/thumbnails/
     - assets/thumbnails/Abs/
     - assets/thumbnails/Biceps/
@@ -149,3 +147,4 @@ flutter_launcher_icons:
   min_sdk_android: 21 # android min sdk min:16, default 21
   adaptive_icon_background: "#FFFFFF" # only available for android 8.0 devices and above
   adaptive_icon_foreground: "assets/logo.jpg"
+
