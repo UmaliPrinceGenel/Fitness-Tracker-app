@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/progress_tracking_service.dart';
-import '../services/workout_history_service.dart';
 
 class ProgressTrackingScreen extends StatefulWidget {
   const ProgressTrackingScreen({super.key});
@@ -13,14 +12,11 @@ class ProgressTrackingScreen extends StatefulWidget {
 class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   final ProgressTrackingService _progressService = ProgressTrackingService();
   List<DateTime> _completedWorkoutDates = [];
-  List<DateTime> _allDates = [];
-  int _longestStreak = 0;
   ExerciseRecord? _highestWeightRecord;
   List<ExerciseRecord> _allExerciseRecords = [];
  List<ExerciseRecord> _filteredExerciseRecords = [];
   String _selectedCategory = 'All';
   String _selectedDifficulty = 'All';
-  DateTime _currentMonth = DateTime.now();
   
   // Categories and difficulties for filtering
   final List<String> _categories = ['All', 'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Abs', 'Core'];
@@ -35,10 +31,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   Future<void> _loadProgressData() async {
     // Get all completed workout dates
     _completedWorkoutDates = await _progressService.getCompletedWorkoutDates();
-    
-    // Calculate longest streak
-    _longestStreak = await _progressService.getLongestStreak();
-    
+
     // Get highest weight record
     _highestWeightRecord = await _progressService.getHighestWeightRecord();
     
@@ -47,61 +40,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     
     // Set filtered records to all records initially
     _filteredExerciseRecords = _allExerciseRecords;
-    
-    // Update calendar dates
-    _updateCalendarDates();
-    
+
     setState(() {});
   }
-
- void _updateCalendarDates() {
-    // Get days in current month
-    int daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-    
-    // Create list of all dates in the current month
-    _allDates = List.generate(
-      daysInMonth,
-      (index) => DateTime(_currentMonth.year, _currentMonth.month, index + 1),
-    );
-  }
-
- // Navigate to previous month
-  void _previousMonth() {
-    setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
-      _updateCalendarDates();
-    });
-  }
-
-  // Navigate to next month
- void _nextMonth() {
-    setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
-      _updateCalendarDates();
-    });
-  }
-
-  // Format month and year for display
-  String _formatMonthYear(DateTime date) {
-    return DateFormat('MMMM yyyy').format(date);
-  }
-
-  // Check if a date is today
-  bool _isToday(DateTime date) {
-    final today = DateTime.now();
-    return date.day == today.day && 
-           date.month == today.month && 
-           date.year == today.year;
-  }
-
-  // Check if a date has a completed workout
- bool _hasWorkout(DateTime date) {
-    return _completedWorkoutDates.any((workoutDate) => 
-      workoutDate.day == date.day && 
-      workoutDate.month == date.month && 
-      workoutDate.year == date.year
-    );
- }
 
   // Filter exercises based on selected category and difficulty
   Future<void> _filterExercises() async {
@@ -200,107 +141,67 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Day Streak and Personal Best Cards (Side by Side)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF191919),
-                                borderRadius: BorderRadius.circular(16),
+                      // Personal Best Card
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF191919),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.star,
+                                color: Colors.yellow,
+                                size: 32,
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.local_fire_department,
-                                      color: Colors.orange,
-                                      size: 32,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      "Day Streak",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "${_longestStreak} days",
-                                      style: const TextStyle(
-                                        color: Colors.orange,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(height: 8),
+                              const Text(
+                                "Personal Best",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF191919),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.star, color: Colors.yellow, size: 32),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      "Personal Best",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    if (_highestWeightRecord != null)
-                                      Text(
-                                        "${_highestWeightRecord!.weightUsed} kg",
-                                        style: const TextStyle(
-                                          color: Colors.yellow,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      )
-                                    else
-                                      const Text(
-                                        "0 kg",
-                                        style: TextStyle(
-                                          color: Colors.yellow,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    if (_highestWeightRecord != null)
-                                      Text(
-                                        _highestWeightRecord!.exerciseName,
-                                        style: const TextStyle(
-                                          color: Colors.yellow,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                  ],
+                              const SizedBox(height: 4),
+                              if (_highestWeightRecord != null)
+                                Text(
+                                  "${_highestWeightRecord!.weightUsed} kg",
+                                  style: const TextStyle(
+                                    color: Colors.yellow,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              else
+                                const Text(
+                                  "0 kg",
+                                  style: TextStyle(
+                                    color: Colors.yellow,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ),
+                              if (_highestWeightRecord != null)
+                                Text(
+                                  _highestWeightRecord!.exerciseName,
+                                  style: const TextStyle(
+                                    color: Colors.yellow,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 16),
 
-                      // Calendar Section
+                      // Today Section
                       const Text(
-                        "Calendar",
+                        "Today",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -309,7 +210,6 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Month Navigation and Title
                       Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFF191919),
@@ -320,45 +220,50 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                           child: Column(
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  IconButton(
-                                    onPressed: _previousMonth,
-                                    icon: const Icon(Icons.chevron_left, color: Colors.white),
+                                  const Icon(
+                                    Icons.today,
+                                    color: Colors.orange,
+                                    size: 24,
                                   ),
-                                  Text(
-                                    _formatMonthYear(_currentMonth),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          DateFormat(
+                                            'EEEE, MMMM dd, yyyy',
+                                          ).format(DateTime.now()),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _completedWorkoutDates.any(
+                                            (workoutDate) =>
+                                                workoutDate.day ==
+                                                    DateTime.now().day &&
+                                                workoutDate.month ==
+                                                    DateTime.now().month &&
+                                                workoutDate.year ==
+                                                    DateTime.now().year,
+                                          )
+                                              ? "You completed a clean workout today."
+                                              : "No clean workout recorded today yet.",
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  IconButton(
-                                    onPressed: _nextMonth,
-                                    icon: const Icon(Icons.chevron_right, color: Colors.white),
-                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-
-                              // Day Labels (S, M, T, W, TH, F, S)
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  _buildDayLabel("S"),
-                                  _buildDayLabel("M"),
-                                  _buildDayLabel("T"),
-                                  _buildDayLabel("W"),
-                                  _buildDayLabel("T"),
-                                  _buildDayLabel("F"),
-                                  _buildDayLabel("S"),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Calendar grid
-                              _buildCalendarGrid(),
                             ],
                           ),
                         ),
@@ -538,16 +443,6 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                                     : _getMostPracticedExercise(),
                                 description: "Your most practiced exercise",
                               ),
-                              const Divider(height: 20, color: Colors.grey),
-                              // Consistency
-                              _buildInsightItem(
-                                icon: Icons.trending_up,
-                                title: "Consistency",
-                                value: _longestStreak == 0 
-                                    ? "0 days" 
-                                    : "${(_longestStreak / 7).toStringAsFixed(1)} weeks",
-                                description: "Longest streak in weeks",
-                              ),
                             ],
                           ),
                         ),
@@ -620,104 +515,6 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDayLabel(String day) {
-    return Container(
-      width: 30,
-      height: 30,
-      child: Center(
-        child: Text(
-          day,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ),
-    );
-  }
-
- Widget _buildCalendarGrid() {
-    // Get the first day of the month and the number of days in the month
-    final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
-    final daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-    final firstDayWeekday = firstDay.weekday % 7; // 0 = Sunday, 1 = Monday, etc.
-
-    // Create a list of all days to display (including empty spaces for days before the first)
-    final days = <Widget>[];
-
-    // Add empty spaces for days before the first day of the month
-    for (int i = 0; i < firstDayWeekday; i++) {
-      days.add(const SizedBox(width: 30, height: 30));
-    }
-
-    // Add all the days of the month
-    for (int i = 1; i <= daysInMonth; i++) {
-      final date = DateTime(_currentMonth.year, _currentMonth.month, i);
-      days.add(_buildCalendarDay(date));
-    }
-
-    // Add empty spaces for days after the last day of the month to complete the grid
-    final totalCells = ((days.length + 6) ~/ 7) * 7; // Round up to nearest multiple of 7
-    for (int i = days.length; i < totalCells; i++) {
-      days.add(const SizedBox(width: 30, height: 30));
-    }
-
-    // Create the grid rows
-    final rows = <Widget>[];
-    for (int i = 0; i < days.length; i += 7) {
-      rows.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: days.sublist(
-              i,
-              i + 7 > days.length ? days.length : i + 7,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: rows,
-    );
-  }
-
-  Widget _buildCalendarDay(DateTime date) {
-    bool isToday = _isToday(date);
-    bool hasWorkout = _hasWorkout(date);
-
-    return Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isToday
-            ? Colors.orange
-            : hasWorkout
-                ? Colors.green.withOpacity(0.3)
-                : Colors.transparent,
-        border: isToday
-            ? null
-            : Border.all(
-                color: hasWorkout ? Colors.green : Colors.grey.withOpacity(0.5),
-              ),
-      ),
-      child: Center(
-        child: Text(
-          date.day.toString(),
-          style: TextStyle(
-            color: isToday
-                ? Colors.black
-                : hasWorkout
-                    ? Colors.green
-                    : Colors.white70,
-            fontSize: 12,
-            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
       ),
     );
   }
