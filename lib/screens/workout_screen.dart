@@ -18,7 +18,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   int _selectedTabIndex = 0;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  List<int> _monthlyCategoryCounts = [0, 0, 0, 0, 0]; // Count for each category: Chest, Arms, Core, Lower Body, Shoulders
+  List<int> _monthlyCategoryCounts = [0, 0, 0, 0, 0]; // Total count for each category
+  List<int> _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0]; // Cheated count for each category
   bool _isLoading = true;
 
   // List of tab titles and corresponding colors
@@ -53,6 +54,140 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     }
   }
 
+  int? _getCategoryIndex(String bodyFocus) {
+    final normalizedFocus = bodyFocus.toLowerCase().trim();
+    if (normalizedFocus == "chest") {
+      return 0;
+    }
+    if (normalizedFocus == "arm" ||
+        normalizedFocus == "arms" ||
+        normalizedFocus == "triceps" ||
+        normalizedFocus == "biceps" ||
+        normalizedFocus == "forearms") {
+      return 1;
+    }
+    if (normalizedFocus == "abs" || normalizedFocus == "core") {
+      return 2;
+    }
+    if (normalizedFocus == "legs" ||
+        normalizedFocus == "calves" ||
+        normalizedFocus == "glutes & hamstrings") {
+      return 3;
+    }
+    if (normalizedFocus == "shoulders" || normalizedFocus == "traps") {
+      return 4;
+    }
+    return null;
+  }
+
+  List<PieChartSectionData> _buildMonthlyChartSections() {
+    final sections = <PieChartSectionData>[];
+
+    for (int i = 0; i < _tabTitles.length; i++) {
+      final cheatedCount = _monthlyCheatedCategoryCounts[i];
+      final cleanCount = _monthlyCategoryCounts[i] - cheatedCount;
+
+      if (cleanCount > 0) {
+        sections.add(
+          PieChartSectionData(
+            color: _categoryColors[i],
+            value: cleanCount.toDouble(),
+            title: '$cleanCount',
+            radius: 50,
+            titleStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        );
+      }
+
+      if (cheatedCount > 0) {
+        sections.add(
+          PieChartSectionData(
+            color: _categoryColors[i].withOpacity(0.35),
+            value: cheatedCount.toDouble(),
+            title: '!$cheatedCount',
+            radius: 42,
+            titleStyle: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.amber,
+            ),
+          ),
+        );
+      }
+    }
+
+    return sections;
+  }
+
+  Widget _buildLegendItem(int index) {
+    final totalCount = _monthlyCategoryCounts[index];
+    final cheatedCount = _monthlyCheatedCategoryCounts[index];
+    final cleanCount = totalCount - cheatedCount;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: _categoryColors[index],
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${_tabTitles[index]}: $totalCount',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+          if (cheatedCount > 0) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: _categoryColors[index].withOpacity(0.35),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.amber.withOpacity(0.7)),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '$cheatedCount cheated',
+              style: const TextStyle(
+                color: Colors.amber,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ] else ...[
+            const SizedBox(width: 8),
+            Text(
+              '$cleanCount clean',
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // Load monthly category data from Firestore
   Future<void> _loadMonthlyCategoryData() async {
     setState(() {
@@ -77,51 +212,53 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             .get();
 
         // Initialize category counts with zeros
-        List<int> categoryCounts = [0, 0, 0, 0, 0]; // For Chest, Arms, Core, Lower Body, Shoulders respectively
+        List<int> categoryCounts = [0, 0, 0, 0, 0];
+        List<int> cheatedCategoryCounts = [0, 0, 0, 0, 0];
 
         // Process completed workouts to calculate category counts
         for (var doc in completedWorkoutsSnapshot.docs) {
           final data = doc.data();
-          final completedAt = (data['completedAt'] as Timestamp).toDate();
+          final workoutTitle = data['title'] as String?;
+          final storedBodyFocus = data['bodyFocus'] as String?;
+          String bodyFocus = storedBodyFocus ?? '';
 
-          // Extract workout title to get the actual exercise list from our workout data
-          final workoutTitle = data['title'] as String;
-          final workout = exerciseWorkouts.firstWhere((w) => w.title == workoutTitle, orElse: () => exerciseWorkouts[0]);
+          if (bodyFocus.isEmpty && workoutTitle != null) {
+            final workout = exerciseWorkouts.firstWhere(
+              (w) => w.title == workoutTitle,
+              orElse: () => exerciseWorkouts[0],
+            );
+            bodyFocus = workout.bodyFocus;
+          }
 
           // Check if the workout was cheated
-          bool isCheated = data['isCheated'] == true;
+          final bool isCheated = data['isCheated'] == true;
+          final int? categoryIndex = _getCategoryIndex(bodyFocus);
 
-          // Determine the category of the workout and increment the count if not cheated
-          if (!isCheated) {
-            String bodyFocus = workout.bodyFocus.toLowerCase();
-            
-            // Map exercises to the new categories and increment the count
-            if (bodyFocus == "chest") {
-              categoryCounts[0]++; // Chest
-            } else if (bodyFocus == "arm" || bodyFocus == "triceps" || bodyFocus == "biceps" || bodyFocus == "forearms") {
-              categoryCounts[1]++; // Arms
-            } else if (bodyFocus == "abs" || bodyFocus == "core") {
-              categoryCounts[2]++; // Core
-            } else if (bodyFocus == "legs" || bodyFocus == "calves" || bodyFocus == "glutes & hamstrings") {
-              categoryCounts[3]++; // Lower Body
-            } else if (bodyFocus == "shoulders" || bodyFocus == "traps") {
-              categoryCounts[4]++; // Shoulders
+          if (categoryIndex != null) {
+            categoryCounts[categoryIndex]++;
+            if (isCheated) {
+              cheatedCategoryCounts[categoryIndex]++;
             }
           }
         }
 
         setState(() {
           _monthlyCategoryCounts = categoryCounts;
+          _monthlyCheatedCategoryCounts = cheatedCategoryCounts;
           _isLoading = false;
         });
       } else {
         setState(() {
+          _monthlyCategoryCounts = [0, 0, 0, 0, 0];
+          _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0];
           _isLoading = false;
         });
       }
     } catch (e) {
       print('Error loading monthly category data: $e');
       setState(() {
+        _monthlyCategoryCounts = [0, 0, 0, 0, 0];
+        _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0];
         _isLoading = false;
       });
     }
@@ -156,7 +293,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                   // Monthly Category Chart
                   Container(
                     width: double.infinity,
-                    height: 300, // Increased height to accommodate the chart
+                    height: 350,
                     decoration: BoxDecoration(
                       color: const Color(0xFF191919),
                       borderRadius: BorderRadius.circular(20),
@@ -192,21 +329,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                                 : _hasData()
                                     ? PieChart(
                                         PieChartData(
-                                          sections: List.generate(_tabTitles.length, (i) {
-                                            return PieChartSectionData(
-                                              color: _categoryColors[i],
-                                              value: _monthlyCategoryCounts[i].toDouble(),
-                                              title: '${_monthlyCategoryCounts[i]}',
-                                              radius: 50,
-                                              titleStyle: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            );
-                                          }),
-                                          centerSpaceRadius: 30, // Creates the donut hole effect
-                                          sectionsSpace: 2, // Space between sections
+                                          sections: _buildMonthlyChartSections(),
+                                          centerSpaceRadius: 30,
+                                          sectionsSpace: 2,
                                           pieTouchData: PieTouchData(
                                             enabled: true,
                                             touchCallback: (FlTouchEvent event, pieTouchResponse) {
@@ -230,29 +355,49 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                           // Legend for categories
                           Wrap(
                             spacing: 10,
+                            runSpacing: 8,
                             children: List.generate(_tabTitles.length, (i) {
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: _categoryColors[i],
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${_tabTitles[i]}: ${_monthlyCategoryCounts[i]}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              );
+                              return _buildLegendItem(i);
                             }),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Solid slices = clean completions. Faded slices with ! = cheated completions.',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ProgressTrackingScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF6B35),
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              icon: const Icon(Icons.insights),
+                              label: const Text(
+                                "Open Progress Tracking",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),

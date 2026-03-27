@@ -696,8 +696,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
     }
 
-    // Set expected workout duration to 30 minutes (1800 seconds) for anti-cheating
-    int expectedDurationSeconds = 30 * 60; // 30 minutes in seconds
+    final int parsedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
+    final int expectedDurationSeconds =
+        parsedDurationSeconds > 0 ? parsedDurationSeconds : 30 * 60;
 
     // Determine if user might be cheating based on time
     bool isCheating = expectedDurationSeconds > 0 && actualDurationSeconds < expectedDurationSeconds;
@@ -714,7 +715,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               style: TextStyle(color: Colors.white),
             ),
             content: Text(
-              "Are you sure you are not cheating? The ${widget.workout.title} workout is expected to take at least 30 minutes, but you completed it in ${_formatSecondsToMinutes(actualDurationSeconds)}.",
+              "Are you sure you are not cheating? The ${widget.workout.title} workout is expected to take at least ${_formatSecondsToMinutes(expectedDurationSeconds)}, but you completed it in ${_formatSecondsToMinutes(actualDurationSeconds)}.",
               style: const TextStyle(color: Colors.white70),
             ),
             actions: [
@@ -842,8 +843,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
         }
 
-        // Set expected workout duration to 30 minutes (1800 seconds) for anti-cheating
-        int expectedDurationSeconds = 30 * 60; // 30 minutes in seconds
+        final int parsedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
+        final int expectedDurationSeconds =
+            parsedDurationSeconds > 0 ? parsedDurationSeconds : 30 * 60;
         bool isCheated = expectedDurationSeconds > 0 && actualDurationSeconds < expectedDurationSeconds;
 
         // Update workout completion status in Firebase under "doneInfos" collection
