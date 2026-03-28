@@ -14,21 +14,40 @@ class WorkoutScreen extends StatefulWidget {
   State<WorkoutScreen> createState() => _WorkoutScreenState();
 }
 
-class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserver {
+class _WorkoutScreenState extends State<WorkoutScreen>
+    with WidgetsBindingObserver {
   int _selectedTabIndex = 0;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  List<int> _monthlyCategoryCounts = [0, 0, 0, 0, 0]; // Total count for each category
-  List<int> _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0]; // Cheated count for each category
+  List<int> _monthlyCategoryCounts = [
+    0,
+    0,
+    0,
+    0,
+    0,
+  ]; // Total count for each category
+  List<int> _monthlyCheatedCategoryCounts = [
+    0,
+    0,
+    0,
+    0,
+    0,
+  ]; // Cheated count for each category
   bool _isLoading = true;
 
   // List of tab titles and corresponding colors
-  final List<String> _tabTitles = ["Chest", "Arms", "Core", "Lower Body", "Shoulders"];
+  final List<String> _tabTitles = [
+    "Chest",
+    "Arms",
+    "Core",
+    "Lower Body",
+    "Shoulders",
+  ];
   final List<Color> _categoryColors = [
-    Colors.red,      // Chest
-    Colors.blue,     // Arms
-    Colors.green,    // Core
-    Colors.orange,   // Lower Body
+    Colors.red, // Chest
+    Colors.blue, // Arms
+    Colors.green, // Core
+    Colors.orange, // Lower Body
     Colors.purple,   // Shoulders
   ];
 
@@ -80,8 +99,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     return null;
   }
 
-  List<PieChartSectionData> _buildMonthlyChartSections() {
+  List<PieChartSectionData> _buildMonthlyChartSections({
+    required bool compact,
+  }) {
     final sections = <PieChartSectionData>[];
+    final cleanRadius = compact ? 42.0 : 50.0;
+    final cheatedRadius = compact ? 34.0 : 42.0;
+    final cleanFontSize = compact ? 10.0 : 12.0;
+    final cheatedFontSize = compact ? 9.0 : 11.0;
 
     for (int i = 0; i < _tabTitles.length; i++) {
       final cheatedCount = _monthlyCheatedCategoryCounts[i];
@@ -93,9 +118,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             color: _categoryColors[i],
             value: cleanCount.toDouble(),
             title: '$cleanCount',
-            radius: 50,
-            titleStyle: const TextStyle(
-              fontSize: 12,
+            radius: cleanRadius,
+            titleStyle: TextStyle(
+              fontSize: cleanFontSize,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -109,9 +134,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             color: _categoryColors[i].withOpacity(0.35),
             value: cheatedCount.toDouble(),
             title: '!$cheatedCount',
-            radius: 42,
-            titleStyle: const TextStyle(
-              fontSize: 11,
+            radius: cheatedRadius,
+            titleStyle: TextStyle(
+              fontSize: cheatedFontSize,
               fontWeight: FontWeight.bold,
               color: Colors.amber,
             ),
@@ -123,7 +148,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     return sections;
   }
 
-  Widget _buildLegendItem(int index) {
+  Widget _buildLegendItem(int index, {required bool compact}) {
     final totalCount = _monthlyCategoryCounts[index];
     final cheatedCount = _monthlyCheatedCategoryCounts[index];
     final cleanCount = totalCount - cheatedCount;
@@ -135,7 +160,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 10,
@@ -145,46 +170,141 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 6),
-          Text(
-            '${_tabTitles[index]}: $totalCount',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_tabTitles[index]}: $totalCount',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: compact ? 11 : 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (cheatedCount > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: _categoryColors[index].withOpacity(0.35),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.amber.withOpacity(0.7),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '$cheatedCount cheated',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.amber,
+                            fontSize: compact ? 11 : 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    '$cleanCount clean',
+                    style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: compact ? 11 : 12,
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (cheatedCount > 0) ...[
-            const SizedBox(width: 8),
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: _categoryColors[index].withOpacity(0.35),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.amber.withOpacity(0.7)),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '$cheatedCount cheated',
-              style: const TextStyle(
-                color: Colors.amber,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ] else ...[
-            const SizedBox(width: 8),
-            Text(
-              '$cleanCount clean',
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 12,
-              ),
-            ),
-          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildWorkoutMetaChip({
+    required String label,
+    required Color backgroundColor,
+    required Color textColor,
+    Color? borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: borderColor == null
+            ? null
+            : Border.all(
+                color: borderColor,
+                width: 1,
+              ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkoutDetails(
+    Workout workout, {
+    required bool isCompleted,
+    required bool isCheated,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          workout.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildWorkoutMetaChip(
+              label: "${workout.exerciseList.length} exercises",
+              backgroundColor: Colors.grey[800]!,
+              textColor: Colors.white70,
+            ),
+            _buildWorkoutMetaChip(
+              label: workout.level,
+              backgroundColor: _getLevelColor(workout.level).withOpacity(0.2),
+              textColor: _getLevelColor(workout.level),
+            ),
+            if (isCompleted)
+              _buildWorkoutMetaChip(
+                label: isCheated ? 'Cheated' : 'Done',
+                backgroundColor: isCheated
+                    ? Colors.red.withOpacity(0.2)
+                    : Colors.green.withOpacity(0.2),
+                textColor: isCheated ? Colors.red : Colors.green,
+                borderColor: isCheated ? Colors.red : Colors.green,
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -200,7 +320,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
         // Get the start of the current month
         DateTime now = DateTime.now();
         DateTime startOfMonth = DateTime(now.year, now.month, 1);
-        DateTime endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of current month
+        DateTime endOfMonth = DateTime(
+          now.year,
+          now.month + 1,
+          0,
+        ); // Last day of current month
 
         // Query completed workouts for the current month
         final completedWorkoutsSnapshot = await _firestore
@@ -208,7 +332,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             .doc(user.uid)
             .collection('doneInfos')
             .where('completedAt', isGreaterThanOrEqualTo: startOfMonth)
-            .where('completedAt', isLessThan: endOfMonth.add(const Duration(days: 1)))
+            .where(
+              'completedAt',
+              isLessThan: endOfMonth.add(const Duration(days: 1)),
+            )
             .get();
 
         // Initialize category counts with zeros
@@ -266,6 +393,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompactScreen = screenWidth < 360;
+    final horizontalPadding = isCompactScreen ? 12.0 : 16.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -285,15 +416,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
         child: RefreshIndicator(
           onRefresh: _loadMonthlyCategoryData,
           child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(horizontalPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Monthly Category Chart
                   Container(
                     width: double.infinity,
-                    height: 350,
+                    constraints: BoxConstraints(
+                      minHeight: isCompactScreen ? 320 : 350,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF191919),
                       borderRadius: BorderRadius.circular(20),
@@ -306,100 +440,126 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Monthly Category Tracking",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Expanded(
-                            child: _isLoading
-                                ? const Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                                    ),
-                                  )
-                                : _hasData()
-                                    ? PieChart(
-                                        PieChartData(
-                                          sections: _buildMonthlyChartSections(),
-                                          centerSpaceRadius: 30,
-                                          sectionsSpace: 2,
-                                          pieTouchData: PieTouchData(
-                                            enabled: true,
-                                            touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                              // Handle touch events if needed
-                                            },
-                                          ),
-                                        ),
-                                      )
-                                    : const Center(
-                                        child: Text(
-                                          "Complete a workout to see your progress",
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 14,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                          ),
-                          const SizedBox(height: 10),
-                          // Legend for categories
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 8,
-                            children: List.generate(_tabTitles.length, (i) {
-                              return _buildLegendItem(i);
-                            }),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Solid slices = clean completions. Faded slices with ! = cheated completions.',
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ProgressTrackingScreen(),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF6B35),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              icon: const Icon(Icons.insights),
-                              label: const Text(
-                                "Open Progress Tracking",
+                      padding: EdgeInsets.all(isCompactScreen ? 14 : 16),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final compactCard = constraints.maxWidth < 360;
+                          final chartHeight = compactCard ? 160.0 : 190.0;
+                          final legendWidth = compactCard
+                              ? constraints.maxWidth
+                              : (constraints.maxWidth - 10) / 2;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Monthly Category Tracking",
                                 style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: compactCard ? 16 : 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                height: chartHeight,
+                                child: _isLoading
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.orange,
+                                          ),
+                                        ),
+                                      )
+                                    : _hasData()
+                                        ? PieChart(
+                                            PieChartData(
+                                              sections: _buildMonthlyChartSections(
+                                                compact: compactCard,
+                                              ),
+                                              centerSpaceRadius:
+                                                  compactCard ? 24 : 30,
+                                              sectionsSpace: 2,
+                                              pieTouchData: PieTouchData(
+                                                enabled: true,
+                                                touchCallback: (
+                                                  FlTouchEvent event,
+                                                  pieTouchResponse,
+                                                ) {
+                                                  // Handle touch events if needed
+                                                },
+                                              ),
+                                            ),
+                                          )
+                                        : const Center(
+                                            child: Text(
+                                              "Complete a workout to see your progress",
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 8,
+                                children: List.generate(_tabTitles.length, (i) {
+                                  return SizedBox(
+                                    width: legendWidth,
+                                    child: _buildLegendItem(
+                                      i,
+                                      compact: compactCard,
+                                    ),
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Solid slices = clean completions. Faded slices with ! = cheated completions.',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: compactCard ? 10 : 11,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const ProgressTrackingScreen(),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF6B35),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.insights),
+                                  label: Text(
+                                    "Open Progress Tracking",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: compactCard ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -419,20 +579,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                   const SizedBox(height: 10),
 
                   // Category Tabs
-                  Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF191919),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildTab(_tabTitles[0], 0),
-                        _buildTab(_tabTitles[1], 1),
-                        _buildTab(_tabTitles[2], 2),
-                        _buildTab(_tabTitles[3], 3),
-                        _buildTab(_tabTitles[4], 4),
-                      ],
+                  SizedBox(
+                    height: 42,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _tabTitles.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        return _buildTab(_tabTitles[index], index);
+                      },
                     ),
                   ),
 
@@ -449,32 +604,32 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
- // Body Focus Tabs Choices
+  // Body Focus Tabs Choices
   Widget _buildTab(String title, int index) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTabIndex = index;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: _selectedTabIndex == index
-                ? const Color(0xFFFF6B35)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: _selectedTabIndex == index
-                    ? Colors.white
-                    : Colors.white70,
-                fontWeight: FontWeight.bold,
-              ),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTabIndex = index;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: _selectedTabIndex == index
+              ? const Color(0xFFFF6B35)
+              : const Color(0xFF191919),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: _selectedTabIndex == index
+                  ? Colors.white
+                  : Colors.white70,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
             ),
           ),
         ),
@@ -482,23 +637,28 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
- // Workout List Section - Filtered based on selected tab
- Widget _buildWorkoutList() {
+  // Workout List Section - Filtered based on selected tab
+  Widget _buildWorkoutList() {
     // Filter workouts based on selected tab
     List<Workout> filteredWorkouts = exerciseWorkouts.where((workout) {
       String bodyFocus = workout.bodyFocus.toLowerCase();
       String selectedCategory = _tabTitles[_selectedTabIndex].toLowerCase();
-      
+
       // Map exercises to the new categories
-      switch(selectedCategory) {
+      switch (selectedCategory) {
         case "chest":
           return bodyFocus == "chest";
         case "arms":
-          return bodyFocus == "arm" || bodyFocus == "triceps" || bodyFocus == "biceps" || bodyFocus == "forearms";
+          return bodyFocus == "arm" ||
+              bodyFocus == "triceps" ||
+              bodyFocus == "biceps" ||
+              bodyFocus == "forearms";
         case "core":
           return bodyFocus == "abs" || bodyFocus == "core";
         case "lower body":
-          return bodyFocus == "legs" || bodyFocus == "calves" || bodyFocus == "glutes & hamstrings";
+          return bodyFocus == "legs" ||
+              bodyFocus == "calves" ||
+              bodyFocus == "glutes & hamstrings";
         case "shoulders":
           return bodyFocus == "shoulders" || bodyFocus == "traps";
         default:
@@ -534,7 +694,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
           // Build the list of workout cards
           ListView.builder(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(), // Disable scrolling for the list view since the parent is already scrollable
+            physics:
+                const NeverScrollableScrollPhysics(), // Disable scrolling for the list view since the parent is already scrollable
             itemCount: filteredWorkouts.length,
             itemBuilder: (context, index) {
               return _buildWorkoutCard(filteredWorkouts[index]);
@@ -570,8 +731,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
               MaterialPageRoute(
                 builder: (context) => WorkoutDetailScreen(
                   workout: workout,
-                  onWorkoutCompleted: _loadMonthlyCategoryData, // Pass callback to refresh data when workout is completed
-                  onWorkoutReset: _loadMonthlyCategoryData, // Pass callback to refresh data when workout is reset
+                  onWorkoutCompleted:
+                      _loadMonthlyCategoryData, // Pass callback to refresh data when workout is completed
+                  onWorkoutReset:
+                      _loadMonthlyCategoryData, // Pass callback to refresh data when workout is reset
                 ),
               ),
             );
@@ -592,15 +755,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Video preview box with thumbnail
-                  Stack(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompactCard = constraints.maxWidth < 340;
+                  final thumbnailWidth =
+                      isCompactCard ? constraints.maxWidth : 120.0;
+                  final thumbnailHeight = isCompactCard ? 170.0 : 80.0;
+
+                  final thumbnail = Stack(
                     children: [
                       Container(
-                        width: 120,
-                        height: 80,
+                        width: thumbnailWidth,
+                        height: thumbnailHeight,
                         decoration: BoxDecoration(
                           color: Colors.grey[800],
                           borderRadius: BorderRadius.circular(8),
@@ -608,10 +774,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            workout.thumbnailAsset, // Use the thumbnail asset from the workout data
+                            workout.thumbnailAsset,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              // Fallback if the image fails to load
                               return const Icon(
                                 Icons.play_arrow,
                                 color: Colors.white,
@@ -621,7 +786,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                           ),
                         ),
                       ),
-                      // Status indicator overlay
                       if (isCompleted)
                         Positioned(
                           top: 4,
@@ -640,92 +804,34 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
                           ),
                         ),
                     ],
-                  ),
-                  const SizedBox(width: 12),
-                  // Video details
-                  Expanded(
-                    child: Column(
+                  );
+
+                  final details = _buildWorkoutDetails(
+                    workout,
+                    isCompleted: isCompleted,
+                    isCheated: isCheated,
+                  );
+
+                  if (isCompactCard) {
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          workout.title, // Use title from workout data
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[800],
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                "${workout.exerciseList.length} exercises", // Use actual count from exercise list
-                                style: const TextStyle(color: Colors.white70, fontSize: 10),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getLevelColor(workout.level).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                workout.level, // Use level from workout data
-                                style: TextStyle(
-                                  color: _getLevelColor(workout.level),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            if (isCompleted) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isCheated ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isCheated ? Colors.red : Colors.green,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Text(
-                                  isCheated ? 'Cheated' : 'Done',
-                                  style: TextStyle(
-                                    color: isCheated ? Colors.red : Colors.green,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                        thumbnail,
+                        const SizedBox(height: 12),
+                        details,
                       ],
-                    ),
-                  ),
-                ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      thumbnail,
+                      const SizedBox(width: 12),
+                      Expanded(child: details),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -734,7 +840,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
     );
   }
 
- // Helper method to get color based on workout level
+  // Helper method to get color based on workout level
   Color _getLevelColor(String level) {
     switch (level.toLowerCase()) {
       case 'easy':
@@ -754,28 +860,30 @@ class _WorkoutScreenState extends State<WorkoutScreen> with WidgetsBindingObserv
   }
 
   // Calculate total duration from all exercises in the workout
- String _getTotalExerciseDuration(Workout workout) {
+  String _getTotalExerciseDuration(Workout workout) {
     int totalSeconds = 0;
-    
+
     // Sum up the duration of all exercises
     for (Exercise exercise in workout.exerciseList) {
       totalSeconds += exercise.duration;
     }
-    
+
     // Convert total seconds to minutes and format as "X min" or "X mins"
     int totalMinutes = totalSeconds ~/ 60;
-    
+
     // Handle edge cases: if total minutes is 0, return "0 min", otherwise format appropriately
     if (totalMinutes == 0) {
       // If there are exercises but total is 0 minutes, at least show 1 min to avoid confusion
       if (workout.exerciseList.isNotEmpty) {
         // Check if there are any exercises with duration less than 60 seconds
-        bool hasShortExercises = workout.exerciseList.any((exercise) => exercise.duration > 0);
+        bool hasShortExercises = workout.exerciseList.any(
+          (exercise) => exercise.duration > 0,
+        );
         return hasShortExercises ? "1 min" : "0 min";
       }
       return "0 min";
     }
-    
+
     return totalMinutes > 1 ? "${totalMinutes} mins" : "${totalMinutes} min";
   }
 }
