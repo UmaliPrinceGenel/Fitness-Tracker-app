@@ -1,22 +1,65 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 import '../models/workout_model.dart';
 import '../services/video_mapping_service.dart';
 
+class ExerciseTrackingDraft {
+  final String weight;
+  final String reps;
+  final String sets;
+
+  const ExerciseTrackingDraft({
+    required this.weight,
+    required this.reps,
+    required this.sets,
+  });
+
+  int? _parsePositiveWholeNumber(String text) {
+    final normalized = text.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    final value = int.tryParse(normalized);
+    if (value == null || value <= 0) {
+      return null;
+    }
+
+    return value;
+  }
+
+  bool get hasValidWeight => _parsePositiveWholeNumber(weight) != null;
+  bool get hasValidReps => _parsePositiveWholeNumber(reps) != null;
+  bool get hasValidSets => _parsePositiveWholeNumber(sets) != null;
+}
+
 class ExerciseDetailScreen extends StatefulWidget {
   final int exerciseNumber;
   final Workout workout;
+  final bool isPreviewMode;
+  final ExerciseTrackingDraft? initialDraft;
+  final ExerciseTrackingDraft? Function(int)? draftForExercise;
   final Function(int)? onExerciseViewed; // Callback to mark exercise as viewed
   final Function(int)? onWeightInput; // Callback to mark exercise as having weight input
+  final void Function(int exerciseIndex, ExerciseTrackingDraft draft)? onDraftChanged;
+  final VoidCallback? onWorkoutCancelled;
 
   const ExerciseDetailScreen({
     Key? key,
     required this.exerciseNumber,
     required this.workout,
+    this.isPreviewMode = false,
+    this.initialDraft,
+    this.draftForExercise,
     this.onExerciseViewed,
     this.onWeightInput,
+    this.onDraftChanged,
+    this.onWorkoutCancelled,
   }) : super(key: key);
 
   @override
@@ -35,7 +78,12 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   // State variables for calculations
   String displayTotalDuration = "0 min";
   String displayTotalCalories = "0 cal";
+  int _recommendedTotalDurationSeconds = 0;
+  int _remainingTimerSeconds = 0;
+  bool _isTimerRunning = false;
+  bool _isTimerCompleted = false;
   
+  Timer? _exerciseTimer;
   VideoPlayerController? _controller;
   bool _isLoadingData = true;
 
@@ -50,20 +98,34 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     setsController = TextEditingController(text: _computeDefaultSets().toString()); 
     
     // Add listeners to controllers to automatically recalculate when values change
-    weightController.addListener(_calculateValues);
-    repsController.addListener(_calculateValues);
-    setsController.addListener(_calculateValues);
-    
-    // Add listener to automatically save when values change
-    weightController.addListener(_autoSave);
-    repsController.addListener(_autoSave);
-    setsController.addListener(_autoSave);
+    if (!widget.isPreviewMode) {
+      weightController.addListener(_calculateValues);
+      repsController.addListener(_calculateValues);
+      setsController.addListener(_calculateValues);
+
+      // Keep the current exercise inputs in memory while the workout is in progress
+      weightController.addListener(_autoSave);
+      repsController.addListener(_autoSave);
+      setsController.addListener(_autoSave);
+    }
     
     // Initialize video
     _initializeVideoPlayer();
     
-    // Load saved user data
-    _loadUserData();
+    // Load saved user data only during an active workout
+    if (widget.initialDraft != null) {
+      weightController.text = widget.initialDraft!.weight;
+      repsController.text = widget.initialDraft!.reps;
+      setsController.text = widget.initialDraft!.sets;
+      _isLoadingData = false;
+      _calculateValues();
+      _scheduleDraftSync();
+    } else if (widget.isPreviewMode) {
+      _isLoadingData = false;
+      _calculateValues();
+    } else {
+      _loadUserData();
+    }
   }
 
   // Method to compute default reps based on exercise properties
@@ -119,7 +181,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           if (isToday) {
             // Restore inputs if from today
             setState(() {
-              weightController.text = (data['weightUsed'] ?? 0.0).toString();
+              final num savedWeight = (data['weightUsed'] ?? 0) as num;
+              weightController.text =
+                  savedWeight > 0 ? savedWeight.toInt().toString() : "";
               repsController.text = (data['repsPerformed'] ?? 8).toString();
               setsController.text = (data['setsPerformed'] ?? 3).toString();
               
@@ -157,11 +221,15 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     } catch (e) {
       print("Error loading user data: $e");
     } finally {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isLoadingData = false;
       });
       // Perform initial calculation after loading data
       _calculateValues();
+      _scheduleDraftSync();
     }
   }
 
@@ -183,10 +251,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   @override
   void dispose() {
     // Remove listeners before disposing controllers
-    weightController.removeListener(_calculateValues);
-    repsController.removeListener(_calculateValues);
-    setsController.removeListener(_calculateValues);
+    if (!widget.isPreviewMode) {
+      weightController.removeListener(_calculateValues);
+      repsController.removeListener(_calculateValues);
+      setsController.removeListener(_calculateValues);
+    }
     
+    _exerciseTimer?.cancel();
     _controller?.dispose();
     weightController.dispose();
     repsController.dispose();
@@ -194,10 +265,286 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     super.dispose();
   }
 
+  int? _parsePositiveWholeNumber(String text) {
+    final normalized = text.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    final value = int.tryParse(normalized);
+    if (value == null || value <= 0) {
+      return null;
+    }
+
+    return value;
+  }
+
+  bool _hasValidWeight() => _parsePositiveWholeNumber(weightController.text) != null;
+
+  bool _hasValidReps() => _parsePositiveWholeNumber(repsController.text) != null;
+
+  bool _hasValidSets() => _parsePositiveWholeNumber(setsController.text) != null;
+
+  Future<void> _showInputRequiredDialog(String message) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            "Input Required",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                "OK",
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> _validateTrackingInputs() async {
+    if (!_hasValidWeight()) {
+      await _showInputRequiredDialog(
+        "Please enter the weight you used as a whole number greater than 0.",
+      );
+      return false;
+    }
+
+    if (!_hasValidReps()) {
+      await _showInputRequiredDialog(
+        "Please enter reps as a whole number greater than 0.",
+      );
+      return false;
+    }
+
+    if (!_hasValidSets()) {
+      await _showInputRequiredDialog(
+        "Please enter sets as a whole number greater than 0.",
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  void _notifyValidWeightInput() {
+    if (!widget.isPreviewMode &&
+        widget.onWeightInput != null &&
+        _hasValidWeight()) {
+      widget.onWeightInput!(widget.exerciseNumber - 1);
+    }
+  }
+
+  void _notifyDraftChanged() {
+    if (widget.isPreviewMode || widget.onDraftChanged == null) {
+      return;
+    }
+
+    widget.onDraftChanged!(
+      widget.exerciseNumber - 1,
+      ExerciseTrackingDraft(
+        weight: weightController.text,
+        reps: repsController.text,
+        sets: setsController.text,
+      ),
+    );
+  }
+
+  void _scheduleDraftSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _notifyDraftChanged();
+    });
+  }
+
+  String _formatCountdown(int totalSeconds) {
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    final minuteText = minutes.toString().padLeft(2, '0');
+    final secondText = seconds.toString().padLeft(2, '0');
+    return '$minuteText:$secondText';
+  }
+
+  void _syncTimerWithRecommendation() {
+    if (_isTimerRunning) {
+      return;
+    }
+
+    _exerciseTimer?.cancel();
+    _remainingTimerSeconds = _recommendedTotalDurationSeconds;
+    _isTimerCompleted = _recommendedTotalDurationSeconds == 0;
+  }
+
+  void _toggleTimer() {
+    if (_recommendedTotalDurationSeconds <= 0) {
+      return;
+    }
+
+    if (_isTimerRunning) {
+      _exerciseTimer?.cancel();
+      setState(() {
+        _isTimerRunning = false;
+      });
+      return;
+    }
+
+    if (_remainingTimerSeconds <= 0) {
+      _remainingTimerSeconds = _recommendedTotalDurationSeconds;
+      _isTimerCompleted = false;
+    }
+
+    setState(() {
+      _isTimerRunning = true;
+    });
+
+    _exerciseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_remainingTimerSeconds <= 1) {
+        timer.cancel();
+        setState(() {
+          _remainingTimerSeconds = 0;
+          _isTimerRunning = false;
+          _isTimerCompleted = true;
+        });
+        return;
+      }
+
+      setState(() {
+        _remainingTimerSeconds--;
+      });
+    });
+  }
+
+  void _cancelTimer() {
+    _exerciseTimer?.cancel();
+    setState(() {
+      _isTimerRunning = false;
+      _isTimerCompleted = false;
+      _remainingTimerSeconds = _recommendedTotalDurationSeconds;
+    });
+  }
+
+  void _completeTimer() {
+    _exerciseTimer?.cancel();
+    setState(() {
+      _isTimerRunning = false;
+      _isTimerCompleted = true;
+      _remainingTimerSeconds = 0;
+    });
+  }
+
+  void _markExerciseAsViewed() {
+    if (!widget.isPreviewMode && widget.onExerciseViewed != null) {
+      widget.onExerciseViewed!(widget.exerciseNumber - 1);
+    }
+  }
+
+  Future<void> _openExercise(int exerciseNumber) async {
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExerciseDetailScreen(
+          exerciseNumber: exerciseNumber,
+          workout: widget.workout,
+          isPreviewMode: false,
+          initialDraft: widget.draftForExercise?.call(exerciseNumber - 1),
+          draftForExercise: widget.draftForExercise,
+          onExerciseViewed: widget.onExerciseViewed,
+          onWeightInput: widget.onWeightInput,
+          onDraftChanged: widget.onDraftChanged,
+          onWorkoutCancelled: widget.onWorkoutCancelled,
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _showCancelWorkoutDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF191919),
+              title: const Text(
+                "Cancel Workout?",
+                style: TextStyle(color: Colors.white),
+              ),
+              content: const Text(
+                "Do you want to cancel this workout and go back?",
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                  child: const Text(
+                    "No",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text(
+                    "Yes",
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<bool> _handleBackNavigation() async {
+    if (widget.isPreviewMode) {
+      return true;
+    }
+
+    if (widget.exerciseNumber > 1) {
+      _notifyDraftChanged();
+
+      if (!mounted) {
+        return false;
+      }
+
+      await _openExercise(widget.exerciseNumber - 1);
+      return false;
+    }
+
+    final shouldCancelWorkout = await _showCancelWorkoutDialog();
+    if (shouldCancelWorkout && mounted) {
+      widget.onWorkoutCancelled?.call();
+      Navigator.pop(context);
+    }
+
+    return false;
+  }
+
   // Automatic calculation method
   void _calculateValues() {
     // Get current values from controllers
-    double weight = double.tryParse(weightController.text) ?? 0.0;
     int reps;
     int sets;
     
@@ -214,182 +561,77 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       sets = int.tryParse(setsController.text)!;
     }
 
-    // Perform Calculations
-    // Duration: Sets * Duration Per Set (exercise.duration is in seconds)
-    int totalDurationSeconds = sets * exercise.duration;
+    // Perform calculations based on both sets and reps
+    int totalDurationSeconds = exercise.getEstimatedTotalDurationSeconds(
+      sets: sets,
+      reps: reps,
+    );
     double totalDurationMinutes = totalDurationSeconds / 60;
     String durationString = "${totalDurationMinutes.toStringAsFixed(1)} min";
 
-    // Calories: Sets * Calories Per Set (exercise.getCaloriesBurned returns base calories)
-    double baseCalories = exercise.getCaloriesBurned();
-    double totalCalories = sets * baseCalories;
+    double totalCalories = exercise.getCaloriesBurned(
+      sets: sets,
+      reps: reps,
+    );
     String caloriesString = "${totalCalories.toStringAsFixed(1)} cal";
 
     setState(() {
       displayTotalDuration = durationString;
       displayTotalCalories = caloriesString;
+      _recommendedTotalDurationSeconds = totalDurationSeconds;
+      _syncTimerWithRecommendation();
     });
-
-    // Check if weight has been entered and notify the workout screen if needed
-    if (weight > 0 && widget.onWeightInput != null) {
-      widget.onWeightInput!(widget.exerciseNumber - 1); // Convert to 0-based index
-    }
   }
 
   // Automatic save method
   void _autoSave() {
-    // Only save if the exercise has been viewed for the first time in this session
-    // This prevents excessive saves during user input
-    _saveExerciseRecord();
+    _notifyDraftChanged();
   }
 
   // Calculate and Save Data
  Future<void> _saveExerciseRecord() async {
-    // 1. Get Inputs
-    double weight = double.tryParse(weightController.text) ?? 0.0;
-    int reps;
-    int sets;
-    
-    // Use computed defaults if text fields are empty or invalid
-    if (repsController.text.isEmpty || int.tryParse(repsController.text) == null) {
-      reps = _computeDefaultReps();
-    } else {
-      reps = int.tryParse(repsController.text)!;
-    }
-    
-    if (setsController.text.isEmpty || int.tryParse(setsController.text) == null) {
-      sets = _computeDefaultSets();
-    } else {
-      sets = int.tryParse(setsController.text)!;
-    }
-
-    // 2. Perform Calculations
-    // Duration: Sets * Duration Per Set (exercise.duration is in seconds)
-    int totalDurationSeconds = sets * exercise.duration;
-    double totalDurationMinutes = totalDurationSeconds / 60;
-    String durationString = "${totalDurationMinutes.toStringAsFixed(1)} min";
-
-    // Calories: Sets * Calories Per Set (exercise.getCaloriesBurned returns base calories)
-    double baseCalories = exercise.getCaloriesBurned();
-    double totalCalories = sets * baseCalories;
-    String caloriesString = "${totalCalories.toStringAsFixed(1)} cal";
-
-    setState(() {
-      displayTotalDuration = durationString;
-      displayTotalCalories = caloriesString;
-    });
-
-    // 3. Save to Firestore
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('exercise_records')
-            .doc(exercise.name)
-            .set({
-          'exerciseName': exercise.name,
-          'workoutId': widget.workout.id,
-          'weightUsed': weight,
-          'repsPerformed': reps,
-          'setsPerformed': sets,
-          'timestamp': FieldValue.serverTimestamp(),
-          'totalDurationString': durationString,
-          'totalCaloriesString': caloriesString,
-          'calculatedSeconds': totalDurationSeconds,
-          'calculatedCalories': totalCalories,
-        }, SetOptions(merge: true));
-
-        // Removed notification - data saved silently
-      }
-    } catch (e) {
-      print("Error saving user data: $e");
-      // Removed error notification - errors handled silently
-    }
+    _notifyDraftChanged();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Mark this exercise as viewed when the screen is built (user accesses it)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.onExerciseViewed != null) {
-        widget.onExerciseViewed!(widget.exerciseNumber - 1); // Convert to 0-based index
-      }
-    });
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: _handleBackNavigation,
+      child: Scaffold(
         backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () async {
-            // Check if weight has been input before allowing exit
-            if (weightController.text.isEmpty || double.tryParse(weightController.text) == null || double.tryParse(weightController.text)! <= 0) {
-              bool shouldExit = await showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    backgroundColor: const Color(0xFF191919),
-                    title: const Text(
-                      "Input Required",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    content: const Text(
-                      "Please input the weight you used for this exercise before exiting.",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(false); // Don't exit
-                        },
-                        child: const Text(
-                          "Cancel",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(true); // Allow exit
-                        },
-                        child: const Text(
-                          "Exit Anyway",
-                          style: TextStyle(color: Colors.orange),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-              
-              if (!shouldExit) {
-                return; // Don't exit if user chooses to stay
-              }
-            }
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(
-          exercise.name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          automaticallyImplyLeading: false,
+          leading: widget.isPreviewMode || widget.exerciseNumber == 1
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () async {
+                    final shouldPop = await _handleBackNavigation();
+                    if (shouldPop && mounted) {
+                      Navigator.pop(context);
+                    }
+                  },
+                )
+              : null,
+          title: Text(
+            exercise.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: _isLoadingData 
-        ? const Center(child: CircularProgressIndicator(color: Colors.orange))
-        : SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        body: _isLoadingData
+            ? const Center(child: CircularProgressIndicator(color: Colors.orange))
+            : SafeArea(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   // Video Player Section
                   if (_controller != null && _controller!.value.isInitialized)
                     Container(
@@ -523,6 +765,141 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  if (!widget.isPreviewMode) ...[
+                    const Text(
+                      "Exercise Timer",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF191919),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              _formatCountdown(_remainingTimerSeconds),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _isTimerCompleted
+                                  ? "Timer completed"
+                                  : "Recommended time updates with your reps and sets",
+                              style: TextStyle(
+                                color: _isTimerCompleted
+                                    ? Colors.greenAccent
+                                    : Colors.white70,
+                                fontSize: 13,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _toggleTimer,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _isTimerRunning ? "Pause" : "Start",
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _cancelTimer,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white70,
+                                      side: const BorderSide(
+                                        color: Colors.white24,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Text("Cancel"),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _completeTimer,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.greenAccent,
+                                      side: const BorderSide(
+                                        color: Colors.greenAccent,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: const Text("Done"),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  if (widget.isPreviewMode) ...[
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF191919),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(
+                          "Preview only. Start the workout from the previous screen to log weight, reps, and sets.",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ] else ...[
                   // Performance Tracking
                   const Text(
                     "Performance Tracking",
@@ -565,9 +942,17 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 child: TextField(
                                   controller: weightController,
                                   keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  onChanged: (_) {
+                                    _notifyValidWeightInput();
+                                  },
                                   style: const TextStyle(color: Colors.white),
                                   decoration: const InputDecoration(
                                     labelText: 'Weight (kg)',
+                                    helperText: 'Whole numbers only',
+                                    helperStyle: TextStyle(color: Colors.white54),
                                     labelStyle: TextStyle(color: Colors.orange),
                                     border: OutlineInputBorder(),
                                     focusedBorder: OutlineInputBorder(
@@ -594,9 +979,14 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 child: TextField(
                                   controller: repsController,
                                   keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
                                   style: const TextStyle(color: Colors.white),
                                   decoration: const InputDecoration(
                                     labelText: 'Reps',
+                                    helperText: 'Whole numbers only',
+                                    helperStyle: TextStyle(color: Colors.white54),
                                     labelStyle: TextStyle(color: Colors.orange),
                                     border: OutlineInputBorder(),
                                     focusedBorder: OutlineInputBorder(
@@ -623,9 +1013,14 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 child: TextField(
                                   controller: setsController,
                                   keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
                                   style: const TextStyle(color: Colors.white),
                                   decoration: const InputDecoration(
                                     labelText: 'Sets',
+                                    helperText: 'Whole numbers only',
+                                    helperStyle: TextStyle(color: Colors.white54),
                                     labelStyle: TextStyle(color: Colors.orange),
                                     border: OutlineInputBorder(),
                                     focusedBorder: OutlineInputBorder(
@@ -686,7 +1081,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                           // Changed label and value to dynamic calculation
                           _buildInfoRow(Icons.local_fire_department, "Total Calories", displayTotalCalories), 
                           const Divider(height: 20, color: Colors.white38),
-                          _buildInfoRow(Icons.repeat, "Rec. Reps/Sets", "3-4 sets × 8-12 reps"),
+                          _buildInfoRow(Icons.repeat, "Rec. Reps/Sets", "3-4 sets x 8-12 reps"),
                           const Divider(height: 20, color: Colors.white38),
                           _buildInfoRow(Icons.directions_run, "Rest Period", "60-90 seconds"),
                         ],
@@ -694,6 +1089,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  ],
 
                   // Description
                   const Text(
@@ -771,229 +1167,100 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       ),
                     ),
                   ),
-                ],
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-              Expanded(
-              child: ElevatedButton(
-                onPressed: () async {
-                  // Check if weight has been input before allowing navigation
-                  if (weightController.text.isEmpty || double.tryParse(weightController.text) == null || double.tryParse(weightController.text)! <= 0) {
-                    bool shouldNavigate = await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          backgroundColor: const Color(0xFF191919),
-                          title: const Text(
-                            "Input Required",
-                            style: TextStyle(color: Colors.white),
+        bottomNavigationBar: widget.isPreviewMode
+            ? null
+            : Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: widget.exerciseNumber > 1
+                            ? () async {
+                                await _handleBackNavigation();
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[800],
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey[900],
+                          disabledForegroundColor: Colors.white38,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          content: const Text(
-                            "Please input the weight you used for this exercise before navigating.",
-                            style: TextStyle(color: Colors.white70),
+                        ),
+                        child: const Text(
+                          "Previous",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(false); // Don't navigate
-                              },
-                              child: const Text(
-                                "Cancel",
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(true); // Allow navigation
-                              },
-                              child: const Text(
-                                "Continue Anyway",
-                                style: TextStyle(color: Colors.orange),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                    
-                    if (!shouldNavigate) {
-                      return; // Don't navigate if user chooses to stay
-                    }
-                  }
-                  
-                  // Mark current exercise as viewed and with weight input before navigating
-                  if (widget.onExerciseViewed != null) {
-                    widget.onExerciseViewed!(widget.exerciseNumber - 1); // Convert to 0-based index
-                  }
-                  
-                  double weight = double.tryParse(weightController.text) ?? 0.0;
-                  if (weight > 0 && widget.onWeightInput != null) {
-                    widget.onWeightInput!(widget.exerciseNumber - 1); // Convert to 0-based index
-                  }
-                  
-                  // For previous button, save before navigating
-                  if (widget.exerciseNumber > 1) {
-                    await _saveExerciseRecord();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ExerciseDetailScreen(
-                          exerciseNumber: widget.exerciseNumber - 1,
-                          workout: widget.workout,
-                          onExerciseViewed: widget.onExerciseViewed,
-                          onWeightInput: widget.onWeightInput,
                         ),
                       ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[800],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  "Previous",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-              Expanded(
-              child: ElevatedButton(
-                onPressed: () async {
-                  int totalExercises = widget.workout.exerciseList.length;
-                  
-                  // Check if weight has been input before allowing navigation (except for the last exercise)
-                  if (widget.exerciseNumber < totalExercises) {
-                    if (weightController.text.isEmpty || double.tryParse(weightController.text) == null || double.tryParse(weightController.text)! <= 0) {
-                      bool shouldNavigate = await showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: const Color(0xFF191919),
-                            title: const Text(
-                              "Input Required",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            content: const Text(
-                              "Please input the weight you used for this exercise before navigating.",
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop(false); // Don't navigate
-                                },
-                                child: const Text(
-                                  "Cancel",
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop(true); // Allow navigation
-                                },
-                                child: const Text(
-                                  "Continue Anyway",
-                                  style: TextStyle(color: Colors.orange),
-                                ),
-                              ),
-                            ],
-                          );
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          int totalExercises = widget.workout.exerciseList.length;
+
+                          if (!await _validateTrackingInputs()) {
+                            return;
+                          }
+
+                          _markExerciseAsViewed();
+                          _notifyValidWeightInput();
+
+                          // For the last exercise, don't save automatically when pressing "Done"
+                          if (widget.exerciseNumber < totalExercises) {
+                            // Save before navigating to next exercise
+                            await _saveExerciseRecord();
+                            await _openExercise(widget.exerciseNumber + 1);
+                          } else {
+                            // This is the last exercise, so just go back to workout detail screen
+                            // The workout will be saved when the user presses the "Done" button on the workout screen
+                            await _saveExerciseRecord();
+                            Navigator.pop(context); // Go back to workout detail screen
+                          }
                         },
-                      );
-                      
-                      if (!shouldNavigate) {
-                        return; // Don't navigate if user chooses to stay
-                      }
-                    }
-                    
-                    // Mark current exercise as viewed and with weight input before navigating
-                    if (widget.onExerciseViewed != null) {
-                      widget.onExerciseViewed!(widget.exerciseNumber - 1); // Convert to 0-based index
-                    }
-                    
-                    double weight = double.tryParse(weightController.text) ?? 0.0;
-                    if (weight > 0 && widget.onWeightInput != null) {
-                      widget.onWeightInput!(widget.exerciseNumber - 1); // Convert to 0-based index
-                    }
-                  }
-                  
-                  // For the last exercise, don't save automatically when pressing "Done"
-                  if (widget.exerciseNumber < totalExercises) {
-                    // Save before navigating to next exercise
-                    await _saveExerciseRecord();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ExerciseDetailScreen(
-                          exerciseNumber: widget.exerciseNumber + 1,
-                          workout: widget.workout,
-                          onExerciseViewed: widget.onExerciseViewed,
-                          onWeightInput: widget.onWeightInput,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          widget.exerciseNumber < widget.workout.exerciseList.length
+                              ? "Next"
+                              : "Done", // Changed from "Finish Workout" to "Done"
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    );
-                  } else {
-                    // This is the last exercise, so just go back to workout detail screen
-                    // The workout will be saved when the user presses the "Done" button on the workout screen
-                    // Mark this exercise as viewed and with weight input before going back
-                    if (widget.onExerciseViewed != null) {
-                      widget.onExerciseViewed!(widget.exerciseNumber - 1); // Convert to 0-based index
-                    }
-                    
-                    double weight = double.tryParse(weightController.text) ?? 0.0;
-                    if (weight > 0 && widget.onWeightInput != null) {
-                      widget.onWeightInput!(widget.exerciseNumber - 1); // Convert to 0-based index
-                    }
-                    
-                    Navigator.pop(context); // Go back to workout detail screen
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  widget.exerciseNumber < widget.workout.exerciseList.length
-                      ? "Next" 
-                      : "Done", // Changed from "Finish Workout" to "Done"
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

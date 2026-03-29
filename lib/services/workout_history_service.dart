@@ -19,7 +19,7 @@ class WorkoutHistoryService {
       Query query = _firestore
           .collection('users')
           .doc(user.uid)
-          .collection('completed_workouts');
+          .collection('doneInfos');
 
       if (startDate != null && endDate != null) {
         query = query
@@ -36,11 +36,12 @@ class WorkoutHistoryService {
         
         if (timestamp != null) {
           // Find the corresponding workout from our data
+          final workoutTitle = data['title'] ?? doc.id;
           final workout = exerciseWorkouts.firstWhere(
-            (workout) => workout.title == doc.id,
+            (workout) => workout.title == workoutTitle,
             orElse: () => Workout(
               id: 'unknown',
-              title: doc.id,
+              title: workoutTitle,
               duration: data['duration'] ?? 'Unknown',
               exercises: data['exercises'] ?? 'Unknown',
               level: data['level'] ?? 'Unknown',

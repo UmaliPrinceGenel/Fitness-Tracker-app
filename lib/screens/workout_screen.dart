@@ -711,7 +711,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       future: _firestore
           .collection('users')
           .doc(_auth.currentUser?.uid)
-          .collection('doneInfos')
+          .collection('completed_workouts')
           .doc(workout.title)
           .get(),
       builder: (context, snapshot) {

@@ -77,6 +77,16 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 });
             break;
           case "Weight":
+            final userDoc = await _firestore.collection('users').doc(user.uid).get();
+            final userData = userDoc.data() ?? <String, dynamic>{};
+            final profileData = userData['profile'] as Map<String, dynamic>? ?? <String, dynamic>{};
+            final currentHeight = (profileData['height'] as num?)?.toDouble() ?? 0.0;
+            double updatedBmi = 0.0;
+            if (currentHeight > 0) {
+              final heightInMeters = currentHeight / 100;
+              updatedBmi = value / (heightInMeters * heightInMeters);
+            }
+
             // Update weight in main health metrics and subcollection
             await _firestore
                 .collection('users')
@@ -85,12 +95,18 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 .doc('current')
                 .set({
                   'weight': value,
+                  'bmi': updatedBmi > 0 ? double.parse(updatedBmi.toStringAsFixed(1)) : 0.0,
                   'updatedAt': FieldValue.serverTimestamp(),
                 }, SetOptions(merge: true));
 
             // Update in user profile
             await _firestore.collection('users').doc(user.uid).set({
-              'profile.weight': value,
+              'profile': {
+                'weight': value,
+                'height': currentHeight,
+                'bmi': updatedBmi > 0 ? double.parse(updatedBmi.toStringAsFixed(1)) : 0.0,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              },
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
 

@@ -5,7 +5,7 @@ import '../data/exercise_data2.dart'; // Import the workout data
 
 class ProgressTrackingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
- final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Get user's completed workout dates
   Future<List<DateTime>> getCompletedWorkoutDates() async {
@@ -34,7 +34,7 @@ class ProgressTrackingService {
     }
   }
 
- // Get user's exercise records
+  // Get user's exercise records
   Future<List<ExerciseRecord>> getExerciseRecords() async {
     final user = _auth.currentUser;
     if (user == null) return [];
@@ -59,6 +59,16 @@ class ProgressTrackingService {
         );
         records.add(record);
       }
+      records.sort((a, b) {
+        final aTime = a.timestamp;
+        final bTime = b.timestamp;
+
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+
+        return bTime.compareTo(aTime);
+      });
       return records;
     } catch (e) {
       print('Error getting exercise records: $e');

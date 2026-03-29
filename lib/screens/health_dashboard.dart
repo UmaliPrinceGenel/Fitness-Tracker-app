@@ -55,6 +55,7 @@ class _HealthDashboardState extends State<HealthDashboard>
 
  // Date tracking for daily reset
   DateTime _currentDate = DateTime.now();
+  String? _lastDailyResetDate;
 
 
   @override
@@ -65,31 +66,53 @@ class _HealthDashboardState extends State<HealthDashboard>
     _checkDailyReset();
   }
 
+  String _todayKey() {
+    return DateFormat('yyyy-MM-dd').format(DateTime.now());
+  }
+
+  DateTime _dateFromKey(String dateKey) {
+    return DateTime.tryParse(dateKey) ?? DateTime.now();
+  }
+
   // Check if we need to reset daily data
   void _checkDailyReset() {
-    final now = DateTime.now();
-    if (now.day != _currentDate.day ||
-        now.month != _currentDate.month ||
-        now.year != _currentDate.year) {
-      _resetDailyData();
-    }
+    _syncDailyResetIfNeeded();
 
     // Check every minute for date change
     Future.delayed(const Duration(minutes: 1), _checkDailyReset);
   }
 
+  Future<void> _syncDailyResetIfNeeded() async {
+    final todayKey = _todayKey();
+    if (_lastDailyResetDate == null) {
+      _lastDailyResetDate = todayKey;
+      return;
+    }
+
+    if (_lastDailyResetDate != todayKey) {
+      await _resetDailyData(archiveDate: _dateFromKey(_lastDailyResetDate!));
+    }
+  }
+
   // Reset daily activity data and save to history
-  Future<void> _resetDailyData() async {
+  Future<void> _resetDailyData({DateTime? archiveDate}) async {
     final user = _auth.currentUser;
+    final activityDate = archiveDate ?? _currentDate;
+    final activityDateKey = DateFormat('yyyy-MM-dd').format(activityDate);
+    final todayKey = _todayKey();
+
     if (user != null && (_weeklyMinutes > 0 || _weeklyCalories > 0 || _weeklyWorkoutsCount > 0)) {
       // Save current day's data to history
       final dailyActivity = DailyActivity(
-        date: _currentDate,
+        date: activityDate,
         weeklyMinutes: _weeklyMinutes,
         weeklyCalories: _weeklyCalories,
         weeklyWorkoutsCount: _weeklyWorkoutsCount,
       );
 
+      _dailyActivityHistory.removeWhere(
+        (entry) => DateFormat('yyyy-MM-dd').format(entry.date) == activityDateKey,
+      );
       _dailyActivityHistory.add(dailyActivity);
 
       // Keep only last 30 days
@@ -102,7 +125,7 @@ class _HealthDashboardState extends State<HealthDashboard>
           .collection('users')
           .doc(user.uid)
           .collection('daily_activity')
-          .doc(_currentDate.toIso8601String().split('T')[0])
+          .doc(activityDateKey)
           .set(dailyActivity.toMap());
 
       // Update activity history in health metrics
@@ -115,6 +138,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             'dailyActivityHistory': _dailyActivityHistory
                 .map((e) => e.toMap())
                 .toList(),
+            'lastDailyResetDate': todayKey,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
     }
@@ -122,13 +146,26 @@ class _HealthDashboardState extends State<HealthDashboard>
     // Reset daily counters
     setState(() {
       _currentDate = DateTime.now();
+      _lastDailyResetDate = todayKey;
       _weeklyMinutes = 0;
       _weeklyCalories = 0;
       _weeklyWorkoutsCount = 0;
     });
 
-    // Update Firestore with reset data
-    _updateHealthData(weeklyMinutes: 0, weeklyCalories: 0, weeklyWorkoutsCount: 0);
+    if (user != null) {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'weeklyMinutes': 0,
+            'weeklyCalories': 0,
+            'weeklyWorkoutsCount': 0,
+            'lastDailyResetDate': todayKey,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    }
   }
 
   // Automatic BMI Calculation
@@ -279,10 +316,14 @@ class _HealthDashboardState extends State<HealthDashboard>
               var weeklyWorkoutsCountData = healthData['weeklyWorkoutsCount'];
               var waistMeasurementData = healthData['waistMeasurement'];
               var sleepHoursData = healthData['sleepHours'];
+              var lastDailyResetDateData = healthData['lastDailyResetDate'];
               
               _weeklyCalories = (weeklyCaloriesData != null && weeklyCaloriesData is int) ? weeklyCaloriesData : (weeklyCaloriesData != null && weeklyCaloriesData is double) ? weeklyCaloriesData.toInt() : 0;
               _weeklyMinutes = (weeklyMinutesData != null && weeklyMinutesData is int) ? weeklyMinutesData : (weeklyMinutesData != null && weeklyMinutesData is double) ? weeklyMinutesData.toInt() : 0;
               _weeklyWorkoutsCount = (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is int) ? weeklyWorkoutsCountData : (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is double) ? weeklyWorkoutsCountData.toInt() : 0;
+              _lastDailyResetDate = lastDailyResetDateData is String
+                  ? lastDailyResetDateData
+                  : _todayKey();
               
               _waistMeasurement = (waistMeasurementData != null && waistMeasurementData is num) ? waistMeasurementData.toDouble() : (waistMeasurementData != null && waistMeasurementData is String) ? double.tryParse(waistMeasurementData) ?? 0.0 : 0.0;
               _sleepHours = (sleepHoursData != null && sleepHoursData is num) ? sleepHoursData.toDouble() : (sleepHoursData != null && sleepHoursData is String) ? double.tryParse(sleepHoursData) ?? 0.0 : 0.0;
@@ -293,7 +334,9 @@ class _HealthDashboardState extends State<HealthDashboard>
               var sleepHistoryData = healthData['sleepHistory'];
 
               // Use subcollection data if main history is empty (Android compatibility) - SAFE PARSING
-              if (waistHistoryData != null && waistHistoryData is List) {
+              if (waistHistoryFromSubcollection.isNotEmpty) {
+                _waistHistory = waistHistoryFromSubcollection;
+              } else if (waistHistoryData != null && waistHistoryData is List) {
                 _waistHistory = [];
                 for (var item in waistHistoryData) {
                   if (item is num) {
@@ -306,10 +349,12 @@ class _HealthDashboardState extends State<HealthDashboard>
                   }
                 }
               } else {
-                _waistHistory = waistHistoryFromSubcollection.isEmpty ? [] : waistHistoryFromSubcollection;
+                _waistHistory = [];
               }
 
-              if (weightHistoryData != null && weightHistoryData is List) {
+              if (weightHistoryFromSubcollection.isNotEmpty) {
+                _weightHistory = weightHistoryFromSubcollection;
+              } else if (weightHistoryData != null && weightHistoryData is List) {
                 _weightHistory = [];
                 for (var item in weightHistoryData) {
                   if (item is num) {
@@ -322,10 +367,12 @@ class _HealthDashboardState extends State<HealthDashboard>
                   }
                 }
               } else {
-                _weightHistory = weightHistoryFromSubcollection.isEmpty ? [] : weightHistoryFromSubcollection;
+                _weightHistory = [];
               }
 
-              if (sleepHistoryData != null && sleepHistoryData is List) {
+              if (sleepHistoryFromSubcollection.isNotEmpty) {
+                _sleepHistory = sleepHistoryFromSubcollection;
+              } else if (sleepHistoryData != null && sleepHistoryData is List) {
                 _sleepHistory = [];
                 for (var item in sleepHistoryData) {
                   if (item is num) {
@@ -338,7 +385,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                   }
                 }
               } else {
-                _sleepHistory = sleepHistoryFromSubcollection.isEmpty ? [] : sleepHistoryFromSubcollection;
+                _sleepHistory = [];
               }
 
               // Load daily activity history - SAFE PARSING
@@ -369,6 +416,7 @@ class _HealthDashboardState extends State<HealthDashboard>
           });
 
           _calculateBMI();
+          await _syncDailyResetIfNeeded();
         }
       }
     } catch (e) {
@@ -398,6 +446,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             'weightHistory': [_weight],
             'sleepHistory': [_sleepHours], // UPDATED
             'dailyActivityHistory': [],
+            'lastDailyResetDate': _todayKey(),
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
@@ -547,6 +596,10 @@ class _HealthDashboardState extends State<HealthDashboard>
     setState(() {
       _selectedIndex = index;
     });
+
+    if (index == 0) {
+      _loadUserData();
+    }
   }
 
   @override
@@ -921,21 +974,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                   _showUpdateDialog('Height', _height, 250.0);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.monitor_weight, color: Colors.green),
-                title: const Text(
-                  'Update Weight',
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: const Text(
-                  'Manual weight input',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showUpdateDialog('Weight', _weight, 300.0);
-                },
-              ),
             ],
           ),
         );
@@ -965,7 +1003,9 @@ class _HealthDashboardState extends State<HealthDashboard>
             ],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'New $type Value (cm)',
+              labelText: type == 'Height'
+                  ? 'New Height Value (cm)'
+                  : 'New $type Value',
               labelStyle: const TextStyle(color: Colors.white70),
               enabledBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.orange),
@@ -1413,15 +1453,17 @@ class _WaistCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 16 : 20,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isVerySmallScreen ? 16 : 20,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1440,7 +1482,7 @@ class _WaistCard extends StatelessWidget {
                       color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: waistHistory.length >= 2
+                    child: waistHistory.isNotEmpty
                         ? CustomPaint(
                             painter: LineChartPainter(
                               data: waistHistory,
@@ -1554,15 +1596,17 @@ class _WeightCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    "${weight.toStringAsFixed(1)} kg",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 16 : 20,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "${weight.toStringAsFixed(1)} kg",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isVerySmallScreen ? 16 : 20,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1581,7 +1625,7 @@ class _WeightCard extends StatelessWidget {
                       color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: weightHistory.length >= 2
+                    child: weightHistory.isNotEmpty
                         ? CustomPaint(
                             painter: WeightLineChartPainter(
                               data: weightHistory,
@@ -1906,9 +1950,13 @@ class _SleepCard extends StatelessWidget {
                   fontSize: 14,
                 ),
               ),
-              Text(
-                "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
-                style: const TextStyle(color: Colors.white70, fontSize: 18),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
+                  style: const TextStyle(color: Colors.white70, fontSize: 18),
+                ),
               ),
               Text(
                 "${DateTime.now().day} ${_getMonthName(DateTime.now().month)}",
@@ -1998,10 +2046,11 @@ class LineChartPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
+    final bool hasMultiplePoints = data.length > 1;
     double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
@@ -2089,10 +2138,11 @@ class WeightLineChartPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
+    final bool hasMultiplePoints = data.length > 1;
     double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
@@ -2181,10 +2231,11 @@ class SleepGraphPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
+    final bool hasMultiplePoints = data.length > 1;
     double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }

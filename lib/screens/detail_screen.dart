@@ -115,28 +115,39 @@ class _DetailScreenState extends State<DetailScreen> {
             .get();
 
         setState(() {
+          _dailyActivityHistory = dailyActivitySnapshot.docs
+              .map((doc) => DailyActivity.fromMap(doc.data()))
+              .toList();
+
           if (healthDoc.exists) {
             final healthData = healthDoc.data()!;
 
             switch (widget.title) {
+              case "kcal":
               case "Calories":
-                _currentData = (healthData['calories'] ?? 0.0).toDouble();
-                _goalData = 600.0;
-                _loadTimeBasedData('calories');
+                _currentData = (healthData['weeklyCalories'] ?? 0).toDouble();
+                _goalData = 2500.0;
+                _loadTimeBasedData('weeklyCalories');
                 break;
+              case "Minutes":
               case "Steps":
-                _currentData = (healthData['steps'] ?? 0).toDouble();
-                _goalData = 7000.0;
-                _loadTimeBasedData('steps');
+                _currentData = (healthData['weeklyMinutes'] ?? 0).toDouble();
+                _goalData = 300.0;
+                _loadTimeBasedData('weeklyMinutes');
                 break;
+              case "Workouts":
               case "Moving":
-                _currentData = (healthData['movingMinutes'] ?? 0.0).toDouble();
-                _goalData = 60.0;
-                _loadTimeBasedData('movingMinutes');
+                _currentData =
+                    (healthData['weeklyWorkoutsCount'] ?? 0).toDouble();
+                _goalData = 5.0;
+                _loadTimeBasedData('weeklyWorkoutsCount');
                 break;
               case "Waist Measurement":
-                _currentData = (healthData['waistMeasurement'] ?? 0.0)
-                    .toDouble();
+                _currentData = waistHistorySnapshot.docs.isNotEmpty
+                    ? ((waistHistorySnapshot.docs.first.data()['waist'] ?? 0.0)
+                        as num)
+                        .toDouble()
+                    : (healthData['waistMeasurement'] ?? 0.0).toDouble();
                 _goalData = 80.0;
                 // Use subcollection data if main history is empty (Android compatibility)
                 List<double> waistHistoryFromSubcollection = [];
@@ -154,8 +165,14 @@ class _DetailScreenState extends State<DetailScreen> {
                 _historicalDates = _generateDatesForHistory(_historicalData.length);
                 break;
               case "Weight":
-                _currentData = (healthData['weight'] ?? _weight).toDouble();
-                _goalData = 62.0;
+                _currentData = weightHistorySnapshot.docs.isNotEmpty
+                    ? ((weightHistorySnapshot.docs.first.data()['weight'] ?? _weight)
+                        as num)
+                        .toDouble()
+                    : (healthData['weight'] ?? _weight).toDouble();
+                _goalData =
+                    (healthData['weightGoalKg'] ?? widget.goalValue ?? 62.0)
+                        .toDouble();
                 _historicalData = [];
                 _historicalDates = [];
 
@@ -184,8 +201,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       .toDouble();
                 }
 
-                _currentData =
-                    latestSleepHours; // Use latest sleep hours instead of current
+                _currentData = latestSleepHours > 0
+                    ? latestSleepHours
+                    : (healthData['sleepHours'] ?? 0.0).toDouble();
                 _goalData = 8.0;
 
                 // Load sleep history with actual dates
@@ -203,11 +221,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 _historicalDates = _historicalDates.reversed.toList();
                 break;
             }
-
-            // Load daily activity history
-            _dailyActivityHistory = dailyActivitySnapshot.docs
-                .map((doc) => DailyActivity.fromMap(doc.data()))
-                .toList();
           } else {
             _currentData = 0.0;
             _goalData = _getDefaultGoal();
@@ -253,14 +266,17 @@ class _DetailScreenState extends State<DetailScreen> {
       double value = 0.0;
 
       switch (metric) {
+        case 'weeklyCalories':
         case 'calories':
-          value = _dailyActivityHistory[i].calories;
+          value = _dailyActivityHistory[i].weeklyCalories.toDouble();
           break;
+        case 'weeklyMinutes':
         case 'steps':
-          value = _dailyActivityHistory[i].steps.toDouble();
+          value = _dailyActivityHistory[i].weeklyMinutes.toDouble();
           break;
+        case 'weeklyWorkoutsCount':
         case 'movingMinutes':
-          value = _dailyActivityHistory[i].movingMinutes;
+          value = _dailyActivityHistory[i].weeklyWorkoutsCount.toDouble();
           break;
       }
 
@@ -298,12 +314,15 @@ class _DetailScreenState extends State<DetailScreen> {
 
   double _getDefaultGoal() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
-        return 600.0;
+        return 2500.0;
+      case "Minutes":
       case "Steps":
-        return 7000.0;
+        return 300.0;
+      case "Workouts":
       case "Moving":
-        return 60.0;
+        return 5.0;
       case "Waist Measurement": // UPDATED
         return 80.0;
       case "Weight":
@@ -329,6 +348,9 @@ class _DetailScreenState extends State<DetailScreen> {
         return _currentData.toStringAsFixed(1);
       case "Sleep Hours": // UPDATED
         return "${_currentData.toStringAsFixed(1)} hrs";
+      case "kcal":
+      case "Minutes":
+      case "Workouts":
       case "Calories":
       case "Steps":
       case "Moving":
@@ -351,6 +373,9 @@ class _DetailScreenState extends State<DetailScreen> {
         return average.toStringAsFixed(1);
       case "Sleep Hours": // UPDATED
         return "${average.toStringAsFixed(1)} hrs";
+      case "kcal":
+      case "Minutes":
+      case "Workouts":
       case "Calories":
       case "Steps":
       case "Moving":
@@ -380,12 +405,15 @@ class _DetailScreenState extends State<DetailScreen> {
         return _goalData.toStringAsFixed(1);
       case "Sleep Hours": // UPDATED
         return "${_goalData.toStringAsFixed(1)} hrs";
+      case "kcal":
       case "Calories":
         return "${_goalData.toInt()} kcal";
+      case "Minutes":
       case "Steps":
-        return "${_goalData.toInt()} steps";
-      case "Moving":
         return "${_goalData.toInt()} mins";
+      case "Workouts":
+      case "Moving":
+        return "${_goalData.toInt()} workouts";
       default:
         return "N/A";
     }
@@ -395,12 +423,15 @@ class _DetailScreenState extends State<DetailScreen> {
     if (_isLoading) return _getUnit();
 
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return "/${_goalData.toInt()} kcal";
+      case "Minutes":
       case "Steps":
-        return "/${_goalData.toInt()} steps";
-      case "Moving":
         return "/${_goalData.toInt()} mins";
+      case "Workouts":
+      case "Moving":
+        return "/${_goalData.toInt()} workouts";
       default:
         return _getUnit();
     }
@@ -408,12 +439,15 @@ class _DetailScreenState extends State<DetailScreen> {
 
   String _getUnit() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return "kcal";
+      case "Minutes":
       case "Steps":
-        return "steps";
+        return "mins";
+      case "Workouts":
       case "Moving":
-        return "min";
+        return "workouts";
       case "Waist Measurement": // UPDATED
         return "cm";
       case "Weight":
@@ -427,10 +461,13 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Color _getThemeColor() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return const Color(0xFFFF6B35);
+      case "Minutes":
       case "Steps":
         return const Color(0xFFFF9800);
+      case "Workouts":
       case "Moving":
         return const Color(0xFF2196F3);
       case "Waist Measurement": // UPDATED: Changed to blue
@@ -482,10 +519,13 @@ class _DetailScreenState extends State<DetailScreen> {
 
   IconData _getIconForMetric() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return Icons.local_fire_department;
+      case "Minutes":
       case "Steps":
         return Icons.directions_walk;
+      case "Workouts":
       case "Moving":
         return Icons.directions_run;
       case "Waist Measurement": // UPDATED
@@ -597,6 +637,99 @@ class _DetailScreenState extends State<DetailScreen> {
     _loadDataFromFirebase();
   }
 
+  bool _isWeightGoalReached() {
+    return (_currentData - _goalData).abs() < 0.1;
+  }
+
+  Future<void> _showWeightGoalDialog() async {
+    final controller = TextEditingController(
+      text: _goalData > 0 ? _goalData.toStringAsFixed(1) : '',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            'Set Weight Goal',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Enter goal in kg',
+              hintStyle: const TextStyle(color: Colors.white38),
+              suffixText: 'kg',
+              suffixStyle: const TextStyle(color: Colors.white70),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.green),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final goal = double.tryParse(controller.text);
+                if (goal == null || goal <= 0 || goal > 500) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter a valid goal in kg'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+                await _saveWeightGoal(goal);
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(color: Colors.green),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _saveWeightGoal(double goal) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('health_metrics')
+        .doc('current')
+        .set({
+      'weightGoalKg': goal,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    setState(() {
+      _goalData = goal;
+    });
+
+    widget.onDataSaved?.call();
+  }
+
   // Add method to update waist measurement data in subcollection
   Future<void> _updateWaistMeasurementData(double newValue) async {
     final user = _auth.currentUser;
@@ -698,6 +831,9 @@ class _DetailScreenState extends State<DetailScreen> {
         return _buildBMIContent();
       case "Sleep Hours": // UPDATED
         return _buildSleepContent();
+      case "kcal":
+      case "Minutes":
+      case "Workouts":
       case "Calories":
       case "Steps":
       case "Moving":
@@ -709,14 +845,13 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
-   Widget _buildWeightContent() {
+  Widget _buildWeightContent() {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // Current weight display
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
@@ -729,43 +864,111 @@ class _DetailScreenState extends State<DetailScreen> {
               ],
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
-                    color: Colors.green, // Changed to green for weight
-                    fontSize: 56,
+                    color: Colors.green,
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   "Weight (kg)",
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.green.withOpacity(0.4)),
-                  ),
-                  child: Text(
-                    "Goal: ${_goalData.toStringAsFixed(1)} kg",
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                const SizedBox(height: 16),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.green.withOpacity(0.35)),
+                      ),
+                      child: Text(
+                        "Goal: ${_goalData.toStringAsFixed(1)} kg",
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
+                    OutlinedButton(
+                      onPressed: _showWeightGoalDialog,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.green.withOpacity(0.35)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      child: const Text(
+                        "Set Goal",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _isWeightGoalReached()
+                        ? Colors.green.withOpacity(0.16)
+                        : Colors.white.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isWeightGoalReached()
+                          ? Colors.green.withOpacity(0.35)
+                          : Colors.white10,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isWeightGoalReached()
+                            ? Icons.check_circle
+                            : Icons.track_changes,
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _isWeightGoalReached()
+                              ? "Goal reached"
+                              : "Difference: ${(_currentData - _goalData).abs().toStringAsFixed(1)} kg",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          // Weight chart
           Container(
             height: 220,
             decoration: BoxDecoration(
@@ -786,9 +989,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       painter: RealDataChartPainter(
                         data: _historicalData,
                         dates: _historicalDates,
-                        color: Colors.green, // Changed to green for weight
+                        color: Colors.green,
                         goal: _goalData,
-                        timeTab: 2, // Always show full history for weight
+                        timeTab: 2,
                       ),
                       size: const Size(double.infinity, 180),
                     )
@@ -801,11 +1004,9 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          // Weight history section
-          _buildWeightHistorySection(), // New method for weight history
+          _buildWeightHistorySection(),
           const SizedBox(height: 20),
-          // Body composition card
-          _buildBodyCompositionCard(), // Keep the BMI card
+          _buildBodyCompositionCard(),
           const SizedBox(height: 20),
         ],
       ),
@@ -829,26 +1030,31 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, // Changed to start alignment
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with proper alignment
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.history, color: Colors.green, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "Weight History",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                Flexible(
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, color: Colors.green, size: 20),
+                      const SizedBox(width: 8),
+                      const Flexible(
+                        child: Text(
+                          "Weight History",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Text(
                   "${_historicalData.length} entries",
                   style: const TextStyle(
@@ -884,38 +1090,36 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget _buildWeightHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   DateFormat('MMMM d, yyyy').format(date),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('HH:mm').format(date),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -1396,10 +1600,17 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1408,14 +1619,35 @@ class _DetailScreenState extends State<DetailScreen> {
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
                     color: Colors.purple,
-                    fontSize: 56,
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   "Sleep Hours",
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    _currentData >= _goalData
+                        ? "Goal reached for today"
+                        : "Need ${(_goalData - _currentData).clamp(0, 24).toStringAsFixed(1)} more hrs to reach your goal",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -1474,11 +1706,9 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Centered header
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.history, color: Colors.purple, size: 24),
                 const SizedBox(width: 8),
@@ -1518,38 +1748,36 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget _buildSleepHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   DateFormat('MMMM d, yyyy').format(date),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('HH:mm').format(date),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -1573,22 +1801,8 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _buildMetricContent() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              _buildTimeTabButton('Day', 0),
-              _buildTimeTabButton('Week', 1),
-              _buildTimeTabButton('Month', 2),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1620,34 +1834,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 style: const TextStyle(color: Colors.white70, fontSize: 18),
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: CustomPaint(
-              painter: RealDataChartPainter(
-                data: _historicalData,
-                dates: _historicalDates,
-                color: _getThemeColor(),
-                goal: _goalData,
-                timeTab: _timeTab,
-              ),
-              size: const Size(double.infinity, 180),
-            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -1686,7 +1872,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      _getSummaryTitle(),
+                      "Today",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -1701,7 +1887,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      flex: 1,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1724,38 +1909,6 @@ class _DetailScreenState extends State<DetailScreen> {
                         ],
                       ),
                     ),
-                    if (_timeTab > 0 && _historicalData.isNotEmpty) ...[
-                      Container(
-                        width: 0.5,
-                        height: 40,
-                        color: Colors.white38,
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${_getAverageValue()} ${_getUnit()}",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              "Average",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],
@@ -1763,10 +1916,83 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        GestureDetector(
-          onTap: () => _showAboutInfo(context),
-          child: Container(
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: _getThemeColor(), size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "About ${widget.title}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(color: Colors.white38, height: 1, thickness: 0.5),
+                const SizedBox(height: 14),
+                Text(
+                  _getInlineMetricInfo(),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getInlineMetricInfo() {
+    switch (widget.title) {
+      case "kcal":
+      case "Calories":
+        return "Calories here show the energy you burned from recorded workouts today. Completing more workout volume usually increases this number.";
+      case "Minutes":
+      case "Steps":
+        return "Minutes show how much workout time you logged today based on your completed workout exercises and their estimated duration.";
+      case "Workouts":
+      case "Moving":
+        return "Workouts show how many workout sessions you completed today. Each finished workout adds to this total.";
+      default:
+        return "Information about this metric is shown here.";
+    }
+  }
+
+  // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent
+  Widget _buildWaistContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
             width: double.infinity,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
@@ -1778,48 +2004,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: _getThemeColor(), size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      "About ${widget.title}",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white70,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent
-  Widget _buildWaistContent() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1827,14 +2011,35 @@ class _DetailScreenState extends State<DetailScreen> {
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
                     color: Colors.blue, // UPDATED: Changed color
-                    fontSize: 56,
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   "Waist Measurement", // UPDATED: Changed text
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    _currentData <= _goalData
+                        ? "Within your target"
+                        : "${(_currentData - _goalData).toStringAsFixed(1)} cm above goal",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -1944,12 +2149,15 @@ class _DetailScreenState extends State<DetailScreen> {
 
   String _getMetricKey() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
-        return 'calories';
+        return 'weeklyCalories';
+      case "Minutes":
       case "Steps":
-        return 'steps';
+        return 'weeklyMinutes';
+      case "Workouts":
       case "Moving":
-        return 'movingMinutes';
+        return 'weeklyWorkoutsCount';
       default:
         return '';
     }
@@ -2438,13 +2646,9 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Center the entire section
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Centered header
             Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.center, // Center the header row
               children: [
                 const Icon(Icons.history, color: Colors.blue, size: 24),
                 const SizedBox(width: 8),
@@ -2484,39 +2688,36 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget _buildCenteredHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Center the entire row
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.center, // Center the date info
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   DateFormat('MMMM d, yyyy').format(date),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('HH:mm').format(date),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -2649,17 +2850,17 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _showAboutInfo(BuildContext context) {
-    if (widget.title == "Calories") {
+    if (widget.title == "Calories" || widget.title == "kcal") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const CaloriesInfoScreen()),
       );
-    } else if (widget.title == "Moving") {
+    } else if (widget.title == "Moving" || widget.title == "Workouts") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MovingInfoScreen()),
       );
-    } else if (widget.title == "Steps") {
+    } else if (widget.title == "Steps" || widget.title == "Minutes") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const StepsInfoScreen()),
@@ -2753,32 +2954,33 @@ class _DetailScreenState extends State<DetailScreen> {
 // Daily Activity Model (same as in healthdashboard.dart)
 class DailyActivity {
   final DateTime date;
-  final int steps;
-  final double calories;
-  final double movingMinutes;
+  final int weeklyMinutes;
+  final int weeklyCalories;
+  final int weeklyWorkoutsCount;
 
   DailyActivity({
     required this.date,
-    required this.steps,
-    required this.calories,
-    required this.movingMinutes,
+    required this.weeklyMinutes,
+    required this.weeklyCalories,
+    required this.weeklyWorkoutsCount,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'date': date.toIso8601String(),
-      'steps': steps,
-      'calories': calories,
-      'movingMinutes': movingMinutes,
+      'weeklyMinutes': weeklyMinutes,
+      'weeklyCalories': weeklyCalories,
+      'weeklyWorkoutsCount': weeklyWorkoutsCount,
     };
   }
 
   factory DailyActivity.fromMap(Map<String, dynamic> map) {
     return DailyActivity(
       date: DateTime.parse(map['date']),
-      steps: map['steps'],
-      calories: (map['calories'] ?? 0).toDouble(),
-      movingMinutes: (map['movingMinutes'] ?? 0).toDouble(),
+      weeklyMinutes:
+          (map['weeklyMinutes'] ?? map['movingMinutes'] ?? 0).toInt(),
+      weeklyCalories: (map['weeklyCalories'] ?? map['calories'] ?? 0).toInt(),
+      weeklyWorkoutsCount: (map['weeklyWorkoutsCount'] ?? 0).toInt(),
     );
   }
 }
@@ -2826,10 +3028,11 @@ class RealDataChartPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
-    double xStep = size.width / (data.length - 1);
+    final bool hasMultiplePoints = data.length > 1;
+    double xStep = hasMultiplePoints ? size.width / (data.length - 1) : 0;
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
@@ -2888,7 +3091,16 @@ class RealDataChartPainter extends CustomPainter {
   }
 
   String _getDateLabel(DateTime date) {
-    if (timeTab == 0) {
+    final bool sameDayOnly =
+        dates.isNotEmpty &&
+        dates.every(
+          (entry) =>
+              entry.year == dates.first.year &&
+              entry.month == dates.first.month &&
+              entry.day == dates.first.day,
+        );
+
+    if (timeTab == 0 || sameDayOnly) {
       return DateFormat('HH:mm').format(date);
     } else if (timeTab == 1) {
       return DateFormat('MMM dd').format(date);

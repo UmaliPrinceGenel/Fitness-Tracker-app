@@ -25,6 +25,14 @@ class Exercise {
 
     return baseCalories * weightFactor * volumeFactor;
   }
+
+  int getEstimatedTotalDurationSeconds({required int sets, required int reps}) {
+    final safeSets = sets < 1 ? 1 : sets;
+    final safeReps = reps < 1 ? 1 : reps;
+    final repFactor = (safeReps / 8.0).clamp(0.5, 2.5);
+
+    return (safeSets * duration * repFactor).round();
+  }
 }
 
 class Workout {
