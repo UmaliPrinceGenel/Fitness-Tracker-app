@@ -52,10 +52,17 @@ class _HealthDashboardState extends State<HealthDashboard>
   // Step tracking variables
   bool _isLoading = true;
   bool _isTrackingSteps = false;
+  int _profileRefreshVersion = 0;
 
  // Date tracking for daily reset
   DateTime _currentDate = DateTime.now();
   String? _lastDailyResetDate;
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
 
 
   @override
@@ -168,19 +175,64 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
+  double _parseDoubleValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  double _readProfileNumber(Map<String, dynamic> userData, String key) {
+    final profile = userData['profile'];
+    if (profile is Map<String, dynamic>) {
+      final nestedValue = profile[key];
+      final parsedNested = _parseDoubleValue(nestedValue);
+      if (parsedNested > 0) return parsedNested;
+    }
+
+    final dottedValue = userData['profile.$key'];
+    return _parseDoubleValue(dottedValue);
+  }
+
+  bool _hasValidBodyMetrics({double? heightCm, double? weightKg}) {
+    final safeHeight = heightCm ?? _height;
+    final safeWeight = weightKg ?? _weight;
+    return safeHeight >= _minValidHeightCm &&
+        safeHeight <= _maxValidHeightCm &&
+        safeWeight >= _minValidWeightKg &&
+        safeWeight <= _maxValidWeightKg;
+  }
+
+  bool _isDisplayableBmiPair({required double heightCm, required double weightKg}) {
+    if (!_hasValidBodyMetrics(heightCm: heightCm, weightKg: weightKg)) {
+      return false;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    return bmi >= _minDisplayBmi && bmi <= _maxDisplayBmi;
+  }
+
+  double _computeSafeBmi({double? heightCm, double? weightKg}) {
+    final safeHeight = heightCm ?? _height;
+    final safeWeight = weightKg ?? _weight;
+
+    if (!_hasValidBodyMetrics(heightCm: safeHeight, weightKg: safeWeight)) {
+      return 0.0;
+    }
+
+    final heightInMeters = safeHeight / 100;
+    final bmi = safeWeight / (heightInMeters * heightInMeters);
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) {
+      return 0.0;
+    }
+
+    return double.parse(bmi.toStringAsFixed(1));
+  }
+
   // Automatic BMI Calculation
   void _calculateBMI() {
-    if (_height > 0 && _weight > 0) {
-      double heightInMeters = _height / 100;
-      double newBmi = _weight / (heightInMeters * heightInMeters);
-      setState(() {
-        _bmi = double.parse(newBmi.toStringAsFixed(1));
-      });
-    } else {
-      setState(() {
-        _bmi = 0.0; // Reset BMI if height or weight is not available
-      });
-    }
+    setState(() {
+      _bmi = _computeSafeBmi();
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -301,11 +353,8 @@ class _HealthDashboardState extends State<HealthDashboard>
           sleepHistoryFromSubcollection = sleepHistoryFromSubcollection.reversed.toList(); // Chronological order
 
           setState(() {
-            // SAFE PARSING: Handle profile data safely
-            var weightData = userData['profile']?['weight'];
-            var heightData = userData['profile']?['height'];
-            _weight = (weightData != null && weightData is num) ? weightData.toDouble() : (weightData != null && weightData is String) ? double.tryParse(weightData) ?? 0.0 : 0.0;
-            _height = (heightData != null && heightData is num) ? heightData.toDouble() : (heightData != null && heightData is String) ? double.tryParse(heightData) ?? 0.0 : 0.0;
+            _weight = _readProfileNumber(userData, 'weight');
+            _height = _readProfileNumber(userData, 'height');
 
             if (healthDoc.exists) {
               final healthData = healthDoc.data()!;
@@ -486,7 +535,11 @@ class _HealthDashboardState extends State<HealthDashboard>
 
         if (weight != null && weight != _weight) {
           await _firestore.collection('users').doc(user.uid).set({
-            'profile.weight': weight,
+            'profile': {
+              'weight': weight,
+              'bmi': _bmi,
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
@@ -592,7 +645,7 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
- void _onItemTapped(int index) {
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -600,6 +653,13 @@ class _HealthDashboardState extends State<HealthDashboard>
     if (index == 0) {
       _loadUserData();
     }
+  }
+
+  void _handleHealthDataChanged() {
+    _loadUserData();
+    setState(() {
+      _profileRefreshVersion++;
+    });
   }
 
   @override
@@ -927,7 +987,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                           waistHistory: _waistHistory,
                           weightHistory: _weightHistory,
                           sleepHistory: _sleepHistory,
-                          onDataSaved: _loadUserData,
+                          onDataSaved: _handleHealthDataChanged,
                         ),
                       ]),
                     ),
@@ -937,9 +997,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             ),
             const WorkoutScreen(),
             const CommunityScreen(),
-            MyProfile(
-              key: ValueKey('profile_${DateTime.now().millisecondsSinceEpoch}'),
-            ),
+            MyProfile(refreshVersion: _profileRefreshVersion),
           ],
         ),
       ),
@@ -960,7 +1018,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.straighten, color: Colors.blue),
+                leading: const Icon(Icons.height, color: Colors.blue),
                 title: const Text(
                   'Update Height',
                   style: TextStyle(color: Colors.white),
@@ -1026,14 +1084,31 @@ class _HealthDashboardState extends State<HealthDashboard>
             ElevatedButton(
               onPressed: () {
                 final newValue = double.tryParse(controller.text) ?? 0.0;
-                if (newValue >= 0 && newValue <= maxValue) {
+                final minValue = type == 'Height' ? _minValidHeightCm : 0.0;
+                final invalidHeightForCurrentWeight =
+                    type == 'Height' &&
+                    _weight >= _minValidWeightKg &&
+                    !_isDisplayableBmiPair(heightCm: newValue, weightKg: _weight);
+
+                if (invalidHeightForCurrentWeight) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'That height does not match your current weight. Please enter a more realistic height.',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                } else if (newValue >= minValue && newValue <= maxValue) {
                   Navigator.pop(context);
                   _handleDataUpdate(type, newValue);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Please enter a value between 0 and $maxValue',
+                        type == 'Height'
+                            ? 'Please enter a realistic height between ${_minValidHeightCm.toStringAsFixed(0)} and ${maxValue.toStringAsFixed(0)} cm'
+                            : 'Please enter a value greater than 0 and up to $maxValue',
                       ),
                       backgroundColor: Colors.red,
                     ),
@@ -1071,9 +1146,10 @@ class _HealthDashboardState extends State<HealthDashboard>
           await _firestore.collection('users').doc(user.uid).set({
             'profile': {
               'height': newValue,
-              'bmi': _bmi, // Use the locally calculated BMI
+              'bmi': _bmi,
               'lastUpdated': FieldValue.serverTimestamp(),
             },
+            'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
           // Update health metrics with new BMI
@@ -1102,9 +1178,11 @@ class _HealthDashboardState extends State<HealthDashboard>
           await _firestore.collection('users').doc(user.uid).set({
             'profile': {
               'weight': newValue,
+              'height': _height,
               'bmi': _bmi, // Use the locally calculated BMI
               'lastUpdated': FieldValue.serverTimestamp(),
             },
+            'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
           // Update health metrics with new BMI
@@ -1128,6 +1206,8 @@ class _HealthDashboardState extends State<HealthDashboard>
           backgroundColor: Colors.green,
         ),
       );
+
+      _handleHealthDataChanged();
     } catch (e) {
       print('Error updating $type: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1885,6 +1965,7 @@ class _BMICard extends StatelessWidget {
   }
 
  String _getBMICategory(double bmi) {
+    if (bmi <= 0) return "Check data";
     if (bmi < 18.5) return "Underweight";
     if (bmi < 25) return "Normal";
     if (bmi < 30) return "Overweight";
@@ -1892,6 +1973,7 @@ class _BMICard extends StatelessWidget {
   }
 
   Color _getBMIColor(double bmi) {
+    if (bmi <= 0) return Colors.white54;
     if (bmi < 18.5) return Colors.blue;
     if (bmi < 25) return Colors.green;
     if (bmi < 30) return Colors.orange;

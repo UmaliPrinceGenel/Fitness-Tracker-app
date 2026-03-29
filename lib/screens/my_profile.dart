@@ -11,13 +11,25 @@ import 'login_screen.dart';
 import 'about_app_screen.dart';
 
 class MyProfile extends StatefulWidget {
-  const MyProfile({super.key});
+  final int refreshVersion;
+
+  const MyProfile({
+    super.key,
+    this.refreshVersion = 0,
+  });
 
   @override
   State<MyProfile> createState() => _MyProfileState();
 }
 
 class _MyProfileState extends State<MyProfile> {
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
+
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -25,6 +37,7 @@ class _MyProfileState extends State<MyProfile> {
 
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
+  bool _isUpdatingProfile = false;
   String? _profileImageUrl;
   String? _recentProgressImage; // Store the most recent progress image URL
 
@@ -36,11 +49,12 @@ class _MyProfileState extends State<MyProfile> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print('🔄 Profile tab opened - refreshing data');
-    _loadUserData();
-    _loadRecentProgressImage();
+  void didUpdateWidget(covariant MyProfile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshVersion != oldWidget.refreshVersion) {
+      _loadUserData();
+      _loadRecentProgressImage();
+    }
   }
 
   @override
@@ -232,14 +246,56 @@ class _MyProfileState extends State<MyProfile> {
 
   /// ✅ Calculate BMI
   double? _calculateBMI() {
-    final weight = _userData?['profile']?['weight']?.toDouble();
-    final height = _userData?['profile']?['height']?.toDouble();
+    final weight = _safeProfileNumber('weight');
+    final height = _safeProfileNumber('height');
 
-    if (weight == null || height == null || height == 0) return null;
+    if (weight < _minValidWeightKg ||
+        weight > _maxValidWeightKg ||
+        height < _minValidHeightCm ||
+        height > _maxValidHeightCm) {
+      return null;
+    }
 
     final heightInMeters = height / 100;
     final bmi = weight / (heightInMeters * heightInMeters);
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) return null;
     return double.parse(bmi.toStringAsFixed(1));
+  }
+
+  double _safeProfileNumber(String key) {
+    final dynamic nestedValue = _userData?['profile']?[key];
+    if (nestedValue is num) return nestedValue.toDouble();
+    if (nestedValue is String) return double.tryParse(nestedValue) ?? 0.0;
+
+    final dynamic dottedValue = _userData?['profile.$key'];
+    if (dottedValue is num) return dottedValue.toDouble();
+    if (dottedValue is String) return double.tryParse(dottedValue) ?? 0.0;
+    return 0.0;
+  }
+
+  String _formatProfileMetric(String key, String unit) {
+    final value = _safeProfileNumber(key);
+    final formatted =
+        value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    return '$formatted $unit';
+  }
+
+  double _weightProgress() {
+    final weight = _safeProfileNumber('weight');
+    if (weight <= 0) return 0.0;
+    return (weight / 100).clamp(0.0, 1.0);
+  }
+
+  double _heightProgress() {
+    final height = _safeProfileNumber('height');
+    if (height <= 0) return 0.0;
+    return (height / 220).clamp(0.0, 1.0);
+  }
+
+  double _bmiProgress() {
+    final bmi = _calculateBMI() ?? 0.0;
+    if (bmi <= 0) return 0.0;
+    return (bmi / 40).clamp(0.0, 1.0);
   }
 
   /// ✅ Delete old avatar from Supabase
@@ -332,7 +388,7 @@ class _MyProfileState extends State<MyProfile> {
 
       if (pickedFile != null && mounted) {
         setState(() {
-          _isLoading = true;
+          _isUpdatingProfile = true;
         });
 
         final user = _firebaseAuth.currentUser;
@@ -393,7 +449,7 @@ class _MyProfileState extends State<MyProfile> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isUpdatingProfile = false;
         });
       }
     }
@@ -474,7 +530,7 @@ class _MyProfileState extends State<MyProfile> {
 
       if (mounted) {
         setState(() {
-          _isLoading = true;
+          _isUpdatingProfile = true;
         });
       }
 
@@ -510,7 +566,7 @@ class _MyProfileState extends State<MyProfile> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isUpdatingProfile = false;
         });
       }
     }
@@ -678,6 +734,28 @@ class _MyProfileState extends State<MyProfile> {
                                         ),
                                       ),
                                     ),
+                                    if (_isUpdatingProfile)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.45),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.4,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<Color>(
+                                                  Colors.orange,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -730,7 +808,7 @@ class _MyProfileState extends State<MyProfile> {
                                             ),
                                           ),
                                           Text(
-                                            "${_userData?['profile']?['height']?.toString() ?? '0'} cm",
+                                            _formatProfileMetric('height', 'cm'),
                                             style: const TextStyle(
                                               color: Colors.white60,
                                               fontSize: 14,
@@ -774,20 +852,18 @@ class _MyProfileState extends State<MyProfile> {
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               _buildHealthCard(
-                                value:
-                                    "${_userData?['profile']?['weight']?.toString() ?? '0'} kg",
+                                value: _formatProfileMetric('weight', 'kg'),
                                 label: "Weight",
                                 icon: Icons.monitor_weight,
-                                progressValue: 0.7,
+                                progressValue: _weightProgress(),
                                 color: Colors.green,
                               ),
                               const SizedBox(width: 12),
                               _buildHealthCard(
-                                value:
-                                    "${_userData?['profile']?['height']?.toString() ?? '0'} cm",
+                                value: _formatProfileMetric('height', 'cm'),
                                 label: "Height",
-                                icon: Icons.straighten,
-                                progressValue: 0.6,
+                                icon: Icons.height,
+                                progressValue: _heightProgress(),
                                 color: Colors.blue,
                               ),
                               const SizedBox(width: 12),
@@ -795,7 +871,7 @@ class _MyProfileState extends State<MyProfile> {
                                 value: _calculateBMI()?.toString() ?? '0',
                                 label: "BMI",
                                 icon: Icons.monitor_heart,
-                                progressValue: 0.5,
+                                progressValue: _bmiProgress(),
                                 color: Colors.orange,
                               ),
                             ],

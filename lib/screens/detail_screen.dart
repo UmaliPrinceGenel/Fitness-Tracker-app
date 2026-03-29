@@ -28,6 +28,13 @@ class DetailScreen extends StatefulWidget {
 }
 
 class _DetailScreenState extends State<DetailScreen> {
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
+
   late String selectedDate;
   int _currentIndex = 0;
   int _timeTab = 0;
@@ -45,6 +52,40 @@ class _DetailScreenState extends State<DetailScreen> {
   // User profile data for calculations
   double _weight = 0.0;
   double _height = 0.0;
+
+  double _parseDoubleValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  double _computeSafeBmi(double weightKg, double heightCm) {
+    if (weightKg < _minValidWeightKg ||
+        weightKg > _maxValidWeightKg ||
+        heightCm < _minValidHeightCm ||
+        heightCm > _maxValidHeightCm) {
+      return 0.0;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) {
+      return 0.0;
+    }
+
+    return double.parse(bmi.toStringAsFixed(1));
+  }
+
+  bool _isDisplayableBmiPair(double weightKg, double heightCm) {
+    if (weightKg < _minValidWeightKg ||
+        weightKg > _maxValidWeightKg ||
+        heightCm < _minValidHeightCm ||
+        heightCm > _maxValidHeightCm) {
+      return false;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    return bmi >= _minDisplayBmi && bmi <= _maxDisplayBmi;
+  }
 
   @override
   void initState() {
@@ -64,9 +105,14 @@ class _DetailScreenState extends State<DetailScreen> {
             .get();
         if (userDoc.exists) {
           final userData = userDoc.data()!;
+          final profileData = userData['profile'] as Map<String, dynamic>? ?? <String, dynamic>{};
           setState(() {
-            _weight = (userData['profile']?['weight'] ?? 0.0).toDouble();
-            _height = (userData['profile']?['height'] ?? 0.0).toDouble();
+            _weight = _parseDoubleValue(profileData['weight']) > 0
+                ? _parseDoubleValue(profileData['weight'])
+                : _parseDoubleValue(userData['profile.weight']);
+            _height = _parseDoubleValue(profileData['height']) > 0
+                ? _parseDoubleValue(profileData['height'])
+                : _parseDoubleValue(userData['profile.height']);
           });
         }
 
@@ -290,26 +336,13 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _calculateBMI() {
-    if (_height > 0 && _weight > 0) {
-      // Use _weight and _height from user profile
-      double bmi = _weight / ((_height / 100) * (_height / 100));
-      setState(() {
-        _currentData = double.parse(bmi.toStringAsFixed(1));
-      });
-    } else {
-      // If no valid data, set to 0.0
-      setState(() {
-        _currentData = 0.0;
-      });
-    }
+    setState(() {
+      _currentData = _computeSafeBmi(_weight, _height);
+    });
   }
 
   double _calculateCurrentBMI() {
-    if (_height > 0 && _weight > 0) {
-      // Use _weight and _height from user profile
-      return _weight / ((_height / 100) * (_height / 100));
-    }
-    return 0.0;
+    return _computeSafeBmi(_weight, _height);
   }
 
   double _getDefaultGoal() {
@@ -480,6 +513,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   String _getBMICategory(double bmi) {
+    if (bmi <= 0) return "Check data";
     if (bmi < 18.5) return "Underweight";
     if (bmi < 25) return "Normal";
     if (bmi < 30) return "Overweight";
@@ -487,6 +521,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Color _getBMIColor(double bmi) {
+    if (bmi <= 0) return Colors.white54;
     if (bmi < 18.5) return Colors.blue;
     if (bmi < 25) return Colors.green;
     if (bmi < 30) return Colors.orange;
@@ -568,7 +603,6 @@ class _DetailScreenState extends State<DetailScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            widget.onDataSaved?.call();
             Navigator.pop(context);
           },
         ),
@@ -634,6 +668,7 @@ class _DetailScreenState extends State<DetailScreen> {
     setState(() {
       _isLoading = true;
     });
+    widget.onDataSaved?.call();
     _loadDataFromFirebase();
   }
 
@@ -763,6 +798,20 @@ class _DetailScreenState extends State<DetailScreen> {
   Future<void> _updateWeightData(double newValue) async {
     final user = _auth.currentUser;
     if (user != null) {
+      if (_height >= _minValidHeightCm && !_isDisplayableBmiPair(newValue, _height)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'That weight does not match your current height. Please enter a more realistic value',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final updatedBmi = _computeSafeBmi(newValue, _height);
+
       // Update in health metrics collection
       await _firestore
           .collection('users')
@@ -771,12 +820,18 @@ class _DetailScreenState extends State<DetailScreen> {
           .doc('current')
           .set({
             'weight': newValue,
+            'bmi': updatedBmi,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
       // Update in user profile
       await _firestore.collection('users').doc(user.uid).set({
-        'profile.weight': newValue,
+        'profile': {
+          'weight': newValue,
+          'height': _height,
+          'bmi': updatedBmi,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
