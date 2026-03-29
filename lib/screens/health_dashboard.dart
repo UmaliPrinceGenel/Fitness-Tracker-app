@@ -44,6 +44,7 @@ class _HealthDashboardState extends State<HealthDashboard>
   // Historical data for graphs - UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
   List<double> _waistHistory = [];
   List<double> _weightHistory = [];
+  List<double> _heightHistory = [];
   List<double> _sleepHistory = [];
 
   // Daily activity history
@@ -271,6 +272,14 @@ class _HealthDashboardState extends State<HealthDashboard>
               .limit(10)
               .get();
 
+          final heightHistorySnapshot = await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('height_history')
+              .orderBy('timestamp', descending: true)
+              .limit(10)
+              .get();
+
           // Process weight history data - SAFE PARSING
           List<double> weightHistoryFromSubcollection = [];
           for (var doc in weightHistorySnapshot.docs) {
@@ -291,6 +300,21 @@ class _HealthDashboardState extends State<HealthDashboard>
             }
           }
           weightHistoryFromSubcollection = weightHistoryFromSubcollection.reversed.toList(); // Chronological order
+
+          List<double> heightHistoryFromSubcollection = [];
+          for (var doc in heightHistorySnapshot.docs) {
+            final data = doc.data();
+            final heightValue = data['height'];
+            if (heightValue != null) {
+              if (heightValue is num) {
+                heightHistoryFromSubcollection.add(heightValue.toDouble());
+              } else if (heightValue is String) {
+                heightHistoryFromSubcollection.add(double.tryParse(heightValue) ?? 0.0);
+              }
+            }
+          }
+          heightHistoryFromSubcollection =
+              heightHistoryFromSubcollection.reversed.toList();
 
           // Load waist history from waist_history subcollection (for Android compatibility) - SAFE PARSING
           final waistHistorySnapshot = await _firestore
@@ -419,6 +443,8 @@ class _HealthDashboardState extends State<HealthDashboard>
                 _weightHistory = [];
               }
 
+              _heightHistory = heightHistoryFromSubcollection;
+
               if (sleepHistoryFromSubcollection.isNotEmpty) {
                 _sleepHistory = sleepHistoryFromSubcollection;
               } else if (sleepHistoryData != null && sleepHistoryData is List) {
@@ -449,6 +475,10 @@ class _HealthDashboardState extends State<HealthDashboard>
               }
             } else {
               _initializeNewUserHealthData(user.uid);
+            }
+
+            if (_heightHistory.isEmpty && _height > 0) {
+              _heightHistory = [_height];
             }
 
             // Load additional daily activity from subcollection
@@ -739,7 +769,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                     pinned: true,
                     automaticallyImplyLeading: false,
                     title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         const Padding(
                           padding: EdgeInsets.only(left: 10, top: 30),
@@ -750,29 +780,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 30),
-                          child: PopupMenuButton<String>(
-                            icon: const Icon(
-                              Icons.add_circle_outline,
-                              color: Colors.white,
-                            ),
-                            color: Colors.grey[800],
-                            onSelected: (String result) {
-                              _showAddDataDialog();
-                            },
-                            itemBuilder: (BuildContext context) =>
-                                <PopupMenuEntry<String>>[
-                                  const PopupMenuItem<String>(
-                                    value: 'add',
-                                    child: Text(
-                                      'Add Data',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
                           ),
                         ),
                       ],
@@ -870,110 +877,124 @@ class _HealthDashboardState extends State<HealthDashboard>
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Metrics row
-                                Expanded(
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: _ModernMetricItem(
-                                          icon: Icons.local_fire_department,
-                                          iconColor: const Color(0xFFFF6B35),
-                                          label: "kcal",
-                                          value: _weeklyCalories.toStringAsFixed(0),
-                                          goal:
-                                              "/${_weeklyCaloriesGoal.toInt()} kcal",
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "kcal",
-                                                      currentValue: _weeklyCalories.toDouble(),
-                                                      goalValue: _weeklyCaloriesGoal.toDouble(),
-                                                      onDataSaved:
-                                                          _loadUserData,
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: _ModernMetricItem(
-                                          icon: Icons.timer,
-                                          iconColor: const Color(0xFFFF9800),
-                                          label: "Minutes",
-                                          value: _weeklyMinutes.toString(),
-                                          goal: "/$_weeklyMinutesGoal mins",
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Minutes",
-                                                      currentValue: _weeklyMinutes.toDouble(),
-                                                      goalValue: _weeklyMinutesGoal.toDouble(),
-                                                      onDataSaved:
-                                                          _loadUserData,
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: _ModernMetricItem(
-                                          icon: Icons.fitness_center,
-                                          iconColor: const Color(0xFF2196F3),
-                                          label: "Workouts",
-                                          value: _weeklyWorkoutsCount.toStringAsFixed(
-                                            0,
+                            child: LayoutBuilder(
+                              builder: (context, metricConstraints) {
+                                return Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: _ModernMetricItem(
+                                            icon: Icons.local_fire_department,
+                                            iconColor: const Color(0xFFFF6B35),
+                                            label: "kcal",
+                                            value: _weeklyCalories.toStringAsFixed(0),
+                                            goal:
+                                                "/${_weeklyCaloriesGoal.toInt()} kcal",
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailScreen(
+                                                        title: "kcal",
+                                                        currentValue: _weeklyCalories.toDouble(),
+                                                        goalValue: _weeklyCaloriesGoal.toDouble(),
+                                                        onDataSaved: _loadUserData,
+                                                      ),
+                                                ),
+                                              );
+                                            },
                                           ),
-                                          goal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Workouts",
-                                                      currentValue: _weeklyWorkoutsCount.toDouble(),
-                                                      goalValue: _weeklyWorkoutsGoal.toDouble(),
-                                                      onDataSaved:
-                                                          _loadUserData,
-                                                    ),
-                                              ),
-                                            );
-                                          },
                                         ),
+                                        Expanded(
+                                          child: _ModernMetricItem(
+                                            icon: Icons.timer,
+                                            iconColor: const Color(0xFFFF9800),
+                                            label: "Minutes",
+                                            value: _weeklyMinutes.toString(),
+                                            goal: "/$_weeklyMinutesGoal mins",
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailScreen(
+                                                        title: "Minutes",
+                                                        currentValue: _weeklyMinutes.toDouble(),
+                                                        goalValue: _weeklyMinutesGoal.toDouble(),
+                                                        onDataSaved: _loadUserData,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _ModernMetricItem(
+                                            icon: Icons.fitness_center,
+                                            iconColor: const Color(0xFF2196F3),
+                                            label: "Workouts",
+                                            value: _weeklyWorkoutsCount.toStringAsFixed(0),
+                                            goal:
+                                                "/${_weeklyWorkoutsGoal.toInt()} workouts",
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailScreen(
+                                                        title: "Workouts",
+                                                        currentValue: _weeklyWorkoutsCount.toDouble(),
+                                                        goalValue: _weeklyWorkoutsGoal.toDouble(),
+                                                        onDataSaved: _loadUserData,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Data resets daily at midnight • ${_dailyActivityHistory.length} days of history',
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 12,
                                       ),
-                                    ],
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                // Bottom text
-                                Text(
-                                  'Data resets daily at midnight • ${_dailyActivityHistory.length} days of history',
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 12,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        _BmiSummaryStrip(
+                          bmi: _bmi,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailScreen(
+                                  title: "BMI",
+                                  currentValue: _bmi,
+                                  goalValue: 22.0,
+                                  onDataSaved: _loadUserData,
+                                ),
+                              ),
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 16),
@@ -982,10 +1003,11 @@ class _HealthDashboardState extends State<HealthDashboard>
                         _DraggableCardGrid(
                           waistMeasurement: _waistMeasurement,
                           weight: _weight,
-                          bmi: _bmi,
+                          height: _height,
                           sleepHours: _sleepHours,
                           waistHistory: _waistHistory,
                           weightHistory: _weightHistory,
+                          heightHistory: _heightHistory,
                           sleepHistory: _sleepHistory,
                           onDataSaved: _handleHealthDataChanged,
                         ),
@@ -1164,6 +1186,17 @@ class _HealthDashboardState extends State<HealthDashboard>
                 'lastUpdated': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
 
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .collection('height_history')
+              .doc(DateTime.now().toIso8601String())
+              .set({
+                'height': newValue,
+                'date': DateTime.now(),
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+
           break;
         case 'Weight':
           // Update the local state first
@@ -1326,23 +1359,238 @@ class _ModernMetricItem extends StatelessWidget {
  }
 }
 
+class _BmiSummaryStrip extends StatelessWidget {
+  final double bmi;
+  final VoidCallback? onTap;
+
+  const _BmiSummaryStrip({
+    required this.bmi,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _getBmiAccentColor(bmi);
+    final displayValue = bmi > 0 ? bmi.toStringAsFixed(1) : "--";
+    final category = _getBmiCategoryLabel(bmi);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                Icons.monitor_heart,
+                color: accent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "BMI",
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              displayValue,
+              style: TextStyle(
+                color: accent,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              bmi > 0 ? "$category • Goal 22" : "Tap to view BMI details",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 16,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: const Color(0xFF202020),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final indicatorLeft = _calculateBmiStripPosition(width, bmi);
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Row(
+                        children: const [
+                          Expanded(
+                            flex: 14,
+                            child: _BmiScaleSegment(color: Colors.blue),
+                          ),
+                          Expanded(
+                            flex: 26,
+                            child: _BmiScaleSegment(color: Colors.green),
+                          ),
+                          Expanded(
+                            flex: 20,
+                            child: _BmiScaleSegment(color: Colors.orange),
+                          ),
+                          Expanded(
+                            flex: 40,
+                            child: _BmiScaleSegment(color: Colors.deepOrange),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        left: indicatorLeft,
+                        top: -4,
+                        bottom: -4,
+                        child: Container(
+                          width: 3,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black54,
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                return SizedBox(
+                  height: 14,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _buildBmiLabel("15", 0, width),
+                      _buildBmiLabel("18.5", 18.5, width),
+                      _buildBmiLabel("25", 25, width),
+                      _buildBmiLabel("30", 30, width),
+                      _buildBmiLabel("40+", 40, width),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _getBmiCategoryLabel(double bmi) {
+    if (bmi <= 0) return "Check data";
+    if (bmi < 18.5) return "Underweight";
+    if (bmi < 25) return "Normal";
+    if (bmi < 30) return "Overweight";
+    return "Obese";
+  }
+
+  static Color _getBmiAccentColor(double bmi) {
+    if (bmi <= 0) return const Color(0xFFFFB020);
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25) return Colors.green;
+    if (bmi < 30) return Colors.orange;
+    return Colors.deepOrange;
+  }
+
+  static double _calculateBmiStripPosition(double width, double bmi) {
+    if (width <= 0) return 0;
+    final clamped = bmi <= 0 ? 15.0 : bmi.clamp(15.0, 40.0);
+    final percentage = (clamped - 15.0) / 25.0;
+    return (percentage * width).clamp(0.0, width - 3.0);
+  }
+
+  Widget _buildBmiLabel(String text, double value, double width) {
+    final left = _calculateBmiStripPosition(width, value);
+    final alignment = value <= 15
+        ? -1.0
+        : value >= 40
+            ? 1.0
+            : 0.0;
+    final resolvedLeft = value <= 15 ? 0.0 : left - 14;
+
+    return Positioned(
+      left: value >= 40 ? null : resolvedLeft,
+      right: value >= 40 ? 0 : null,
+      child: SizedBox(
+        width: 28,
+        child: Text(
+          text,
+          style: TextStyle(color: Colors.grey[500], fontSize: 10),
+          textAlign: alignment < 0
+              ? TextAlign.left
+              : alignment > 0
+                  ? TextAlign.right
+                  : TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+class _BmiScaleSegment extends StatelessWidget {
+  final Color color;
+
+  const _BmiScaleSegment({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(color: color);
+  }
+}
+
 // UPDATED: Changed parameters to waistMeasurement and sleepHours
 class _DraggableCardGrid extends StatefulWidget {
   final double waistMeasurement;
   final double weight;
-  final double bmi;
+  final double height;
   final double sleepHours;
   final List<double> waistHistory;
   final List<double> weightHistory;
+  final List<double> heightHistory;
   final List<double> sleepHistory;
   final VoidCallback onDataSaved; // ADD THIS
   const _DraggableCardGrid({
     required this.waistMeasurement,
     required this.weight,
-    required this.bmi,
+    required this.height,
     required this.sleepHours,
     required this.waistHistory,
     required this.weightHistory,
+    required this.heightHistory,
     required this.sleepHistory,
     required this.onDataSaved, // ADD THIS
   });
@@ -1373,7 +1621,11 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
         weightHistory: widget.weightHistory,
         onDataSaved: widget.onDataSaved,
       ), // ADD THIS
-      _BMICard(bmi: widget.bmi, onDataSaved: widget.onDataSaved), // ADD THIS
+      _HeightCard(
+        height: widget.height,
+        heightHistory: widget.heightHistory,
+        onDataSaved: widget.onDataSaved,
+      ),
       _SleepCard(
         sleepHours: widget.sleepHours,
         sleepHistory: widget.sleepHistory,
@@ -1714,6 +1966,149 @@ class _WeightCard extends StatelessWidget {
                                 (index) => DateTime.now()
                                     .subtract(Duration(days: weightHistory.length - 1 - index)),
                               ), // Add dates for proper charting
+                            ),
+                            size: const Size(double.infinity, 30),
+                          )
+                        : Center(
+                            child: Text(
+                              "No data",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: isVerySmallScreen ? 8 : 10,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Start",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isVerySmallScreen ? 8 : 9,
+                        ),
+                      ),
+                      Text(
+                        "Now",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isVerySmallScreen ? 8 : 9,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeightCard extends StatelessWidget {
+  final double height;
+  final List<double> heightHistory;
+  final VoidCallback onDataSaved;
+
+  const _HeightCard({
+    required this.height,
+    required this.heightHistory,
+    required this.onDataSaved,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(
+              title: "Height",
+              onDataSaved: onDataSaved,
+            ),
+          ),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isSmallScreen = constraints.maxWidth < 160;
+              final bool isVerySmallScreen = constraints.maxWidth < 140;
+              const accentColor = Color(0xFF4FC3F7);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.height,
+                        color: accentColor,
+                        size: isVerySmallScreen ? 20 : 24,
+                      ),
+                      if (!isSmallScreen) ...[const Spacer()],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Height",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isVerySmallScreen ? 12 : 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "${height.toStringAsFixed(1)} cm",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isVerySmallScreen ? 16 : 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Track your recorded height",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isVerySmallScreen ? 8 : 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: heightHistory.isNotEmpty
+                        ? CustomPaint(
+                            painter: LineChartPainter(
+                              data: heightHistory,
+                              dates: List.generate(
+                                heightHistory.length,
+                                (index) => DateTime.now().subtract(
+                                  Duration(days: heightHistory.length - 1 - index),
+                                ),
+                              ),
                             ),
                             size: const Size(double.infinity, 30),
                           )

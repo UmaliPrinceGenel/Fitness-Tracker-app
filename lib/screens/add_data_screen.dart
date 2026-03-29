@@ -117,6 +117,69 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   'timestamp': FieldValue.serverTimestamp(),
                 });
             break;
+          case "Height":
+            if (value < _minValidHeightCm || value > _maxValidHeightCm) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please enter a realistic height between 80 and 250 cm'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
+
+            final userDoc = await _firestore.collection('users').doc(user.uid).get();
+            final userData = userDoc.data() ?? <String, dynamic>{};
+            final profileData = userData['profile'] as Map<String, dynamic>? ?? <String, dynamic>{};
+            final currentWeight = _parseDoubleValue(profileData['weight']) > 0
+                ? _parseDoubleValue(profileData['weight'])
+                : _parseDoubleValue(userData['profile.weight']);
+
+            if (currentWeight >= _minValidWeightKg &&
+                !_isDisplayableBmiPair(currentWeight, value)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('That height does not match your current weight. Please enter a more realistic value'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
+
+            final updatedHeightBmi = _computeSafeBmi(currentWeight, value);
+
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .collection('health_metrics')
+                .doc('current')
+                .set({
+                  'height': value,
+                  'bmi': updatedHeightBmi,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+
+            await _firestore.collection('users').doc(user.uid).set({
+              'profile': {
+                'weight': currentWeight,
+                'height': value,
+                'bmi': updatedHeightBmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              },
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .collection('height_history')
+                .doc(DateTime.now().toIso8601String())
+                .set({
+                  'height': value,
+                  'date': DateTime.now(),
+                  'timestamp': FieldValue.serverTimestamp(),
+                });
+            break;
           case "Weight":
             if (value < _minValidWeightKg || value > _maxValidWeightKg) {
               ScaffoldMessenger.of(context).showSnackBar(
