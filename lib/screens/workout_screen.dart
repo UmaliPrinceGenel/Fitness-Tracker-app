@@ -51,6 +51,25 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     Colors.purple,   // Shoulders
   ];
 
+  String _currentMonthLabel() {
+    final now = DateTime.now();
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${months[now.month - 1]} ${now.year}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -458,6 +477,15 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                   color: Colors.white,
                                   fontSize: compactCard ? 16 : 18,
                                   fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _currentMonthLabel(),
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: compactCard ? 11 : 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const SizedBox(height: 10),

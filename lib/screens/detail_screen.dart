@@ -143,7 +143,19 @@ class _DetailScreenState extends State<DetailScreen> {
     return "Recorded $count $label $suffix";
   }
 
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool _hasSleepEntryForToday() {
+    final today = DateTime.now();
+    return _historicalDates.any((date) => _isSameDay(date, today));
+  }
+
   String _getSleepCoachingMessage() {
+    if (!_hasSleepEntryForToday()) {
+      return "Enter your new sleep hours for last night to update today's sleep record.";
+    }
     if (_currentData < 7) {
       return "You need more sleep today. Try to add rest tonight or over the next few days.";
     }
@@ -241,14 +253,6 @@ class _DetailScreenState extends State<DetailScreen> {
             .limit(30)
             .get();
 
-        final heightHistorySnapshot = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('height_history')
-            .orderBy('timestamp', descending: true)
-            .limit(30)
-            .get();
-
         // Load daily activity history
         final dailyActivitySnapshot = await _firestore
             .collection('users')
@@ -329,26 +333,12 @@ class _DetailScreenState extends State<DetailScreen> {
                 _historicalDates = _historicalDates.reversed.toList();
                 break;
               case "Height":
-                _currentData = heightHistorySnapshot.docs.isNotEmpty
-                    ? _parseDoubleValue(heightHistorySnapshot.docs.first.data()['height'])
-                    : _parseDoubleValue(healthData['height']) > 0
-                        ? _parseDoubleValue(healthData['height'])
-                        : _height;
+                _currentData = _parseDoubleValue(healthData['height']) > 0
+                    ? _parseDoubleValue(healthData['height'])
+                    : _height;
                 _goalData = 170.0;
                 _historicalData = [];
                 _historicalDates = [];
-
-                for (var doc in heightHistorySnapshot.docs) {
-                  final data = doc.data();
-                  _historicalData.add(_parseDoubleValue(data['height']));
-                  _historicalDates.add((data['date'] as Timestamp).toDate());
-                }
-                _historicalData = _historicalData.reversed.toList();
-                _historicalDates = _historicalDates.reversed.toList();
-                if (_historicalData.isEmpty && _currentData > 0) {
-                  _historicalData = [_currentData];
-                  _historicalDates = [DateTime.now()];
-                }
                 break;
               case "BMI":
                 _calculateBMI();
@@ -360,10 +350,10 @@ class _DetailScreenState extends State<DetailScreen> {
                   weightHistorySnapshot,
                   'weight',
                 );
-                final heightPoints = _extractHistoryPoints(
-                  heightHistorySnapshot,
-                  'height',
-                );
+                final heightPoints = <_MetricHistoryPoint>[
+                  if (_height >= _minValidHeightCm)
+                    _MetricHistoryPoint(DateTime.now(), _height),
+                ];
 
                 for (final weightPoint in weightPoints) {
                   final heightAtDate = _resolveHeightForDate(
@@ -1123,17 +1113,6 @@ class _DetailScreenState extends State<DetailScreen> {
         },
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('height_history')
-          .doc(DateTime.now().toIso8601String())
-          .set({
-            'height': newValue,
-            'date': DateTime.now(),
-            'timestamp': FieldValue.serverTimestamp(),
-          });
     }
   }
 
@@ -1263,6 +1242,8 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Widget _buildHeightContent() {
+    final currentBmi = _computeSafeBmi(_weight, _currentData);
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -1307,7 +1288,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   ),
                   child: Text(
-                    _getRecordedEntriesText("height"),
+                    "Current saved height for your profile",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -1320,44 +1301,132 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          _buildHeightProfileCard(currentBmi),
+          const SizedBox(height: 20),
+          _buildHeightInfoCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeightProfileCard(double currentBmi) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.height, color: Color(0xFF4FC3F7), size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Height Profile",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Container(
-            height: 220,
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+              color: const Color(0xFF4FC3F7).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF4FC3F7).withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Height usually changes rarely, so this screen keeps only your latest measured value.",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildHeightSummaryChip(
+                      label: "Current Height",
+                      value: "${_currentData.toStringAsFixed(1)} cm",
+                    ),
+                    _buildHeightSummaryChip(
+                      label: "Current Weight",
+                      value: _weight > 0
+                          ? "${_weight.toStringAsFixed(1)} kg"
+                          : "Add weight",
+                    ),
+                    _buildHeightSummaryChip(
+                      label: "BMI from this height",
+                      value: currentBmi > 0
+                          ? currentBmi.toStringAsFixed(1)
+                          : "Check data",
+                    ),
+                  ],
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: _historicalData.isNotEmpty
-                  ? CustomPaint(
-                      painter: RealDataChartPainter(
-                        data: _historicalData,
-                        dates: _historicalDates,
-                        color: const Color(0xFF4FC3F7),
-                        goal: _goalData,
-                        timeTab: 2,
-                      ),
-                      size: const Size(double.infinity, 180),
-                    )
-                  : const Center(
-                      child: Text(
-                        "No height history available",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeightSummaryChip({
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151515),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
             ),
           ),
-          const SizedBox(height: 20),
-          _buildHeightHistorySection(),
-          const SizedBox(height: 20),
-          _buildHeightInfoCard(),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -3253,115 +3322,6 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Widget _buildHeightHistorySection() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.history, color: Color(0xFF4FC3F7), size: 24),
-                SizedBox(width: 8),
-                Text(
-                  "Height History",
-                  style: TextStyle(
-                    color: Color(0xFF4FC3F7),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_historicalData.isNotEmpty)
-              ..._historicalData.asMap().entries.map((entry) {
-                final index = entry.key;
-                final value = entry.value;
-                final date = _historicalDates[index];
-                return _buildHeightHistoryItem(date, value);
-              }).toList(),
-            if (_historicalData.isEmpty)
-              const Center(
-                child: Text(
-                  "No height history available",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeightHistoryItem(DateTime date, double value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('MMMM d, yyyy').format(date),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat('HH:mm').format(date),
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4FC3F7).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF4FC3F7).withOpacity(0.4)),
-            ),
-            child: Text(
-              "${value.toStringAsFixed(1)} cm",
-              style: const TextStyle(
-                color: Color(0xFF4FC3F7),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHeightInfoCard() {
     return Container(
       width: double.infinity,
@@ -3401,7 +3361,7 @@ class _DetailScreenState extends State<DetailScreen> {
             Divider(color: Colors.white38, height: 1, thickness: 0.5),
             SizedBox(height: 14),
             Text(
-              "Height is used together with your weight to calculate BMI. Keeping this value updated helps the dashboard and profile show a more accurate body composition.",
+              "Height is a body profile measurement, not a workout progress stat. Update it only when you take a new measurement so your BMI, dashboard, and profile stay accurate.",
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 14,

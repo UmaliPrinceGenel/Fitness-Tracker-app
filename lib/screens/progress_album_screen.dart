@@ -222,6 +222,55 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     return "${date.day} ${_getMonthName(date.month)} ${date.year}";
   }
 
+  DateTime? _parseFormattedDate(String date) {
+    final parts = date.split(' ');
+    if (parts.length != 3) return null;
+
+    final day = int.tryParse(parts[0]);
+    final month = _getMonthIndex(parts[1]);
+    final year = int.tryParse(parts[2]);
+
+    if (day == null || month == null || year == null) {
+      return null;
+    }
+
+    return DateTime(year, month, day);
+  }
+
+  int? _getMonthIndex(String monthName) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    final index = months.indexWhere(
+      (month) => month.toLowerCase() == monthName.toLowerCase(),
+    );
+
+    if (index == -1) return null;
+    return index + 1;
+  }
+
+  bool _isTodayDateKey(String date) {
+    final parsedDate = _parseFormattedDate(date);
+    if (parsedDate == null) return false;
+
+    final now = DateTime.now();
+    return parsedDate.year == now.year &&
+        parsedDate.month == now.month &&
+        parsedDate.day == now.day;
+  }
+
   String _getMonthName(int month) {
     const months = [
       'January',
@@ -378,6 +427,64 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
   }
 
   /// ✅ NEW: Handle share to community - navigate to PhotoEditingScreen with selected images
+  String? _extractSupabaseFilePath(String imageUrl) {
+    final uri = Uri.parse(imageUrl);
+    final pathSegments = uri.path.split('/');
+    final bucketIndex = pathSegments.indexOf('progress-images');
+
+    if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
+      return pathSegments.sublist(bucketIndex + 1).join('/');
+    }
+
+    return null;
+  }
+
+  Future<void> _deleteAllImagesForDate(String date) async {
+    final images = List<String>.from(_progressImages[date] ?? []);
+    if (images.isEmpty) return;
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final filePaths = images
+          .map(_extractSupabaseFilePath)
+          .whereType<String>()
+          .toList();
+
+      if (filePaths.isNotEmpty) {
+        await _supabase.storage.from('progress-images').remove(filePaths);
+      }
+
+      setState(() {
+        _progressImages.remove(date);
+      });
+
+      await _progressImagesRef.doc(date).delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All images for this day were deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete day images: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _handleShareToCommunity(String date) async {
     final images = _progressImages[date] ?? [];
 
@@ -593,7 +700,10 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       );
     }
 
-    final dates = _progressImages.keys.toList()..sort((a, b) => b.compareTo(a));
+    final dates = _progressImages.keys
+        .where((date) => _isTodayDateKey(date))
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -605,9 +715,12 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
               if (i < dates.length - 1) const SizedBox(height: 16),
             ],
           ],
-          if (_progressImages.isEmpty ||
-              _progressImages.values.every((list) => list.isEmpty))
-            _buildEmptyState(),
+          if (dates.isEmpty ||
+              dates.every((date) => (_progressImages[date] ?? []).isEmpty))
+            _buildEmptyState(
+              title: "No recent progress images",
+              subtitle: "Only today's photos appear here. Tomorrow they move to Old.",
+            ),
         ],
       ),
     );
@@ -622,27 +735,36 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       );
     }
 
-    final dates = _progressImages.keys.toList()..sort();
+    final dates = _progressImages.keys
+        .where((date) => !_isTodayDateKey(date))
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          for (int i = dates.length - 1; i >= 0; i--) ...[
+          for (int i = 0; i < dates.length; i++) ...[
             if (_progressImages[dates[i]]!.isNotEmpty) ...[
               _buildDateCard(dates[i]),
-              if (i > 0) const SizedBox(height: 16),
+              if (i < dates.length - 1) const SizedBox(height: 16),
             ],
           ],
-          if (_progressImages.isEmpty ||
-              _progressImages.values.every((list) => list.isEmpty))
-            _buildEmptyState(),
+          if (dates.isEmpty ||
+              dates.every((date) => (_progressImages[date] ?? []).isEmpty))
+            _buildEmptyState(
+              title: "No old progress images",
+              subtitle: "Photos from previous days will appear here automatically.",
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({
+    String title = "No progress images yet",
+    String subtitle = "Tap the + button to add your first progress photo",
+  }) {
     return Container(
       margin: const EdgeInsets.only(top: 100),
       padding: const EdgeInsets.all(32),
@@ -650,8 +772,8 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
         children: [
           Icon(Icons.photo_library, size: 80, color: Colors.grey[600]),
           const SizedBox(height: 16),
-          const Text(
-            "No progress images yet",
+          Text(
+            title,
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -660,7 +782,7 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            "Tap the + button to add your first progress photo",
+            subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey[500], fontSize: 14),
           ),
@@ -704,7 +826,7 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                 PopupMenuButton<String>(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 10,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
@@ -722,19 +844,32 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                               ),
                             ),
                           )
-                        : const Text(
-                            "Share",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        : const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Actions",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ],
                           ),
                   ),
                   color: Colors.grey[800],
                   onSelected: (String result) {
                     if (result == 'share_community') {
                       _handleShareToCommunity(date);
+                    } else if (result == 'delete_day') {
+                      _showDeleteDayDialog(date);
                     }
                   },
                   itemBuilder: (BuildContext context) =>
@@ -744,6 +879,13 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                           child: Text(
                             'Share to Community',
                             style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'delete_day',
+                          child: Text(
+                            'Delete all images for this day',
+                            style: TextStyle(color: Colors.red[300]),
                           ),
                         ),
                       ],
@@ -779,35 +921,61 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
         return GestureDetector(
           onLongPress: () => _showDeleteDialog(date, index),
           onTap: () => _showImageZoom(imageUrls[index]),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                imageUrls[index],
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.blue,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    imageUrls[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.blue,
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.error, color: Colors.red, size: 32);
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Material(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () => _showDeleteDialog(date, index),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 18,
                       ),
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.error, color: Colors.red, size: 32);
-                },
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -841,6 +1009,45 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text(
                 "DELETE",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteDayDialog(String date) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            "Delete Day Images",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            "Are you sure you want to delete all images uploaded on $date? This will also remove them from Supabase.",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteAllImagesForDate(date);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text(
+                "DELETE ALL",
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

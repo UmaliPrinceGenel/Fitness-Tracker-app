@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../models/workout_model.dart';
 import 'exercise_detail_screen.dart';
 
@@ -36,6 +37,42 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   DateTime _endOfToday() {
     return _startOfToday().add(const Duration(days: 1));
+  }
+
+  String _dateKey(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  DateTime _dateFromKey(String dateKey) {
+    return DateTime.tryParse(dateKey) ?? DateTime.now();
+  }
+
+  String? _resolveStoredDayKey(Map<String, dynamic> data) {
+    final lastResetValue = data['lastDailyResetDate'];
+    if (lastResetValue is String && lastResetValue.isNotEmpty) {
+      return lastResetValue;
+    }
+    if (lastResetValue is Timestamp) {
+      return _dateKey(lastResetValue.toDate());
+    }
+    if (lastResetValue is DateTime) {
+      return _dateKey(lastResetValue);
+    }
+
+    final updatedAt = data['updatedAt'];
+    if (updatedAt is Timestamp) {
+      return _dateKey(updatedAt.toDate());
+    }
+    if (updatedAt is DateTime) {
+      return _dateKey(updatedAt);
+    }
+    if (updatedAt is String) {
+      final parsed = DateTime.tryParse(updatedAt);
+      if (parsed != null) {
+        return _dateKey(parsed);
+      }
+    }
+    return null;
   }
 
   @override
@@ -1027,12 +1064,40 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final currentMinutes = _parseStoredMetric(healthData['weeklyMinutes']);
     final currentWorkouts =
         _parseStoredMetric(healthData['weeklyWorkoutsCount']);
+    final todayKey = _dateKey(DateTime.now());
+    final storedDayKey = _resolveStoredDayKey(healthData);
+
+    int baseCalories = currentCalories;
+    int baseMinutes = currentMinutes;
+    int baseWorkouts = currentWorkouts;
+
+    if (storedDayKey != null && storedDayKey != todayKey) {
+      final archivedDate = _dateFromKey(storedDayKey);
+      if (currentCalories > 0 || currentMinutes > 0 || currentWorkouts > 0) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('daily_activity')
+            .doc(storedDayKey)
+            .set({
+          'date': archivedDate,
+          'weeklyMinutes': currentMinutes,
+          'weeklyCalories': currentCalories,
+          'weeklyWorkoutsCount': currentWorkouts,
+        }, SetOptions(merge: true));
+      }
+
+      baseCalories = 0;
+      baseMinutes = 0;
+      baseWorkouts = 0;
+    }
 
     await healthRef.set({
-      'weeklyCalories': (currentCalories + workoutCalories).clamp(0, 999999),
-      'weeklyMinutes': (currentMinutes + workoutMinutes).clamp(0, 999999),
+      'weeklyCalories': (baseCalories + workoutCalories).clamp(0, 999999),
+      'weeklyMinutes': (baseMinutes + workoutMinutes).clamp(0, 999999),
       'weeklyWorkoutsCount':
-          (currentWorkouts + workoutCountChange).clamp(0, 999999),
+          (baseWorkouts + workoutCountChange).clamp(0, 999999),
+      'lastDailyResetDate': todayKey,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

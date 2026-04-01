@@ -44,7 +44,6 @@ class _HealthDashboardState extends State<HealthDashboard>
   // Historical data for graphs - UPDATED: bodyFatHistory to waistHistory, vitalityHistory to sleepHistory
   List<double> _waistHistory = [];
   List<double> _weightHistory = [];
-  List<double> _heightHistory = [];
   List<double> _sleepHistory = [];
 
   // Daily activity history
@@ -80,6 +79,35 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   DateTime _dateFromKey(String dateKey) {
     return DateTime.tryParse(dateKey) ?? DateTime.now();
+  }
+
+  String? _resolveStoredDayKey(dynamic explicitValue, dynamic fallbackValue) {
+    if (explicitValue is String && explicitValue.isNotEmpty) {
+      return explicitValue;
+    }
+    if (explicitValue is Timestamp) {
+      return _todayKeyFromDate(explicitValue.toDate());
+    }
+    if (explicitValue is DateTime) {
+      return _todayKeyFromDate(explicitValue);
+    }
+    if (fallbackValue is Timestamp) {
+      return _todayKeyFromDate(fallbackValue.toDate());
+    }
+    if (fallbackValue is DateTime) {
+      return _todayKeyFromDate(fallbackValue);
+    }
+    if (fallbackValue is String) {
+      final parsed = DateTime.tryParse(fallbackValue);
+      if (parsed != null) {
+        return _todayKeyFromDate(parsed);
+      }
+    }
+    return null;
+  }
+
+  String _todayKeyFromDate(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
   }
 
   // Check if we need to reset daily data
@@ -272,14 +300,6 @@ class _HealthDashboardState extends State<HealthDashboard>
               .limit(10)
               .get();
 
-          final heightHistorySnapshot = await _firestore
-              .collection('users')
-              .doc(user.uid)
-              .collection('height_history')
-              .orderBy('timestamp', descending: true)
-              .limit(10)
-              .get();
-
           // Process weight history data - SAFE PARSING
           List<double> weightHistoryFromSubcollection = [];
           for (var doc in weightHistorySnapshot.docs) {
@@ -300,21 +320,6 @@ class _HealthDashboardState extends State<HealthDashboard>
             }
           }
           weightHistoryFromSubcollection = weightHistoryFromSubcollection.reversed.toList(); // Chronological order
-
-          List<double> heightHistoryFromSubcollection = [];
-          for (var doc in heightHistorySnapshot.docs) {
-            final data = doc.data();
-            final heightValue = data['height'];
-            if (heightValue != null) {
-              if (heightValue is num) {
-                heightHistoryFromSubcollection.add(heightValue.toDouble());
-              } else if (heightValue is String) {
-                heightHistoryFromSubcollection.add(double.tryParse(heightValue) ?? 0.0);
-              }
-            }
-          }
-          heightHistoryFromSubcollection =
-              heightHistoryFromSubcollection.reversed.toList();
 
           // Load waist history from waist_history subcollection (for Android compatibility) - SAFE PARSING
           final waistHistorySnapshot = await _firestore
@@ -394,9 +399,10 @@ class _HealthDashboardState extends State<HealthDashboard>
               _weeklyCalories = (weeklyCaloriesData != null && weeklyCaloriesData is int) ? weeklyCaloriesData : (weeklyCaloriesData != null && weeklyCaloriesData is double) ? weeklyCaloriesData.toInt() : 0;
               _weeklyMinutes = (weeklyMinutesData != null && weeklyMinutesData is int) ? weeklyMinutesData : (weeklyMinutesData != null && weeklyMinutesData is double) ? weeklyMinutesData.toInt() : 0;
               _weeklyWorkoutsCount = (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is int) ? weeklyWorkoutsCountData : (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is double) ? weeklyWorkoutsCountData.toInt() : 0;
-              _lastDailyResetDate = lastDailyResetDateData is String
-                  ? lastDailyResetDateData
-                  : _todayKey();
+              _lastDailyResetDate = _resolveStoredDayKey(
+                lastDailyResetDateData,
+                healthData['updatedAt'],
+              );
               
               _waistMeasurement = (waistMeasurementData != null && waistMeasurementData is num) ? waistMeasurementData.toDouble() : (waistMeasurementData != null && waistMeasurementData is String) ? double.tryParse(waistMeasurementData) ?? 0.0 : 0.0;
               _sleepHours = (sleepHoursData != null && sleepHoursData is num) ? sleepHoursData.toDouble() : (sleepHoursData != null && sleepHoursData is String) ? double.tryParse(sleepHoursData) ?? 0.0 : 0.0;
@@ -443,8 +449,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                 _weightHistory = [];
               }
 
-              _heightHistory = heightHistoryFromSubcollection;
-
               if (sleepHistoryFromSubcollection.isNotEmpty) {
                 _sleepHistory = sleepHistoryFromSubcollection;
               } else if (sleepHistoryData != null && sleepHistoryData is List) {
@@ -475,10 +479,6 @@ class _HealthDashboardState extends State<HealthDashboard>
               }
             } else {
               _initializeNewUserHealthData(user.uid);
-            }
-
-            if (_heightHistory.isEmpty && _height > 0) {
-              _heightHistory = [_height];
             }
 
             // Load additional daily activity from subcollection
@@ -1007,7 +1007,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                           sleepHours: _sleepHours,
                           waistHistory: _waistHistory,
                           weightHistory: _weightHistory,
-                          heightHistory: _heightHistory,
                           sleepHistory: _sleepHistory,
                           onDataSaved: _handleHealthDataChanged,
                         ),
@@ -1185,17 +1184,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                 'height': newValue, // Also save height to health metrics
                 'lastUpdated': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true));
-
-          await _firestore
-              .collection('users')
-              .doc(user.uid)
-              .collection('height_history')
-              .doc(DateTime.now().toIso8601String())
-              .set({
-                'height': newValue,
-                'date': DateTime.now(),
-                'timestamp': FieldValue.serverTimestamp(),
-              });
 
           break;
         case 'Weight':
@@ -1580,7 +1568,6 @@ class _DraggableCardGrid extends StatefulWidget {
   final double sleepHours;
   final List<double> waistHistory;
   final List<double> weightHistory;
-  final List<double> heightHistory;
   final List<double> sleepHistory;
   final VoidCallback onDataSaved; // ADD THIS
   const _DraggableCardGrid({
@@ -1590,7 +1577,6 @@ class _DraggableCardGrid extends StatefulWidget {
     required this.sleepHours,
     required this.waistHistory,
     required this.weightHistory,
-    required this.heightHistory,
     required this.sleepHistory,
     required this.onDataSaved, // ADD THIS
   });
@@ -1623,7 +1609,6 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
       ), // ADD THIS
       _HeightCard(
         height: widget.height,
-        heightHistory: widget.heightHistory,
         onDataSaved: widget.onDataSaved,
       ),
       _SleepCard(
@@ -2011,12 +1996,10 @@ class _WeightCard extends StatelessWidget {
 
 class _HeightCard extends StatelessWidget {
   final double height;
-  final List<double> heightHistory;
   final VoidCallback onDataSaved;
 
   const _HeightCard({
     required this.height,
-    required this.heightHistory,
     required this.onDataSaved,
   });
 
@@ -2084,7 +2067,7 @@ class _HeightCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "Track your recorded height",
+                    "Current profile height",
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: isVerySmallScreen ? 8 : 10,
@@ -2094,53 +2077,41 @@ class _HeightCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(4),
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isVerySmallScreen ? 8 : 10,
+                      vertical: isVerySmallScreen ? 6 : 8,
                     ),
-                    child: heightHistory.isNotEmpty
-                        ? CustomPaint(
-                            painter: LineChartPainter(
-                              data: heightHistory,
-                              dates: List.generate(
-                                heightHistory.length,
-                                (index) => DateTime.now().subtract(
-                                  Duration(days: heightHistory.length - 1 - index),
-                                ),
-                              ),
-                            ),
-                            size: const Size(double.infinity, 30),
-                          )
-                        : Center(
-                            child: Text(
-                              "No data",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: isVerySmallScreen ? 8 : 10,
-                              ),
-                            ),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: accentColor.withOpacity(0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Used for BMI",
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: isVerySmallScreen ? 8 : 10,
+                            fontWeight: FontWeight.w700,
                           ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Start",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: isVerySmallScreen ? 8 : 9,
                         ),
-                      ),
-                      Text(
-                        "Now",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: isVerySmallScreen ? 8 : 9,
+                        const SizedBox(height: 4),
+                        Text(
+                          "Update this only when your measured height changes.",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: isVerySmallScreen ? 8 : 9,
+                            height: 1.25,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               );

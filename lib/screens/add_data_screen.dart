@@ -168,17 +168,6 @@ class _AddDataScreenState extends State<AddDataScreen> {
               },
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
-
-            await _firestore
-                .collection('users')
-                .doc(user.uid)
-                .collection('height_history')
-                .doc(DateTime.now().toIso8601String())
-                .set({
-                  'height': value,
-                  'date': DateTime.now(),
-                  'timestamp': FieldValue.serverTimestamp(),
-                });
             break;
           case "Weight":
             if (value < _minValidWeightKg || value > _maxValidWeightKg) {
