@@ -3,13 +3,52 @@ class Exercise {
   final int baseCaloriesPerMinute; // Base calories burned per minute for this exercise without additional factors
   final int duration; // Duration in seconds for this specific exercise
   final String description; // Description of the exercise
+  final bool? requiresWeightInputOverride;
 
   Exercise({
     required this.name,
     required this.baseCaloriesPerMinute,
     required this.duration,
     required this.description,
+    this.requiresWeightInputOverride,
   });
+
+  bool get requiresWeightInput {
+    if (requiresWeightInputOverride != null) {
+      return requiresWeightInputOverride!;
+    }
+
+    final normalizedText = '${name.toLowerCase()} ${description.toLowerCase()}';
+
+    const bodyweightKeywords = <String>[
+      'bodyweight',
+      'without added weight',
+      'push-up',
+      'push up',
+      'pushups',
+      'push-ups',
+      'pull-up',
+      'pull up',
+      'pullups',
+      'pull-ups',
+      'chin-up',
+      'chin up',
+      'chinups',
+      'chin-ups',
+      'plank',
+      'side plank',
+      'hanging leg raise',
+      'hanging leg raises',
+      'reverse crunch',
+      'reverse crunches',
+      'glute bridge',
+      'glute bridges',
+      'ab wheel rollout',
+      'ab wheel rollouts',
+    ];
+
+    return !bodyweightKeywords.any(normalizedText.contains);
+  }
 
   // Calculate calories burned for this exercise based on duration and additional factors
   double getCaloriesBurned({double weightFactor = 1.0, int sets = 1, int reps = 1}) {

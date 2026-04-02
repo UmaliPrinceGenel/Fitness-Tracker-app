@@ -153,6 +153,14 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     }
   }
 
+  String _exerciseRecordDocId(String exerciseName) {
+    final sanitized = exerciseName
+        .trim()
+        .replaceAll(RegExp(r'[\\/]'), '_')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    return sanitized.isEmpty ? 'exercise_record' : sanitized;
+  }
+
   Future<void> _loadUserData() async {
     try {
       final user = _auth.currentUser;
@@ -161,7 +169,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             .collection('users')
             .doc(user.uid)
             .collection('exercise_records')
-            .doc(exercise.name)
+            .doc(_exerciseRecordDocId(exercise.name))
             .get();
 
         if (docSnapshot.exists && docSnapshot.data() != null) {
@@ -285,6 +293,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
 
   bool _hasValidSets() => _parsePositiveWholeNumber(setsController.text) != null;
 
+  bool get _requiresWeightInput => exercise.requiresWeightInput;
+
   Future<void> _showInputRequiredDialog(String message) async {
     await showDialog(
       context: context,
@@ -316,7 +326,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   }
 
   Future<bool> _validateTrackingInputs() async {
-    if (!_hasValidWeight()) {
+    if (_requiresWeightInput && !_hasValidWeight()) {
       await _showInputRequiredDialog(
         "Please enter the weight you used as a whole number greater than 0.",
       );
@@ -343,7 +353,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   void _notifyValidWeightInput() {
     if (!widget.isPreviewMode &&
         widget.onWeightInput != null &&
-        _hasValidWeight()) {
+        (!_requiresWeightInput || _hasValidWeight())) {
       widget.onWeightInput!(widget.exerciseNumber - 1);
     }
   }
@@ -910,9 +920,11 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  const Text(
-                    "Input the weight, sets and reps you have done",
-                    style: TextStyle(
+                  Text(
+                    _requiresWeightInput
+                        ? "Input the weight, sets and reps you have done"
+                        : "Input the sets and reps you have done. Weight is locked for this bodyweight exercise.",
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
                     ),
@@ -936,41 +948,93 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       child: Column(
                         children: [
                           // Weight Input
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: weightController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  onChanged: (_) {
-                                    _notifyValidWeightInput();
-                                  },
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Weight (kg)',
-                                    helperText: 'Whole numbers only',
-                                    helperStyle: TextStyle(color: Colors.white54),
-                                    labelStyle: TextStyle(color: Colors.orange),
-                                    border: OutlineInputBorder(),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.orange),
+                          if (_requiresWeightInput)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: weightController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    onChanged: (_) {
+                                      _notifyValidWeightInput();
+                                    },
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Weight (kg)',
+                                      helperText: 'Whole numbers only',
+                                      helperStyle: TextStyle(color: Colors.white54),
+                                      labelStyle: TextStyle(color: Colors.orange),
+                                      border: OutlineInputBorder(),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.orange),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                "kg",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                                const SizedBox(width: 10),
+                                const Text(
+                                  "kg",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
                                 ),
+                              ],
+                            )
+                          else
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white24),
                               ),
-                            ],
-                          ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.accessibility_new,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: const [
+                                        Text(
+                                          'Weight (kg)',
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Bodyweight only',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'No manual weight entry needed for this exercise.',
+                                          style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           const SizedBox(height: 10),
                           // Reps Input
                           Row(

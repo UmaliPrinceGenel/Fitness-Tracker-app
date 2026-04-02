@@ -35,6 +35,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 7,
         duration: 180, // 3 minutes
         description: "Overall Chest, Shoulders, Triceps, and Core",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Dumbbell Bench Press",
@@ -89,6 +90,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 7,
         duration: 150, // 2.5 minutes
         description: "Overall Chest, Shoulders, Triceps, and Core",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Cable Crossover",
@@ -113,6 +115,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 7,
         duration: 120, // 2 minutes
         description: "Overall Chest, Shoulders, Triceps, and Core",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Dumbbell Flyes",
@@ -145,6 +148,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 9,
         duration: 150, // 2.5 minutes
         description: "Back Width (Lat Activation)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Lat Pulldowns",
@@ -193,6 +197,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 9,
         duration: 120, // 2 minutes
         description: "Back Width (Lat Activation)",
+        requiresWeightInputOverride: false,
       ),
     ],
   ),
@@ -795,6 +800,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Basic squat without added weight",
+        requiresWeightInputOverride: false,
       ),
     ],
   ),
@@ -813,6 +819,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Basic squat without added weight",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Leg Extensions",
@@ -857,6 +864,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 180, // 3 minutes
         description: "Glute Isolation & Peak Contraction",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Lying Leg Curls",
@@ -893,6 +901,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Glute Isolation & Peak Contraction",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Lying Leg Curls",
@@ -923,6 +932,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 120, // 2 minutes
         description: "Glute Isolation & Peak Contraction",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Lying Leg Curls",
@@ -1017,24 +1027,28 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Lower Abs (Requires high grip strength)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Reverse Crunches",
         baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Lower Abs (Pelvic tilt and lift)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Ab Wheel Rollouts",
         baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Spinal Extension (High Anti-Extension Strength)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Plank",
         baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
         description: "Hold a plank position to strengthen your core",
+        requiresWeightInputOverride: false,
       ),
     ],
   ),
@@ -1059,6 +1073,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Lower Abs (Pelvic tilt and lift)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Russian Twists",
@@ -1071,6 +1086,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
         description: "Hold a plank position to strengthen your core",
+        requiresWeightInputOverride: false,
       ),
     ],
   ),
@@ -1089,6 +1105,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Lower Abs (Pelvic tilt and lift)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Russian Twists",
@@ -1101,6 +1118,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
         description: "Hold a plank position to strengthen your core",
+        requiresWeightInputOverride: false,
       ),
     ],
   ),
@@ -1127,6 +1145,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 8,
         duration: 150, // 2.5 minutes
         description: "Anti-Lateral Flexion (Lateral Stability/Obliques)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Pallof Press",
@@ -1151,6 +1170,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 6,
         duration: 150, // 2.5 minutes
         description: "Lower Abs (Requires high grip strength)",
+        requiresWeightInputOverride: false,
       ),
     ],
   ),
@@ -1175,6 +1195,7 @@ List<Workout> exerciseWorkouts = [
         baseCaloriesPerMinute: 8,
         duration: 120, // 2 minutes
         description: "Anti-Lateral Flexion (Lateral Stability/Obliques)",
+        requiresWeightInputOverride: false,
       ),
       Exercise(
         name: "Pallof Press",

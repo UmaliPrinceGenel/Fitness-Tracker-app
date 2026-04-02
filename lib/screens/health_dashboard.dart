@@ -214,12 +214,22 @@ class _HealthDashboardState extends State<HealthDashboard>
             'dailyMinutes': 0,
             'dailyCalories': 0,
             'dailyWorkoutsCount': 0,
-            'weeklyMinutes': FieldValue.delete(),
-            'weeklyCalories': FieldValue.delete(),
-            'weeklyWorkoutsCount': FieldValue.delete(),
             'lastDailyResetDate': todayKey,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
+
+      try {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('health_metrics')
+            .doc('current')
+            .update({
+              'weeklyMinutes': FieldValue.delete(),
+              'weeklyCalories': FieldValue.delete(),
+              'weeklyWorkoutsCount': FieldValue.delete(),
+            });
+      } catch (_) {}
     }
   }
 
@@ -544,9 +554,6 @@ class _HealthDashboardState extends State<HealthDashboard>
             'dailyCalories': 0,
             'dailyMinutes': 0,
             'dailyWorkoutsCount': 0,
-            'weeklyCalories': FieldValue.delete(),
-            'weeklyMinutes': FieldValue.delete(),
-            'weeklyWorkoutsCount': FieldValue.delete(),
             'waistMeasurement': _waistMeasurement, // UPDATED
             'sleepHours': _sleepHours, // UPDATED
             'waistHistory': [_waistMeasurement], // UPDATED
@@ -557,6 +564,19 @@ class _HealthDashboardState extends State<HealthDashboard>
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
+
+      try {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('health_metrics')
+            .doc('current')
+            .update({
+              'weeklyCalories': FieldValue.delete(),
+              'weeklyMinutes': FieldValue.delete(),
+              'weeklyWorkoutsCount': FieldValue.delete(),
+            });
+      } catch (_) {}
     } catch (e) {
       print('Error initializing health data: $e');
     }
@@ -579,15 +599,12 @@ class _HealthDashboardState extends State<HealthDashboard>
 
         if (weeklyCalories != null) {
           updates['dailyCalories'] = weeklyCalories;
-          updates['weeklyCalories'] = FieldValue.delete();
         }
         if (weeklyMinutes != null) {
           updates['dailyMinutes'] = weeklyMinutes;
-          updates['weeklyMinutes'] = FieldValue.delete();
         }
         if (weeklyWorkoutsCount != null) {
           updates['dailyWorkoutsCount'] = weeklyWorkoutsCount;
-          updates['weeklyWorkoutsCount'] = FieldValue.delete();
         }
         if (waistMeasurement != null)
           updates['waistMeasurement'] = waistMeasurement; // UPDATED
@@ -599,6 +616,23 @@ class _HealthDashboardState extends State<HealthDashboard>
             .collection('health_metrics')
             .doc('current')
             .set(updates, SetOptions(merge: true));
+
+        if (weeklyCalories != null ||
+            weeklyMinutes != null ||
+            weeklyWorkoutsCount != null) {
+          try {
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .collection('health_metrics')
+                .doc('current')
+                .update({
+                  'weeklyCalories': FieldValue.delete(),
+                  'weeklyMinutes': FieldValue.delete(),
+                  'weeklyWorkoutsCount': FieldValue.delete(),
+                });
+          } catch (_) {}
+        }
 
         if (weight != null && weight != _weight) {
           await _firestore.collection('users').doc(user.uid).set({

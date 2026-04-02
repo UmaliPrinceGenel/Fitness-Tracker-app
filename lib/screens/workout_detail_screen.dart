@@ -47,6 +47,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return DateTime.tryParse(dateKey) ?? DateTime.now();
   }
 
+  String _exerciseRecordDocId(String exerciseName) {
+    final sanitized = exerciseName
+        .trim()
+        .replaceAll(RegExp(r'[\\/]'), '_')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    return sanitized.isEmpty ? 'exercise_record' : sanitized;
+  }
+
   String? _resolveStoredDayKey(Map<String, dynamic> data) {
     final lastResetValue = data['lastDailyResetDate'];
     if (lastResetValue is String && lastResetValue.isNotEmpty) {
@@ -716,6 +724,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     _beginWorkoutSession();
   }
 
+  bool _draftHasRequiredInputs(int exerciseIndex, ExerciseTrackingDraft? draft) {
+    if (draft == null) {
+      return false;
+    }
+
+    final exercise = widget.workout.exerciseList[exerciseIndex];
+    final hasRequiredWeight = !exercise.requiresWeightInput || draft.hasValidWeight;
+
+    return hasRequiredWeight && draft.hasValidReps && draft.hasValidSets;
+  }
+
   // Check if all exercises have had weight input
   bool areAllExercisesWithWeightInput() {
     if (_exerciseDrafts.length != widget.workout.exerciseList.length) {
@@ -725,18 +744,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return List.generate(widget.workout.exerciseList.length, (index) => index)
         .every((index) {
       final draft = _exerciseDrafts[index];
-      return draft != null &&
-          draft.hasValidWeight &&
-          draft.hasValidReps &&
-          draft.hasValidSets;
+      return _draftHasRequiredInputs(index, draft);
     });
   }
 
   int _completedExerciseDraftCount() {
-    return _exerciseDrafts.values.where((draft) {
-      return draft.hasValidWeight &&
-          draft.hasValidReps &&
-          draft.hasValidSets;
+    return _exerciseDrafts.entries.where((entry) {
+      return _draftHasRequiredInputs(entry.key, entry.value);
     }).length;
   }
 
@@ -750,7 +764,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   void _updateExerciseDraft(int exerciseIndex, ExerciseTrackingDraft draft) {
     setState(() {
       _exerciseDrafts[exerciseIndex] = draft;
-      if (draft.hasValidWeight) {
+      if (_draftHasRequiredInputs(exerciseIndex, draft)) {
         _exercisesWithWeightInput.add(exerciseIndex);
       } else {
         _exercisesWithWeightInput.remove(exerciseIndex);
@@ -790,7 +804,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               style: TextStyle(color: Colors.white),
             ),
             content: Text(
-              "Please complete weight, reps, and sets for all exercises before finishing the workout. ${widget.workout.exerciseList.length - _completedExerciseDraftCount()} exercises are still incomplete.",
+              "Please complete reps, sets, and weight where needed before finishing the workout. ${widget.workout.exerciseList.length - _completedExerciseDraftCount()} exercises are still incomplete.",
               style: const TextStyle(color: Colors.white70),
             ),
             actions: [
@@ -962,15 +976,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     for (int index = 0; index < widget.workout.exerciseList.length; index++) {
       final draft = _exerciseDrafts[index];
       final exercise = widget.workout.exerciseList[index];
-      if (draft == null ||
-          !draft.hasValidWeight ||
-          !draft.hasValidReps ||
-          !draft.hasValidSets) {
+      if (!_draftHasRequiredInputs(index, draft)) {
         continue;
       }
 
-      final int reps = int.parse(draft.reps);
-      final int sets = int.parse(draft.sets);
+      final safeDraft = draft!;
+      final int reps = int.parse(safeDraft.reps);
+      final int sets = int.parse(safeDraft.sets);
       final int activeSeconds = exercise.getEstimatedTotalDurationSeconds(
         sets: sets,
         reps: reps,
@@ -987,15 +999,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     for (int index = 0; index < widget.workout.exerciseList.length; index++) {
       final draft = _exerciseDrafts[index];
       final exercise = widget.workout.exerciseList[index];
-      if (draft == null ||
-          !draft.hasValidWeight ||
-          !draft.hasValidReps ||
-          !draft.hasValidSets) {
+      if (!_draftHasRequiredInputs(index, draft)) {
         continue;
       }
 
-      final int reps = int.parse(draft.reps);
-      final int sets = int.parse(draft.sets);
+      final safeDraft = draft!;
+      final int reps = int.parse(safeDraft.reps);
+      final int sets = int.parse(safeDraft.sets);
       totalCalories += exercise.getCaloriesBurned(
         sets: sets,
         reps: reps,
@@ -1103,28 +1113,34 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       'dailyMinutes': (baseMinutes + workoutMinutes).clamp(0, 999999),
       'dailyWorkoutsCount':
           (baseWorkouts + workoutCountChange).clamp(0, 999999),
-      'weeklyCalories': FieldValue.delete(),
-      'weeklyMinutes': FieldValue.delete(),
-      'weeklyWorkoutsCount': FieldValue.delete(),
       'lastDailyResetDate': todayKey,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    try {
+      await healthRef.update({
+        'weeklyCalories': FieldValue.delete(),
+        'weeklyMinutes': FieldValue.delete(),
+        'weeklyWorkoutsCount': FieldValue.delete(),
+      });
+    } catch (_) {
+      // Keep workout completion successful even if legacy key cleanup fails.
+    }
   }
 
   Future<void> _saveExerciseDraftsToFirebase(User user) async {
     for (int index = 0; index < widget.workout.exerciseList.length; index++) {
       final draft = _exerciseDrafts[index];
       final exercise = widget.workout.exerciseList[index];
-      if (draft == null ||
-          !draft.hasValidWeight ||
-          !draft.hasValidReps ||
-          !draft.hasValidSets) {
+      if (!_draftHasRequiredInputs(index, draft)) {
         continue;
       }
 
-      final int weight = int.parse(draft.weight);
-      final int reps = int.parse(draft.reps);
-      final int sets = int.parse(draft.sets);
+      final safeDraft = draft!;
+      final int weight =
+          exercise.requiresWeightInput ? int.parse(safeDraft.weight) : 0;
+      final int reps = int.parse(safeDraft.reps);
+      final int sets = int.parse(safeDraft.sets);
       final int totalDurationSeconds = exercise.getEstimatedTotalDurationSeconds(
         sets: sets,
         reps: reps,
@@ -1142,7 +1158,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           .collection('users')
           .doc(user.uid)
           .collection('exercise_records')
-          .doc(exercise.name)
+          .doc(_exerciseRecordDocId(exercise.name))
           .set({
         'exerciseName': exercise.name,
         'workoutId': widget.workout.id,
@@ -1257,6 +1273,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         // Call the callback if provided to notify parent screen of completion
         if (widget.onWorkoutCompleted != null) {
           widget.onWorkoutCompleted!();
+        }
+
+        if (mounted) {
+          Navigator.pop(context, true);
         }
       }
     } catch (e) {
