@@ -273,22 +273,33 @@ class _DetailScreenState extends State<DetailScreen> {
             switch (widget.title) {
               case "kcal":
               case "Calories":
-                _currentData = (healthData['weeklyCalories'] ?? 0).toDouble();
+                _currentData =
+                    (healthData['dailyCalories'] ??
+                            healthData['weeklyCalories'] ??
+                            0)
+                        .toDouble();
                 _goalData = 2500.0;
-                _loadTimeBasedData('weeklyCalories');
+                _loadTimeBasedData('dailyCalories');
                 break;
               case "Minutes":
               case "Steps":
-                _currentData = (healthData['weeklyMinutes'] ?? 0).toDouble();
+                _currentData =
+                    (healthData['dailyMinutes'] ??
+                            healthData['weeklyMinutes'] ??
+                            0)
+                        .toDouble();
                 _goalData = 300.0;
-                _loadTimeBasedData('weeklyMinutes');
+                _loadTimeBasedData('dailyMinutes');
                 break;
               case "Workouts":
               case "Moving":
                 _currentData =
-                    (healthData['weeklyWorkoutsCount'] ?? 0).toDouble();
+                    (healthData['dailyWorkoutsCount'] ??
+                            healthData['weeklyWorkoutsCount'] ??
+                            0)
+                        .toDouble();
                 _goalData = 5.0;
-                _loadTimeBasedData('weeklyWorkoutsCount');
+                _loadTimeBasedData('dailyWorkoutsCount');
                 break;
               case "Waist Measurement":
                 _currentData = waistHistorySnapshot.docs.isNotEmpty
@@ -452,14 +463,17 @@ class _DetailScreenState extends State<DetailScreen> {
       double value = 0.0;
 
       switch (metric) {
+        case 'dailyCalories':
         case 'weeklyCalories':
         case 'calories':
           value = _dailyActivityHistory[i].weeklyCalories.toDouble();
           break;
+        case 'dailyMinutes':
         case 'weeklyMinutes':
         case 'steps':
           value = _dailyActivityHistory[i].weeklyMinutes.toDouble();
           break;
+        case 'dailyWorkoutsCount':
         case 'weeklyWorkoutsCount':
         case 'movingMinutes':
           value = _dailyActivityHistory[i].weeklyWorkoutsCount.toDouble();
@@ -2855,13 +2869,13 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (widget.title) {
       case "kcal":
       case "Calories":
-        return 'weeklyCalories';
+        return 'dailyCalories';
       case "Minutes":
       case "Steps":
-        return 'weeklyMinutes';
+        return 'dailyMinutes';
       case "Workouts":
       case "Moving":
-        return 'weeklyWorkoutsCount';
+        return 'dailyWorkoutsCount';
       default:
         return '';
     }
@@ -3776,9 +3790,9 @@ class DailyActivity {
   Map<String, dynamic> toMap() {
     return {
       'date': date.toIso8601String(),
-      'weeklyMinutes': weeklyMinutes,
-      'weeklyCalories': weeklyCalories,
-      'weeklyWorkoutsCount': weeklyWorkoutsCount,
+      'dailyMinutes': weeklyMinutes,
+      'dailyCalories': weeklyCalories,
+      'dailyWorkoutsCount': weeklyWorkoutsCount,
     };
   }
 
@@ -3786,9 +3800,14 @@ class DailyActivity {
     return DailyActivity(
       date: DateTime.parse(map['date']),
       weeklyMinutes:
-          (map['weeklyMinutes'] ?? map['movingMinutes'] ?? 0).toInt(),
-      weeklyCalories: (map['weeklyCalories'] ?? map['calories'] ?? 0).toInt(),
-      weeklyWorkoutsCount: (map['weeklyWorkoutsCount'] ?? 0).toInt(),
+          (map['dailyMinutes'] ?? map['weeklyMinutes'] ?? map['movingMinutes'] ?? 0)
+              .toInt(),
+      weeklyCalories:
+          (map['dailyCalories'] ?? map['weeklyCalories'] ?? map['calories'] ?? 0)
+              .toInt(),
+      weeklyWorkoutsCount:
+          (map['dailyWorkoutsCount'] ?? map['weeklyWorkoutsCount'] ?? 0)
+              .toInt(),
     );
   }
 }

@@ -211,9 +211,12 @@ class _HealthDashboardState extends State<HealthDashboard>
           .collection('health_metrics')
           .doc('current')
           .set({
-            'weeklyMinutes': 0,
-            'weeklyCalories': 0,
-            'weeklyWorkoutsCount': 0,
+            'dailyMinutes': 0,
+            'dailyCalories': 0,
+            'dailyWorkoutsCount': 0,
+            'weeklyMinutes': FieldValue.delete(),
+            'weeklyCalories': FieldValue.delete(),
+            'weeklyWorkoutsCount': FieldValue.delete(),
             'lastDailyResetDate': todayKey,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
@@ -405,9 +408,13 @@ class _HealthDashboardState extends State<HealthDashboard>
               final healthData = healthDoc.data()!;
               
               // SAFE PARSING: Handle health metrics safely
-              var weeklyCaloriesData = healthData['weeklyCalories'];
-              var weeklyMinutesData = healthData['weeklyMinutes'];
-              var weeklyWorkoutsCountData = healthData['weeklyWorkoutsCount'];
+              var weeklyCaloriesData =
+                  healthData['dailyCalories'] ?? healthData['weeklyCalories'];
+              var weeklyMinutesData =
+                  healthData['dailyMinutes'] ?? healthData['weeklyMinutes'];
+              var weeklyWorkoutsCountData =
+                  healthData['dailyWorkoutsCount'] ??
+                  healthData['weeklyWorkoutsCount'];
               var waistMeasurementData = healthData['waistMeasurement'];
               var sleepHoursData = healthData['sleepHours'];
               var lastDailyResetDateData = healthData['lastDailyResetDate'];
@@ -534,9 +541,12 @@ class _HealthDashboardState extends State<HealthDashboard>
           .collection('health_metrics')
           .doc('current')
           .set({
-            'weeklyCalories': 0,
-            'weeklyMinutes': 0,
-            'weeklyWorkoutsCount': 0,
+            'dailyCalories': 0,
+            'dailyMinutes': 0,
+            'dailyWorkoutsCount': 0,
+            'weeklyCalories': FieldValue.delete(),
+            'weeklyMinutes': FieldValue.delete(),
+            'weeklyWorkoutsCount': FieldValue.delete(),
             'waistMeasurement': _waistMeasurement, // UPDATED
             'sleepHours': _sleepHours, // UPDATED
             'waistHistory': [_waistMeasurement], // UPDATED
@@ -567,9 +577,18 @@ class _HealthDashboardState extends State<HealthDashboard>
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
-        if (weeklyCalories != null) updates['weeklyCalories'] = weeklyCalories;
-        if (weeklyMinutes != null) updates['weeklyMinutes'] = weeklyMinutes;
-        if (weeklyWorkoutsCount != null) updates['weeklyWorkoutsCount'] = weeklyWorkoutsCount;
+        if (weeklyCalories != null) {
+          updates['dailyCalories'] = weeklyCalories;
+          updates['weeklyCalories'] = FieldValue.delete();
+        }
+        if (weeklyMinutes != null) {
+          updates['dailyMinutes'] = weeklyMinutes;
+          updates['weeklyMinutes'] = FieldValue.delete();
+        }
+        if (weeklyWorkoutsCount != null) {
+          updates['dailyWorkoutsCount'] = weeklyWorkoutsCount;
+          updates['weeklyWorkoutsCount'] = FieldValue.delete();
+        }
         if (waistMeasurement != null)
           updates['waistMeasurement'] = waistMeasurement; // UPDATED
         if (sleepHours != null) updates['sleepHours'] = sleepHours; // UPDATED
@@ -1276,18 +1295,22 @@ class DailyActivity {
   Map<String, dynamic> toMap() {
     return {
       'date': date.toIso8601String(),
-      'weeklyMinutes': weeklyMinutes,
-      'weeklyCalories': weeklyCalories,
-      'weeklyWorkoutsCount': weeklyWorkoutsCount,
+      'dailyMinutes': weeklyMinutes,
+      'dailyCalories': weeklyCalories,
+      'dailyWorkoutsCount': weeklyWorkoutsCount,
     };
   }
 
   factory DailyActivity.fromMap(Map<String, dynamic> map) {
     return DailyActivity(
       date: DateTime.parse(map['date']),
-      weeklyMinutes: (map['weeklyMinutes'] ?? 0).toInt(),
-      weeklyCalories: (map['weeklyCalories'] ?? 0).toInt(),
-      weeklyWorkoutsCount: (map['weeklyWorkoutsCount'] ?? 0).toInt(),
+      weeklyMinutes:
+          (map['dailyMinutes'] ?? map['weeklyMinutes'] ?? 0).toInt(),
+      weeklyCalories:
+          (map['dailyCalories'] ?? map['weeklyCalories'] ?? 0).toInt(),
+      weeklyWorkoutsCount:
+          (map['dailyWorkoutsCount'] ?? map['weeklyWorkoutsCount'] ?? 0)
+              .toInt(),
     );
   }
 }

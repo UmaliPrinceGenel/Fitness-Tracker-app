@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'community_member_profile_screen.dart';
 import 'photo_editing_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
   final TextEditingController _commentController = TextEditingController();
+  late final Stream<QuerySnapshot> _postsStream;
 
   // Add user data state
  Map<String, dynamic>? _userData;
@@ -27,6 +29,10 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
   @override
   void initState() {
     super.initState();
+    _postsStream = _firestore
+        .collection('community_posts')
+        .orderBy('timePosted', descending: true)
+        .snapshots();
     _loadCurrentUserData();
     WidgetsBinding.instance.addObserver(this);
  }
@@ -256,8 +262,41 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return LikesBottomSheet(postId: postId);
+        return LikesBottomSheet(
+          postId: postId,
+          onOpenProfile: _openMemberProfile,
+        );
       },
+    );
+  }
+
+  void _openMemberProfile(
+    String userId,
+    String? username,
+    String? profileImageUrl,
+  ) {
+    if (userId.trim().isEmpty) return;
+
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser != null && currentUser.uid == userId.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('That is your profile. Open it from the Profile tab.'),
+          backgroundColor: Color(0xFF191919),
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommunityMemberProfileScreen(
+          userId: userId,
+          initialDisplayName: username,
+          initialProfileImageUrl: profileImageUrl,
+        ),
+      ),
     );
   }
 
@@ -466,10 +505,7 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
               // Posts list from Firestore
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: _firestore
-                      .collection('community_posts')
-                      .orderBy('timePosted', descending: true)
-                      .snapshots(),
+                  stream: _postsStream,
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
                       return Center(
@@ -514,6 +550,7 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
                           onImageTap: _showImageZoom,
                           onVideoTap: _showVideoPlayer,
                           onShowLikes: _showLikesBottomSheet,
+                          onOpenProfile: _openMemberProfile,
                         );
                       },
                     );
@@ -548,6 +585,7 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
           postId: postId,
           commentController: _commentController,
           onAddComment: _addComment,
+          onOpenProfile: _openMemberProfile,
         );
       },
     );
@@ -563,6 +601,7 @@ class PostCard extends StatefulWidget {
   final Function(List<String>, int) onImageTap;
   final Function(String) onVideoTap;
   final Function(BuildContext, String) onShowLikes;
+  final Function(String, String?, String?) onOpenProfile;
 
   const PostCard({
     super.key,
@@ -574,6 +613,7 @@ class PostCard extends StatefulWidget {
     required this.onImageTap,
     required this.onVideoTap,
     required this.onShowLikes,
+    required this.onOpenProfile,
   });
 
   @override
@@ -675,6 +715,17 @@ class _PostCardState extends State<PostCard>
   bool _isVideo(int index) {
     final images = _getPostImages();
     return index >= images.length;
+  }
+
+  void _openProfileFromPost() {
+    final userId = widget.postData['userId']?.toString() ?? '';
+    if (userId.isEmpty) return;
+
+    widget.onOpenProfile(
+      userId,
+      widget.postData['username']?.toString(),
+      widget.postData['profileImage']?.toString(),
+    );
   }
 
   void _handleLikeTap({
@@ -830,54 +881,60 @@ class _PostCardState extends State<PostCard>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey[800],
-                    border: Border.all(color: Colors.white12),
+                GestureDetector(
+                  onTap: _openProfileFromPost,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey[800],
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: widget.postData['profileImage'] != null
+                        ? ClipOval(
+                            child: Image.network(
+                              widget.postData['profileImage'],
+                              fit: BoxFit.cover,
+                              width: 44,
+                              height: 44,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 20,
+                                );
+                              },
+                            ),
+                          )
+                        : const Icon(Icons.person, color: Colors.white, size: 20),
                   ),
-                  child: widget.postData['profileImage'] != null
-                      ? ClipOval(
-                          child: Image.network(
-                            widget.postData['profileImage'],
-                            fit: BoxFit.cover,
-                            width: 44,
-                            height: 44,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 20,
-                              );
-                            },
-                          ),
-                        )
-                      : const Icon(Icons.person, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.postData['username'] ?? 'User',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  child: GestureDetector(
+                    onTap: _openProfileFromPost,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.postData['username'] ?? 'User',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatTimestamp(widget.postData['timePosted']),
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatTimestamp(widget.postData['timePosted']),
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 // Delete button for post owner
@@ -1310,8 +1367,13 @@ class _VideoPlayerOverlayState extends State<VideoPlayerOverlay>
 // ✅ NEW: Likes Bottom Sheet
 class LikesBottomSheet extends StatefulWidget {
   final String postId;
+  final Function(String, String?, String?) onOpenProfile;
 
-  const LikesBottomSheet({super.key, required this.postId});
+  const LikesBottomSheet({
+    super.key,
+    required this.postId,
+    required this.onOpenProfile,
+  });
 
   @override
   State<LikesBottomSheet> createState() => _LikesBottomSheetState();
@@ -1421,69 +1483,86 @@ class _LikesBottomSheetState extends State<LikesBottomSheet> {
                       itemBuilder: (context, index) {
                         final userData = users[index];
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8.0),
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF191919),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.grey[700],
-                                ),
-                                child: userData['profileImage'] != null
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          userData['profileImage'],
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                                return const Icon(
-                                                  Icons.person,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                );
-                                              },
+                        return GestureDetector(
+                          onTap: () {
+                            final userId = userData['userId']?.toString() ?? '';
+                            final username = userData['username']?.toString();
+                            final profileImage =
+                                userData['profileImage']?.toString();
+                            Navigator.of(context).pop();
+                            Future.delayed(Duration.zero, () {
+                              widget.onOpenProfile(
+                                userId,
+                                username,
+                                profileImage,
+                              );
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8.0),
+                            padding: const EdgeInsets.all(12.0),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF191919),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.grey[700],
+                                  ),
+                                  child: userData['profileImage'] != null
+                                      ? ClipOval(
+                                          child: Image.network(
+                                            userData['profileImage'],
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  return const Icon(
+                                                    Icons.person,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  );
+                                                },
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 16,
                                         ),
-                                      )
-                                    : const Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      userData['username'] ?? 'User',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      "Liked this post",
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        userData['username'] ?? 'User',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        "Liked this post",
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -1509,6 +1588,7 @@ Future<List<Map<String, dynamic>>> _getUsersData(List<String> userIds) async {
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         usersData.add({
+          'userId': userId,
           'username': userData['displayName'] ?? 'User',
           'profileImage': userData['photoURL'],
         });
@@ -1525,12 +1605,14 @@ class CommentsBottomSheet extends StatefulWidget {
   final String postId;
   final TextEditingController commentController;
   final Function(String, String) onAddComment;
+  final Function(String, String?, String?) onOpenProfile;
 
   const CommentsBottomSheet({
     super.key,
     required this.postId,
     required this.commentController,
     required this.onAddComment,
+    required this.onOpenProfile,
  });
 
   @override
@@ -1701,69 +1783,85 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     final comment = snapshot.data!.docs[index];
                     final commentData = comment.data() as Map<String, dynamic>;
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8.0),
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF191919),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey[700],
-                            ),
-                            child: commentData['profileImage'] != null
-                                ? ClipOval(
-                                    child: Image.network(
-                                      commentData['profileImage'],
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.person,
-                                              color: Colors.white,
-                                              size: 16,
-                                            );
-                                          },
+                    return GestureDetector(
+                      onTap: () {
+                        final userId = commentData['userId']?.toString() ?? '';
+                        final username = commentData['username']?.toString();
+                        final profileImage =
+                            commentData['profileImage']?.toString();
+                        Navigator.of(context).pop();
+                        Future.delayed(Duration.zero, () {
+                          widget.onOpenProfile(
+                            userId,
+                            username,
+                            profileImage,
+                          );
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8.0),
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF191919),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[700],
+                              ),
+                              child: commentData['profileImage'] != null
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        commentData['profileImage'],
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return const Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 16,
+                                              );
+                                            },
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 16,
                                     ),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  commentData['username'] ?? 'User',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  commentData['comment'],
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    commentData['username'] ?? 'User',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    commentData['comment'],
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },

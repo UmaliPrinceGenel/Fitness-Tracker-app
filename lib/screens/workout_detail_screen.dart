@@ -1060,10 +1060,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final healthSnapshot = await healthRef.get();
     final healthData = healthSnapshot.data() ?? <String, dynamic>{};
 
-    final currentCalories = _parseStoredMetric(healthData['weeklyCalories']);
-    final currentMinutes = _parseStoredMetric(healthData['weeklyMinutes']);
+    final currentCalories = _parseStoredMetric(
+      healthData['dailyCalories'] ?? healthData['weeklyCalories'],
+    );
+    final currentMinutes = _parseStoredMetric(
+      healthData['dailyMinutes'] ?? healthData['weeklyMinutes'],
+    );
     final currentWorkouts =
-        _parseStoredMetric(healthData['weeklyWorkoutsCount']);
+        _parseStoredMetric(
+          healthData['dailyWorkoutsCount'] ?? healthData['weeklyWorkoutsCount'],
+        );
     final todayKey = _dateKey(DateTime.now());
     final storedDayKey = _resolveStoredDayKey(healthData);
 
@@ -1081,9 +1087,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             .doc(storedDayKey)
             .set({
           'date': archivedDate,
-          'weeklyMinutes': currentMinutes,
-          'weeklyCalories': currentCalories,
-          'weeklyWorkoutsCount': currentWorkouts,
+          'dailyMinutes': currentMinutes,
+          'dailyCalories': currentCalories,
+          'dailyWorkoutsCount': currentWorkouts,
         }, SetOptions(merge: true));
       }
 
@@ -1093,10 +1099,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
 
     await healthRef.set({
-      'weeklyCalories': (baseCalories + workoutCalories).clamp(0, 999999),
-      'weeklyMinutes': (baseMinutes + workoutMinutes).clamp(0, 999999),
-      'weeklyWorkoutsCount':
+      'dailyCalories': (baseCalories + workoutCalories).clamp(0, 999999),
+      'dailyMinutes': (baseMinutes + workoutMinutes).clamp(0, 999999),
+      'dailyWorkoutsCount':
           (baseWorkouts + workoutCountChange).clamp(0, 999999),
+      'weeklyCalories': FieldValue.delete(),
+      'weeklyMinutes': FieldValue.delete(),
+      'weeklyWorkoutsCount': FieldValue.delete(),
       'lastDailyResetDate': todayKey,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
