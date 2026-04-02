@@ -881,8 +881,9 @@ class _MyProfileState extends State<MyProfile> {
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(16),
+                              color: const Color(0xFF141414),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: Colors.white10),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.3),
@@ -899,50 +900,61 @@ class _MyProfileState extends State<MyProfile> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
+                                    Expanded(
+                                      child: Row(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(8),
+                                          padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.2),
+                                            color: Colors.blue.withOpacity(0.14),
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
+                                            border: Border.all(
+                                              color: Colors.blue.withOpacity(0.22),
+                                            ),
                                           ),
                                           child: const Icon(
-                                            Icons.image,
+                                            Icons.photo_library_outlined,
                                             color: Colors.blue,
-                                            size: 24,
+                                            size: 22,
                                           ),
                                         ),
                                         const SizedBox(width: 12),
-                                        const Text(
-                                          "Progress Album",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
+                                        const Flexible(
+                                          child: Text(
+                                            "Progress Album",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ],
+                                    ),
                                     ),
                                     GestureDetector(
                                       onTap: _navigateToProgressAlbum,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
+                                          horizontal: 14,
                                           vertical: 8,
                                         ),
                                         decoration: BoxDecoration(
                                           gradient: const LinearGradient(
-                                            colors: [
-                                              Colors.blue,
-                                              Colors.lightBlue,
-                                            ],
+                                            colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
                                           ),
                                           borderRadius: BorderRadius.circular(
                                             20,
                                           ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF3EA6FF).withOpacity(0.22),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
                                         ),
                                         child: const Text(
                                           "View",
@@ -955,21 +967,22 @@ class _MyProfileState extends State<MyProfile> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  "Recently Added",
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Latest photo from your album",
                                   style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
+                                    color: Colors.grey[400],
+                                    fontSize: 13,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 Container(
                                   width: double.infinity,
-                                  height: 200,
+                                  height: 208,
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: const Color(0xFF202020),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white10),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.2),
@@ -979,7 +992,7 @@ class _MyProfileState extends State<MyProfile> {
                                     ],
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(18),
                                     child: _recentProgressImage != null
                                         ? Image.network(
                                             _recentProgressImage!,
@@ -1164,18 +1177,31 @@ class _MyProfileState extends State<MyProfile> {
           height: double.infinity,
         ),
         Container(
-          color: Colors.black.withOpacity(0.5),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.photo_library, color: Colors.white60, size: 50),
-                SizedBox(height: 8),
-                Text(
-                  "No progress photos yet",
-                  style: TextStyle(color: Colors.white60, fontSize: 16),
-                ),
-              ],
+          color: Colors.black.withOpacity(0.58),
+          child: Center(
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.34),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.photo_library_outlined, color: Colors.white70, size: 42),
+                  SizedBox(height: 10),
+                  Text(
+                    "No progress photos yet",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

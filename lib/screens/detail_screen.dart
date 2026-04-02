@@ -2550,6 +2550,8 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 20),
+        _buildMetricTipsCard(),
       ],
     );
   }
@@ -2568,6 +2570,123 @@ class _DetailScreenState extends State<DetailScreen> {
       default:
         return "Information about this metric is shown here.";
     }
+  }
+
+  List<String> _getMetricTips() {
+    switch (widget.title) {
+      case "kcal":
+      case "Calories":
+        return [
+          "Longer workouts and more total sets usually increase calories burned.",
+          "Compound exercises often burn more energy than isolation exercises.",
+          "If this stays low, try finishing a full workout instead of stopping early.",
+        ];
+      case "Minutes":
+      case "Steps":
+        return [
+          "Workout minutes increase when you complete more exercises in one session.",
+          "Resting too long between exercises can make the session feel slower without adding useful minutes.",
+          "A short routine still counts, but longer consistent sessions usually improve this total.",
+        ];
+      case "Workouts":
+      case "Moving":
+        return [
+          "Each fully completed session adds to your workout count for today.",
+          "Several short finished workouts count better than opening a workout and leaving it unfinished.",
+          "Use this number to stay consistent, even on lighter training days.",
+        ];
+      default:
+        return [
+          "Keep logging this metric regularly to build a more useful daily record.",
+        ];
+    }
+  }
+
+  Widget _buildMetricTipsCard() {
+    final tips = _getMetricTips();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.tips_and_updates_outlined, color: _getThemeColor(), size: 24),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    "Tips",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const Divider(color: Colors.white38, height: 1, thickness: 0.5),
+            const SizedBox(height: 14),
+            ...tips.asMap().entries.map((entry) {
+              final isLast = entry.key == tips.length - 1;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      margin: const EdgeInsets.only(top: 1),
+                      decoration: BoxDecoration(
+                        color: _getThemeColor().withOpacity(0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${entry.key + 1}',
+                          style: TextStyle(
+                            color: _getThemeColor(),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
   }
 
   // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent

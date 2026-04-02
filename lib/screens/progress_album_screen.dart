@@ -577,11 +577,20 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: Colors.blue,
-              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3EA6FF).withOpacity(0.28),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: IconButton(
               padding: EdgeInsets.zero,
@@ -604,13 +613,47 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
         child: Column(
           children: [
             const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Track your body changes",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Recent keeps only today's uploads. Older progress photos automatically move to Old tomorrow.",
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             // Tab bar with Recent and Old tabs
             Container(
-              height: 48,
+              height: 52,
               margin: const EdgeInsets.symmetric(horizontal: 16.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF191919),
-                borderRadius: BorderRadius.circular(24),
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: Colors.white10),
               ),
               child: Row(
                 children: [
@@ -626,10 +669,13 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: _selectedTabIndex == 0
-                              ? Colors.blue
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
+                          gradient: _selectedTabIndex == 0
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
+                                )
+                              : null,
+                          color: _selectedTabIndex == 0 ? null : Colors.transparent,
+                          borderRadius: BorderRadius.circular(22),
                         ),
                         child: const Center(
                           child: Text(
@@ -656,10 +702,13 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: _selectedTabIndex == 1
-                              ? Colors.blue
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
+                          gradient: _selectedTabIndex == 1
+                              ? const LinearGradient(
+                                  colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
+                                )
+                              : null,
+                          color: _selectedTabIndex == 1 ? null : Colors.transparent,
+                          borderRadius: BorderRadius.circular(22),
                         ),
                         child: const Center(
                           child: Text(
@@ -766,25 +815,61 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     String subtitle = "Tap the + button to add your first progress photo",
   }) {
     return Container(
-      margin: const EdgeInsets.only(top: 100),
-      padding: const EdgeInsets.all(32),
+      margin: const EdgeInsets.only(top: 72),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
+      ),
       child: Column(
         children: [
-          Icon(Icons.photo_library, size: 80, color: Colors.grey[600]),
-          const SizedBox(height: 16),
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Icon(Icons.photo_library, size: 40, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 18),
           Text(
             title,
-            style: TextStyle(
+            textAlign: TextAlign.center,
+            style: const TextStyle(
               color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3EA6FF).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFF3EA6FF).withOpacity(0.22)),
+            ),
+            child: const Text(
+              "Tap + to add a new progress photo",
+              style: TextStyle(
+                color: Color(0xFF67C3FF),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

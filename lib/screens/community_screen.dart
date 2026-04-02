@@ -285,10 +285,18 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
             children: [
               // Post input card
               Container(
-                margin: const EdgeInsets.all(16.0),
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF191919),
-                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.28),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
                 child: GestureDetector(
                   onTap: () async {
@@ -304,18 +312,19 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(14.0),
                     child: Column(
                       children: [
                         Row(
                           children: [
                             // ✅ Profile avatar with user's photoURL
                             Container(
-                              width: 40,
-                              height: 40,
+                              width: 46,
+                              height: 46,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.grey[700],
+                                color: Colors.grey[800],
+                                border: Border.all(color: Colors.white12),
                               ),
                               child: _isLoadingUser
                                   ? const Center(
@@ -336,8 +345,8 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
                                       child: Image.network(
                                         _profileImageUrl!,
                                         fit: BoxFit.cover,
-                                        width: 40,
-                                        height: 40,
+                                        width: 46,
+                                        height: 46,
                                         loadingBuilder: (context, child, loadingProgress) {
                                           if (loadingProgress == null)
                                             return child;
@@ -396,30 +405,51 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16.0,
+                                    vertical: 14.0,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(20),
+                                    color: const Color(0xFF202020),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white10),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     children: [
-                                      Expanded(
+                                      const Expanded(
                                         child: Text(
                                           "What's on your mind?",
-                                          style: TextStyle(color: Colors.white70),
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
-                                      SizedBox(width: 8),
-                                      Icon(
-                                        Icons.image,
-                                        color: Colors.blue,
-                                        size: 20,
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF3EA6FF).withOpacity(0.14),
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: const Icon(
+                                          Icons.image_outlined,
+                                          color: Color(0xFF3EA6FF),
+                                          size: 18,
+                                        ),
                                       ),
-                                      SizedBox(width: 4),
-                                      Icon(
-                                        Icons.videocam,
-                                        color: Colors.red,
-                                        size: 20,
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFF6B6B).withOpacity(0.14),
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: const Icon(
+                                          Icons.videocam_outlined,
+                                          color: Color(0xFFFF6B6B),
+                                          size: 18,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -470,6 +500,7 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
                     }
 
                     return ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 16),
                       itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
                         final post = snapshot.data!.docs[index];
@@ -549,8 +580,47 @@ class PostCard extends StatefulWidget {
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> {
+class _PostCardState extends State<PostCard>
+    with SingleTickerProviderStateMixin {
   int _currentMediaIndex = 0;
+  bool _likePulseActive = false;
+  late final AnimationController _likeAnimationController;
+  late final Animation<double> _likeScaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _likeAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _likeScaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.22).chain(
+          CurveTween(curve: Curves.easeOutBack),
+        ),
+        weight: 55,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.22, end: 0.96).chain(
+          CurveTween(curve: Curves.easeInOut),
+        ),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 0.96, end: 1.0).chain(
+          CurveTween(curve: Curves.easeOut),
+        ),
+        weight: 25,
+      ),
+    ]).animate(_likeAnimationController);
+  }
+
+  @override
+  void dispose() {
+    _likeAnimationController.dispose();
+    super.dispose();
+  }
 
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
@@ -607,6 +677,126 @@ class _PostCardState extends State<PostCard> {
     return index >= images.length;
   }
 
+  void _handleLikeTap({
+    required fbAuth.User? user,
+    required bool isLiked,
+  }) {
+    if (user == null) return;
+
+    final newLikeStatus = !isLiked;
+    widget.onLike(widget.postId, newLikeStatus);
+
+    if (newLikeStatus) {
+      setState(() {
+        _likePulseActive = true;
+      });
+      _likeAnimationController.forward(from: 0);
+      _likeAnimationController.addStatusListener(_handleLikeAnimationStatus);
+    } else if (_likePulseActive) {
+      setState(() {
+        _likePulseActive = false;
+      });
+    }
+  }
+
+  void _handleLikeAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && mounted) {
+      _likeAnimationController.removeStatusListener(_handleLikeAnimationStatus);
+      setState(() {
+        _likePulseActive = false;
+      });
+    }
+  }
+
+  Widget _buildActionChip({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: iconColor, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLikeChip({
+    required fbAuth.User? user,
+    required bool isLiked,
+    required int likesCount,
+  }) {
+    final showFilledHeart = isLiked || _likePulseActive;
+
+    return GestureDetector(
+      onTap: () => _handleLikeTap(user: user, isLiked: isLiked),
+      onLongPress: () {
+        if (likesCount > 0) {
+          widget.onShowLikes(context, widget.postId);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _likeScaleAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _likePulseActive ? _likeScaleAnimation.value : 1.0,
+                  child: child,
+                );
+              },
+              child: Icon(
+                showFilledHeart ? Icons.favorite : Icons.favorite_border,
+                color: showFilledHeart ? Colors.red : Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$likesCount',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
  @override
   Widget build(BuildContext context) {
     final user = fbAuth.FirebaseAuth.instance.currentUser;
@@ -618,33 +808,43 @@ class _PostCardState extends State<PostCard> {
     final isCurrentUserPost = _isCurrentUserPost();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.24),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Post header
           Container(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey[700],
+                    color: Colors.grey[800],
+                    border: Border.all(color: Colors.white12),
                   ),
                   child: widget.postData['profileImage'] != null
                       ? ClipOval(
                           child: Image.network(
                             widget.postData['profileImage'],
                             fit: BoxFit.cover,
-                            width: 40,
-                            height: 40,
+                            width: 44,
+                            height: 44,
                             errorBuilder: (context, error, stackTrace) {
                               return const Icon(
                                 Icons.person,
@@ -658,19 +858,39 @@ class _PostCardState extends State<PostCard> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    widget.postData['username'] ?? 'User',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.postData['username'] ?? 'User',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatTimestamp(widget.postData['timePosted']),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // Delete button for post owner
                 if (isCurrentUserPost)
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.white70),
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Icon(Icons.more_vert, color: Colors.white70, size: 18),
+                    ),
                     color: Colors.grey[800],
                     onSelected: (String result) {
                       if (result == 'delete') {
@@ -694,10 +914,6 @@ class _PostCardState extends State<PostCard> {
                           ),
                         ],
                   ),
-                Text(
-                  _formatTimestamp(widget.postData['timePosted']),
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
               ],
             ),
           ),
@@ -705,30 +921,31 @@ class _PostCardState extends State<PostCard> {
           if (widget.postData['caption'] != null &&
               widget.postData['caption'].isNotEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 4.0,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
               child: Text(
                 widget.postData['caption'],
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  height: 1.45,
+                ),
               ),
             ),
           // Post media
           if (allMedia.isNotEmpty)
             Container(
-              margin: const EdgeInsets.all(16.0),
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 14),
               width: double.infinity,
-              height: 250,
+              height: 260,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(18),
+                color: Colors.grey[850],
               ),
               child: Stack(
                 children: [
                   // Show media gallery
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(18),
                     child: PageView.builder(
                       itemCount: allMedia.length,
                       onPageChanged: (index) {
@@ -810,7 +1027,7 @@ class _PostCardState extends State<PostCard> {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
                           '${_currentMediaIndex + 1}/${allMedia.length}',
@@ -835,7 +1052,7 @@ class _PostCardState extends State<PostCard> {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: Row(
                           children: [
@@ -882,68 +1099,26 @@ class _PostCardState extends State<PostCard> {
             ),
           // Engagement metrics
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Row(
               children: [
-                // Like button with long press
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (user == null) return;
-                        final newLikeStatus = !isLiked;
-                        widget.onLike(widget.postId, newLikeStatus);
-                      },
-                      onLongPress: () {
-                        if (_getLikesCount() > 0) {
-                          widget.onShowLikes(context, widget.postId);
-                        }
-                      },
-                      child: Icon(
-                        isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: isLiked ? Colors.red : Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () {
-                        if (_getLikesCount() > 0) {
-                          widget.onShowLikes(context, widget.postId);
-                        }
-                      },
-                      child: Text(
-                        likesCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: _buildLikeChip(
+                    user: user,
+                    isLiked: isLiked,
+                    likesCount: likesCount,
+                  ),
                 ),
-                const SizedBox(width: 16),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        widget.onComment(context, widget.postId);
-                      },
-                      child: const Icon(
-                        Icons.comment_outlined,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      (widget.postData['commentCount'] ?? 0).toString(),
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildActionChip(
+                    icon: Icons.mode_comment_outlined,
+                    iconColor: Colors.white,
+                    label: (widget.postData['commentCount'] ?? 0).toString(),
+                    onTap: () {
+                      widget.onComment(context, widget.postId);
+                    },
+                  ),
                 ),
               ],
             ),

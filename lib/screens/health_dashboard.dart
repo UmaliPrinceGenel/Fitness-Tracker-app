@@ -81,6 +81,22 @@ class _HealthDashboardState extends State<HealthDashboard>
     return DateTime.tryParse(dateKey) ?? DateTime.now();
   }
 
+  String _historyDayKey(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  List<DailyActivity> _dedupeDailyActivityHistory(List<DailyActivity> entries) {
+    final Map<String, DailyActivity> uniqueByDay = {};
+
+    for (final entry in entries) {
+      uniqueByDay[_historyDayKey(entry.date)] = entry;
+    }
+
+    final deduped = uniqueByDay.values.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return deduped;
+  }
+
   String? _resolveStoredDayKey(dynamic explicitValue, dynamic fallbackValue) {
     if (explicitValue is String && explicitValue.isNotEmpty) {
       return explicitValue;
@@ -488,8 +504,10 @@ class _HealthDashboardState extends State<HealthDashboard>
                   .toList(),
             );
 
-            // Remove duplicates and sort by date
-            _dailyActivityHistory.sort((a, b) => a.date.compareTo(b.date));
+            // Remove duplicate day entries coming from both cached metrics and subcollection.
+            _dailyActivityHistory = _dedupeDailyActivityHistory(
+              _dailyActivityHistory,
+            );
 
             _isLoading = false;
           });
