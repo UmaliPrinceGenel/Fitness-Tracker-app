@@ -111,6 +111,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (userDoc.exists) {
         final userData = userDoc.data()!;
+        final bool isBanned = userData['isBanned'] ?? false;
+
+        if (isBanned) {
+          await _firebaseAuth.signOut();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This account has been banned by the admin.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
         final hasCompletedProfile = userData['hasCompletedProfile'] ?? false;
 
         if (hasCompletedProfile) {
@@ -335,6 +349,11 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final double logoSize =
+                (constraints.maxWidth * 0.38).clamp(140.0, 220.0).toDouble();
+            final double logoPadding =
+                (logoSize * 0.105).clamp(14.0, 22.0).toDouble();
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: ConstrainedBox(
@@ -344,19 +363,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const SizedBox(height: 20),
-                      Align(
-                        alignment: Alignment.topLeft,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF191919),
-                            shape: BoxShape.circle,
+                      if (Navigator.of(context).canPop())
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF191919),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: _isLoading ? null : () => Navigator.pop(context),
+                            ),
                           ),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: _isLoading ? null : () => Navigator.pop(context),
-                          ),
-                        ),
-                      ),
+                        )
+                      else
+                        const SizedBox(height: 48),
                       const SizedBox(height: 20),
                       const Text(
                         'Welcome Back',
@@ -372,7 +394,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 28),
+                      Center(
+                        child: Container(
+                          width: logoSize,
+                          height: logoSize,
+                          padding: EdgeInsets.all(logoPadding),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111111),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.35),
+                                blurRadius: 24,
+                                offset: const Offset(0, 12),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/logo.jpg',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 36),
                       Expanded(
                         child: Center(
                           child: Container(

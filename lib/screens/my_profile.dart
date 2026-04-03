@@ -7,8 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'progress_album_screen.dart';
-import 'login_screen.dart';
 import 'about_app_screen.dart';
+import 'login_screen.dart';
 
 class MyProfile extends StatefulWidget {
   final int refreshVersion;
@@ -616,18 +616,13 @@ class _MyProfileState extends State<MyProfile> {
   Future<void> _performLogout() async {
     try {
       await _firebaseAuth.signOut();
+      if (!mounted) {
+        return;
+      }
 
-      Navigator.pushAndRemoveUntil(
-        context,
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Logged out successfully'),
-          backgroundColor: Colors.green,
-        ),
       );
     } catch (e) {
       print('Error during logout: $e');

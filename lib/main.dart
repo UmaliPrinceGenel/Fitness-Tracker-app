@@ -72,6 +72,18 @@ class _MyAppState extends State<MyApp> {
       
       if (userDoc.exists) {
         final userData = userDoc.data()!;
+        final bool isBanned = userData['isBanned'] ?? false;
+
+        if (isBanned) {
+          await _firebaseAuth.signOut();
+          setState(() {
+            _firebaseUser = null;
+            _hasCompletedProfile = false;
+            _isLoading = false;
+          });
+          return;
+        }
+
         final bool hasCompletedProfile = userData['hasCompletedProfile'] ?? false;
         
         setState(() {
@@ -270,6 +282,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white),
                   shape: RoundedRectangleBorder(
+
+
+                    
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),

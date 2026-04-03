@@ -1,214 +1,766 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'admin_community_screen.dart';
+import 'admin_users_screen.dart';
+import 'community_member_profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  _AdminDashboardScreenState createState() => _AdminDashboardScreenState();
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
-  bool _isLoading = false;
+  List<Map<String, dynamic>> _posts = [];
+  List<Map<String, dynamic>> _filteredPosts = [];
+  bool _isLoading = true;
+  bool _isRefreshing = false;
   String _searchQuery = '';
+
+  int get _bannedUsersCount =>
+      _users.where((user) => user['isBanned'] == true).length;
+
+  int get _deletedUsersCount =>
+      _users.where((user) => user['isDeleted'] == true).length;
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    _loadDashboardData();
   }
 
-  Future<void> _loadUsers() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadDashboardData({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() => _isLoading = true);
+    } else {
+      setState(() => _isRefreshing = true);
+    }
 
     try {
-      QuerySnapshot querySnapshot = await _firestore.collection('users').get();
-      
-      List<Map<String, dynamic>> users = [];
-      for (var doc in querySnapshot.docs) {
-        Map<String, dynamic>? userData = doc.data() as Map<String, dynamic>?;
-        if (userData != null) {
-          users.add({
-            'id': doc.id,
-            'data': userData,
-            'email': userData['email'] ?? 'No email',
-            'displayName': userData['displayName'] ?? 'No name',
-            'createdAt': userData['createdAt'] ?? '',
-          });
-        }
-      }
-      
+      final usersSnapshot = await _firestore.collection('users').get();
+      final postsSnapshot = await _firestore
+          .collection('community_posts')
+          .orderBy('timePosted', descending: true)
+          .get();
+
+      final users = usersSnapshot.docs.map((doc) {
+        final data = doc.data();
+        final profile = data['profile'];
+        final profileMap =
+            profile is Map<String, dynamic> ? profile : <String, dynamic>{};
+
+        return <String, dynamic>{
+          'id': doc.id,
+          'email': (data['email'] ?? '').toString(),
+          'displayName': (data['displayName'] ??
+                  profileMap['displayName'] ??
+                  profileMap['name'] ??
+                  'No name')
+              .toString(),
+          'photoURL':
+              (data['photoURL'] ?? profileMap['photoURL'] ?? '').toString(),
+          'isBanned': data['isBanned'] == true,
+          'isDeleted': data['isDeleted'] == true,
+          'createdAt': data['createdAt'],
+        };
+      }).toList()
+        ..sort((a, b) => a['displayName']
+            .toString()
+            .toLowerCase()
+            .compareTo(b['displayName'].toString().toLowerCase()));
+
+      final posts = postsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return <String, dynamic>{
+          'id': doc.id,
+          'userId': (data['userId'] ?? '').toString(),
+          'username': (data['username'] ?? 'Unknown user').toString(),
+          'caption': (data['caption'] ?? '').toString(),
+          'profileImage': (data['profileImage'] ?? '').toString(),
+          'postImages': (data['postImages'] as List<dynamic>? ?? []).cast<String>(),
+          'postVideos': (data['postVideos'] as List<dynamic>? ?? []).cast<String>(),
+          'likes': (data['likes'] as num?)?.toInt() ?? 0,
+          'commentCount': (data['commentCount'] as num?)?.toInt() ?? 0,
+          'timePosted': data['timePosted'],
+        };
+      }).toList();
+
       setState(() {
         _users = users;
-        _filteredUsers = users;
+        _posts = posts;
+        _applySearchFilter(_searchQuery, notify: false);
         _isLoading = false;
+        _isRefreshing = false;
       });
     } catch (e) {
-      print('Error loading users: $e');
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _isRefreshing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading users: $e')),
+        SnackBar(
+          content: Text('Error loading admin dashboard: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
-  Future<void> _searchUsers(String query) async {
-    setState(() {
-      _searchQuery = query.toLowerCase();
-      _filteredUsers = _users
-          .where((user) =>
-              user['email'].toLowerCase().contains(_searchQuery) ||
-              user['displayName'].toLowerCase().contains(_searchQuery))
-          .toList();
-    });
+  void _applySearchFilter(String query, {bool notify = true}) {
+    final normalized = query.trim().toLowerCase();
+    final filteredUsers = _users.where((user) {
+      return normalized.isEmpty ||
+          user['email'].toString().toLowerCase().contains(normalized) ||
+          user['displayName'].toString().toLowerCase().contains(normalized);
+    }).toList();
+
+    final filteredPosts = _posts.where((post) {
+      return normalized.isEmpty ||
+          post['username'].toString().toLowerCase().contains(normalized) ||
+          post['caption'].toString().toLowerCase().contains(normalized);
+    }).toList();
+
+    if (notify) {
+      setState(() {
+        _searchQuery = query;
+        _filteredUsers = filteredUsers;
+        _filteredPosts = filteredPosts;
+      });
+    } else {
+      _searchQuery = query;
+      _filteredUsers = filteredUsers;
+      _filteredPosts = filteredPosts;
+    }
   }
 
-  Future<void> _deleteAccount(String userId, String userEmail) async {
-    bool confirmed = await _showConfirmationDialog(
-      'Delete Account',
-      'Are you sure you want to delete the account for "$userEmail"? This action cannot be undone and all user data will be permanently removed.',
-    );
+  Future<bool> _showConfirmationDialog(String title, String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: Text(title, style: const TextStyle(color: Colors.white)),
+            content:
+                Text(message, style: const TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child:
+                    const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(
+                  'Confirm',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
 
+  String _formatTimestamp(dynamic value) {
+    if (value is Timestamp) {
+      return DateFormat('MMM d, yyyy - hh:mm a').format(value.toDate());
+    }
+    return 'Unknown date';
+  }
+
+  void _openUserProfile(Map<String, dynamic> user) {
+    final userId = user['id']?.toString() ?? user['userId']?.toString() ?? '';
+    if (userId.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommunityMemberProfileScreen(
+          userId: userId,
+          initialDisplayName: user['displayName']?.toString() ??
+              user['username']?.toString(),
+          initialProfileImageUrl:
+              (user['photoURL']?.toString().isNotEmpty ?? false)
+                  ? user['photoURL']?.toString()
+                  : ((user['profileImage']?.toString().isNotEmpty ?? false)
+                      ? user['profileImage']?.toString()
+                      : null),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _banAccount(String userId, String userEmail) async {
+    final confirmed = await _showConfirmationDialog(
+      'Ban Account',
+      'Are you sure you want to ban "$userEmail"?',
+    );
     if (!confirmed) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      // Get the Firebase Auth user ID from the users collection
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
-      Map<String, dynamic>? userData = userDoc.data() as Map<String, dynamic>?;
-      String? authUserId = userData?['authId']; // Assuming you store the auth ID in the user doc
-      
-      // If we don't have the authId in the document, we need to find it differently
-      // For now, assuming the document ID is the same as the auth user ID
-      if (authUserId == null) {
-        authUserId = userId;
-      }
-
-      // For security reasons, we cannot delete other users' accounts from the client-side Flutter app
-      // Instead, we'll mark the account as deleted and disabled
       await _firestore.collection('users').doc(userId).update({
-        'isDeleted': true,
-        'deletedAt': FieldValue.serverTimestamp(),
+        'isBanned': true,
+        'bannedAt': FieldValue.serverTimestamp(),
       });
-      
-      // Note: Actual Firebase Auth user deletion requires admin privileges and should be done server-side
-
-      // Reload users list
-      await _loadUsers();
-
+      await _loadDashboardData(showLoader: false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Account deleted successfully'),
+          content: Text('User banned successfully'),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
-      print('Error deleting account: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error banning user: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _unbanAccount(String userId, String userEmail) async {
+    final confirmed = await _showConfirmationDialog(
+      'Unban Account',
+      'Allow "$userEmail" to use the app again?',
+    );
+    if (!confirmed) return;
+
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'isBanned': false,
+        'bannedAt': FieldValue.delete(),
+      });
+      await _loadDashboardData(showLoader: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User unbanned successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error unbanning user: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteAccount(String userId, String userEmail) async {
+    final confirmed = await _showConfirmationDialog(
+      'Delete Account',
+      'Soft-delete "$userEmail"? This marks the account as deleted in Firestore.',
+    );
+    if (!confirmed) return;
+
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'isDeleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+      });
+      await _loadDashboardData(showLoader: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User marked as deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error deleting account: $e'),
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
-  Future<void> _banAccount(String userId, String userEmail) async {
-    bool confirmed = await _showConfirmationDialog(
-      'Ban Account',
-      'Are you sure you want to ban the account for "$userEmail"? Banned users will not be able to access the app.',
+  Future<void> _deletePost(Map<String, dynamic> post) async {
+    final confirmed = await _showConfirmationDialog(
+      'Delete Post',
+      'Delete this community post by "${post['username']}"?',
     );
-
     if (!confirmed) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      // Update user document to mark as banned
-      await _firestore.collection('users').doc(userId).update({
-        'isBanned': true,
-        'bannedAt': FieldValue.serverTimestamp(),
-      });
+      final mediaUrls = <String>[
+        ...(post['postImages'] as List<String>),
+        ...(post['postVideos'] as List<String>),
+      ];
 
-      // Reload users list
-      await _loadUsers();
+      for (final mediaUrl in mediaUrls) {
+        try {
+          final uri = Uri.parse(mediaUrl);
+          final pathSegments = uri.path.split('/');
+          final bucketIndex = pathSegments.indexOf('community-posts');
+          if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
+            final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+            await _supabase.storage.from('community-posts').remove([filePath]);
+          }
+        } catch (_) {}
+      }
 
+      final commentsSnapshot = await _firestore
+          .collection('community_posts')
+          .doc(post['id'])
+          .collection('comments')
+          .get();
+      final batch = _firestore.batch();
+      for (final commentDoc in commentsSnapshot.docs) {
+        batch.delete(commentDoc.reference);
+      }
+      await batch.commit();
+
+      await _firestore.collection('community_posts').doc(post['id']).delete();
+      await _loadDashboardData(showLoader: false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Account banned successfully'),
+          content: Text('Post deleted successfully'),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
-      print('Error banning account: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error banning account: $e'),
+          content: Text('Error deleting post: $e'),
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
-   Future<bool> _showConfirmationDialog(String title, String message) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF191919),
-              title: Text(
-                title,
-                style: const TextStyle(color: Colors.orange),
+  Widget _buildStatusPill(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withOpacity(0.28)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
-              content: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickLinkCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF191919),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.16),
+                borderRadius: BorderRadius.circular(14),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(false); // Return false if canceled
-                  },
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.grey),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserCard(Map<String, dynamic> user) {
+    final isBanned = user['isBanned'] == true;
+    final isDeleted = user['isDeleted'] == true;
+    final email = user['email']?.toString().isNotEmpty == true
+        ? user['email'].toString()
+        : 'No email';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.orange.withOpacity(0.15),
+                backgroundImage: (user['photoURL']?.toString().isNotEmpty ?? false)
+                    ? NetworkImage(user['photoURL'].toString())
+                    : null,
+                child: (user['photoURL']?.toString().isNotEmpty ?? false)
+                    ? null
+                    : const Icon(Icons.person, color: Colors.orange),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user['displayName']?.toString() ?? 'No name',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (isBanned) _buildStatusPill('Banned', Colors.red),
+                        if (isDeleted)
+                          _buildStatusPill('Deleted', Colors.deepOrange),
+                        _buildStatusPill(
+                          'Joined ${_formatTimestamp(user['createdAt'])}',
+                          Colors.blueGrey,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildActionChip(
+                label: 'View Profile',
+                icon: Icons.visibility_outlined,
+                color: Colors.blue,
+                onTap: () => _openUserProfile(user),
+              ),
+              _buildActionChip(
+                label: isBanned ? 'Unban' : 'Ban',
+                icon: isBanned ? Icons.lock_open : Icons.block,
+                color: isBanned ? Colors.green : Colors.orange,
+                onTap: () => isBanned
+                    ? _unbanAccount(user['id'], email)
+                    : _banAccount(user['id'], email),
+              ),
+              _buildActionChip(
+                label: 'Delete',
+                icon: Icons.delete_outline,
+                color: Colors.red,
+                onTap: () => _deleteAccount(user['id'], email),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPostCard(Map<String, dynamic> post) {
+    final imageUrls = (post['postImages'] as List<String>);
+    final videoUrls = (post['postVideos'] as List<String>);
+    final previewUrl = imageUrls.isNotEmpty
+        ? imageUrls.first
+        : (videoUrls.isNotEmpty ? videoUrls.first : null);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.orange.withOpacity(0.15),
+                backgroundImage:
+                    (post['profileImage']?.toString().isNotEmpty ?? false)
+                        ? NetworkImage(post['profileImage'].toString())
+                        : null,
+                child: (post['profileImage']?.toString().isNotEmpty ?? false)
+                    ? null
+                    : const Icon(Icons.person, color: Colors.orange),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      post['username']?.toString() ?? 'Unknown user',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatTimestamp(post['timePosted']),
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => _deletePost(post),
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+              ),
+            ],
+          ),
+          if ((post['caption']?.toString().trim().isNotEmpty ?? false)) ...[
+            const SizedBox(height: 12),
+            Text(
+              post['caption'].toString(),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.45,
+              ),
+            ),
+          ],
+          if (previewUrl != null) ...[
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  previewUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.black26,
+                    child: const Center(
+                      child: Icon(Icons.perm_media, color: Colors.white38, size: 40),
+                    ),
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(true); // Return true if confirmed
-                  },
-                  child: const Text(
-                    'Confirm',
-                    style: TextStyle(color: Colors.orange),
-                  ),
-                ),
-              ],
-            );
-          },
-        ) ?? false; // Return false if dialog is dismissed
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildStatusPill('${post['likes']} likes', Colors.orange),
+              _buildStatusPill('${post['commentCount']} comments', Colors.blue),
+              if (imageUrls.isNotEmpty)
+                _buildStatusPill('${imageUrls.length} image(s)', Colors.green),
+              if (videoUrls.isNotEmpty)
+                _buildStatusPill('${videoUrls.length} video(s)', Colors.purple),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildActionChip(
+                label: 'View Profile',
+                icon: Icons.person_outline,
+                color: Colors.blue,
+                onTap: () => _openUserProfile({
+                  'userId': post['userId'],
+                  'username': post['username'],
+                  'profileImage': post['profileImage'],
+                }),
+              ),
+              _buildActionChip(
+                label: 'Delete Post',
+                icon: Icons.delete_outline,
+                color: Colors.red,
+                onTap: () => _deletePost(post),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -219,178 +771,240 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         backgroundColor: Colors.black,
         title: const Text(
           'Admin Dashboard',
-          style: TextStyle(color: Colors.orange),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // Search bar
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF191919),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  onChanged: _searchUsers,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'Search users...',
-                    hintStyle: TextStyle(color: Colors.grey),
-                    border: InputBorder.none,
-                    prefixIcon: Icon(Icons.search, color: Colors.orange),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              // User count
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF191919),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Users',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '${_filteredUsers.length} total',
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              
-              // Loading indicator
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(
+        actions: [
+          IconButton(
+            onPressed: () => _loadDashboardData(showLoader: false),
+            icon: _isRefreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
+                      strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
                     ),
-                  ),
+                  )
+                : const Icon(Icons.refresh, color: Colors.orange),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
                 ),
-              
-              // Users list
-              if (!_isLoading)
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _filteredUsers.length,
-                    itemBuilder: (context, index) {
-                      var user = _filteredUsers[index];
-                      bool isBanned = user['data']['isBanned'] == true;
-                      
-                      return Card(
-                        color: const Color(0xFF191919),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          user['displayName'],
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          user['email'],
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        if (isBanned)
-                                          const Text(
-                                            'BANNED',
-                                            style: TextStyle(
-                                              color: Colors.red,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final statsColumns = constraints.maxWidth >= 1100
+                      ? 4
+                      : constraints.maxWidth >= 700
+                          ? 2
+                          : 1;
+                  final quickLinkColumns = constraints.maxWidth >= 900 ? 2 : 1;
+                  final userColumns = constraints.maxWidth >= 900 ? 2 : 1;
+
+                  return RefreshIndicator(
+                    onRefresh: () => _loadDashboardData(showLoader: false),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF111111),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Rockies Fitness Admin',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  // Action buttons
-                                  Row(
-                                    children: [
-                                      if (!isBanned) // Only show ban button if not already banned
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.block,
-                                            color: Colors.orange,
-                                            size: 20,
-                                          ),
-                                          onPressed: () => _banAccount(user['id'], user['email']),
-                                        ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.red,
-                                          size: 20,
-                                        ),
-                                        onPressed: () => _deleteAccount(user['id'], user['email']),
-                                      ),
-                                    ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Monitor users, moderate the community feed, and manage account access from one place.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    height: 1.5,
                                   ),
-                                ],
-                              ),
-                              if (user['createdAt'] != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    'Created: ${DateTime.fromMillisecondsSinceEpoch(user['createdAt'].millisecondsSinceEpoch).toString().split(' ')[0]}',
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 12,
+                                ),
+                                const SizedBox(height: 18),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF191919),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: TextField(
+                                    onChanged: _applySearchFilter,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Search users or community posts...',
+                                      hintStyle: TextStyle(color: Colors.white38),
+                                      border: InputBorder.none,
+                                      prefixIcon: Icon(Icons.search, color: Colors.orange),
                                     ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          GridView.count(
+                            crossAxisCount: statsColumns,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: statsColumns == 1 ? 2.4 : 1.45,
+                            children: [
+                              _buildSummaryCard(
+                                icon: Icons.people_alt_outlined,
+                                iconColor: Colors.blue,
+                                label: 'Total Users',
+                                value: _users.length.toString(),
+                                subtitle: 'All user documents',
+                              ),
+                              _buildSummaryCard(
+                                icon: Icons.block,
+                                iconColor: Colors.orange,
+                                label: 'Banned Users',
+                                value: _bannedUsersCount.toString(),
+                                subtitle: 'Users currently blocked',
+                              ),
+                              _buildSummaryCard(
+                                icon: Icons.forum_outlined,
+                                iconColor: Colors.green,
+                                label: 'Community Posts',
+                                value: _posts.length.toString(),
+                                subtitle: 'Posts available for review',
+                              ),
+                              _buildSummaryCard(
+                                icon: Icons.delete_outline,
+                                iconColor: Colors.red,
+                                label: 'Deleted Users',
+                                value: _deletedUsersCount.toString(),
+                                subtitle: 'Soft-deleted accounts',
+                              ),
                             ],
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
+                          const SizedBox(height: 18),
+                          GridView.count(
+                            crossAxisCount: quickLinkColumns,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio:
+                                quickLinkColumns == 1 ? 3.0 : 2.4,
+                            children: [
+                              _buildQuickLinkCard(
+                                icon: Icons.manage_accounts_outlined,
+                                color: Colors.blue,
+                                title: 'Open Users Panel',
+                                subtitle:
+                                    'Manage access, ban or unban accounts, and inspect member profiles.',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const AdminUsersScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildQuickLinkCard(
+                                icon: Icons.forum_outlined,
+                                color: Colors.green,
+                                title: 'Open Community Panel',
+                                subtitle:
+                                    'Review posts, moderate the feed, and delete content when needed.',
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const AdminCommunityScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          _buildSectionHeader(
+                            'User Management',
+                            'View member profiles and control account access.',
+                          ),
+                          const SizedBox(height: 14),
+                          if (_filteredUsers.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 28),
+                              child: Text(
+                                'No users matched your search.',
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                            )
+                          else
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _filteredUsers.length,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: userColumns,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: userColumns == 1 ? 1.08 : 1.45,
+                              ),
+                              itemBuilder: (context, index) {
+                                return _buildUserCard(_filteredUsers[index]);
+                              },
+                            ),
+                          const SizedBox(height: 28),
+                          _buildSectionHeader(
+                            'Community Moderation',
+                            'Review recent community posts and remove inappropriate content.',
+                          ),
+                          const SizedBox(height: 14),
+                          if (_filteredPosts.isEmpty)
+                            const Text(
+                              'No posts matched your search.',
+                              style: TextStyle(color: Colors.white54),
+                            )
+                          else
+                            Column(
+                              children: _filteredPosts
+                                  .map((post) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: _buildPostCard(post),
+                                      ))
+                                  .toList(),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

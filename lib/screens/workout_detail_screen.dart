@@ -417,8 +417,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   // Handle back button press to properly manage workout state
   Future<bool> _onBackPressed() async {
-    // If the workout is in progress (timer running) but not all exercises viewed, ask for confirmation
-    if (_workoutStartTime != null && !areAllExercisesViewed()) {
+    // Keep the cancel confirmation active until the workout is actually saved.
+    if (_isWorkoutSessionActive() && !_isWorkoutCompleted) {
       return await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -444,11 +444,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  // Reset the workout state before exiting
-                  setState(() {
-                    _currentButtonState = 'start';
-                    _workoutStartTime = null;
-                  });
+                  _cancelWorkoutSession();
                   Navigator.of(context).pop(true); // Pop the screen
                 },
                 child: const Text(

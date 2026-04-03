@@ -27,12 +27,12 @@ class _HealthDashboardState extends State<HealthDashboard>
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Health data - will be loaded from Firestore
-  int _weeklyCalories = 0; // Replaced calories with weeklyCalories from workout screen
-  int _weeklyCaloriesGoal = 2500; // Weekly goal for calories burned
-  int _weeklyMinutes = 0; // Replaced steps with weeklyMinutes from workout screen
-  int _weeklyMinutesGoal = 300; // Weekly goal for minutes exercised
-  int _weeklyWorkoutsCount = 0; // Replaced moving with weeklyWorkouts from workout screen
- int _weeklyWorkoutsGoal = 5; // Weekly goal for workouts completed
+  int _weeklyCalories = 0; // Current daily calories from workout tracking
+  int _weeklyCaloriesGoal = 500; // Daily calories goal
+  int _weeklyMinutes = 0; // Current daily workout minutes
+  int _weeklyMinutesGoal = 60; // Daily workout minutes goal
+  int _weeklyWorkoutsCount = 0; // Current daily completed workouts
+ int _weeklyWorkoutsGoal = 1; // Daily workout goal
 
   // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
   double _waistMeasurement = 0.0;
@@ -304,7 +304,7 @@ class _HealthDashboardState extends State<HealthDashboard>
         if (userDoc.exists) {
           final userData = userDoc.data()!;
 
-          final healthDoc = await _firestore
+          var healthDoc = await _firestore
               .collection('users')
               .doc(user.uid)
               .collection('health_metrics')
@@ -312,13 +312,41 @@ class _HealthDashboardState extends State<HealthDashboard>
               .get();
 
           // Load daily activity history
-          final dailyActivitySnapshot = await _firestore
+          var dailyActivitySnapshot = await _firestore
               .collection('users')
               .doc(user.uid)
               .collection('daily_activity')
               .orderBy('date', descending: true)
               .limit(30)
               .get();
+
+          if (healthDoc.exists) {
+            final initialHealthData = healthDoc.data()!;
+            final incomingResetKey = _resolveStoredDayKey(
+              initialHealthData['lastDailyResetDate'],
+              initialHealthData['updatedAt'],
+            );
+
+            if (incomingResetKey != null && incomingResetKey != _todayKey()) {
+              _lastDailyResetDate = incomingResetKey;
+              await _syncDailyResetIfNeeded();
+
+              healthDoc = await _firestore
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('health_metrics')
+                  .doc('current')
+                  .get();
+
+              dailyActivitySnapshot = await _firestore
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('daily_activity')
+                  .orderBy('date', descending: true)
+                  .limit(30)
+                  .get();
+            }
+          }
 
           // Load weight history from weight_history subcollection (for Android compatibility)
           final weightHistorySnapshot = await _firestore
@@ -883,7 +911,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                                         0.0,
                                         100.0,
                                       ),
-                                  stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 10)
+                                  stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 100)
                                       .clamp(0.0, 100.0),
                                   movingPercent:
                                       (_weeklyWorkoutsCount / _weeklyWorkoutsGoal * 100)
