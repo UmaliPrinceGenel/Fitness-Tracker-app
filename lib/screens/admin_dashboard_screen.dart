@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'admin_community_screen.dart';
 import 'admin_users_screen.dart';
 import 'community_member_profile_screen.dart';
+import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -17,6 +19,7 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
+  final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
 
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
@@ -31,6 +34,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   int get _deletedUsersCount =>
       _users.where((user) => user['isDeleted'] == true).length;
+
+  void _onNavTapped(int index) {
+    if (index == 0) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            index == 1 ? const AdminUsersScreen() : const AdminCommunityScreen(),
+      ),
+    );
+  }
+
+  Future<void> _logoutAdmin() async {
+    final shouldLogout = await _showConfirmationDialog(
+      'Logout Admin',
+      'Are you sure you want to log out of the admin panel?',
+    );
+    if (!shouldLogout) return;
+
+    await _firebaseAuth.signOut();
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   void initState() {
@@ -773,10 +805,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           'Admin Dashboard',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
           IconButton(
             onPressed: () => _loadDashboardData(showLoader: false),
@@ -807,8 +835,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       : constraints.maxWidth >= 700
                           ? 2
                           : 1;
-                  final quickLinkColumns = constraints.maxWidth >= 900 ? 2 : 1;
-                  final userColumns = constraints.maxWidth >= 900 ? 2 : 1;
+                  final statsAspectRatio = statsColumns == 1
+                      ? 1.6
+                      : statsColumns == 2
+                          ? 1.32
+                          : 1.16;
 
                   return RefreshIndicator(
                     onRefresh: () => _loadDashboardData(showLoader: false),
@@ -839,7 +870,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  'Monitor users, moderate the community feed, and manage account access from one place.',
+                                  'Overview only. Use the admin bottom navigation to open the Users and Community panels.',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
@@ -848,20 +879,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                                 const SizedBox(height: 18),
                                 Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF191919),
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white10),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: TextField(
-                                    onChanged: _applySearchFilter,
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Search users or community posts...',
-                                      hintStyle: TextStyle(color: Colors.white38),
-                                      border: InputBorder.none,
-                                      prefixIcon: Icon(Icons.search, color: Colors.orange),
-                                    ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.admin_panel_settings_outlined,
+                                        color: Colors.orange,
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'This dashboard stays focused on totals so the layout remains clean on any screen size.',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13,
+                                            height: 1.45,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -874,7 +916,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             mainAxisSpacing: 12,
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            childAspectRatio: statsColumns == 1 ? 2.4 : 1.45,
+                            childAspectRatio: statsAspectRatio,
                             children: [
                               _buildSummaryCard(
                                 icon: Icons.people_alt_outlined,
@@ -906,105 +948,89 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
-                          GridView.count(
-                            crossAxisCount: quickLinkColumns,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            childAspectRatio:
-                                quickLinkColumns == 1 ? 3.0 : 2.4,
-                            children: [
-                              _buildQuickLinkCard(
-                                icon: Icons.manage_accounts_outlined,
-                                color: Colors.blue,
-                                title: 'Open Users Panel',
-                                subtitle:
-                                    'Manage access, ban or unban accounts, and inspect member profiles.',
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const AdminUsersScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              _buildQuickLinkCard(
-                                icon: Icons.forum_outlined,
-                                color: Colors.green,
-                                title: 'Open Community Panel',
-                                subtitle:
-                                    'Review posts, moderate the feed, and delete content when needed.',
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const AdminCommunityScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
                           const SizedBox(height: 28),
                           _buildSectionHeader(
-                            'User Management',
-                            'View member profiles and control account access.',
+                            'Admin Session',
+                            'Securely end the current admin session.',
                           ),
                           const SizedBox(height: 14),
-                          if (_filteredUsers.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 28),
-                              child: Text(
-                                'No users matched your search.',
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                            )
-                          else
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _filteredUsers.length,
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: userColumns,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: userColumns == 1 ? 1.08 : 1.45,
-                              ),
-                              itemBuilder: (context, index) {
-                                return _buildUserCard(_filteredUsers[index]);
-                              },
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF191919),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white10),
                             ),
-                          const SizedBox(height: 28),
-                          _buildSectionHeader(
-                            'Community Moderation',
-                            'Review recent community posts and remove inappropriate content.',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Use this button when you are done moderating users and community content.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _logoutAdmin,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    icon: const Icon(Icons.logout),
+                                    label: const Text(
+                                      'Log Out',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 14),
-                          if (_filteredPosts.isEmpty)
-                            const Text(
-                              'No posts matched your search.',
-                              style: TextStyle(color: Colors.white54),
-                            )
-                          else
-                            Column(
-                              children: _filteredPosts
-                                  .map((post) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: _buildPostCard(post),
-                                      ))
-                                  .toList(),
-                            ),
                         ],
                       ),
                     ),
                   );
                 },
               ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0,
+        onTap: _onNavTapped,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF0F0F0F),
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.white54,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Overview',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Users',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Community',
+          ),
+        ],
       ),
     );
   }

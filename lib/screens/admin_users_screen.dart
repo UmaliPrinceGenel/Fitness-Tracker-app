@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'admin_community_screen.dart';
+import 'admin_dashboard_screen.dart';
 import 'community_member_profile_screen.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -22,6 +24,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   int get _bannedCount => _users.where((user) => user['isBanned'] == true).length;
   int get _deletedCount => _users.where((user) => user['isDeleted'] == true).length;
+
+  void _onNavTapped(int index) {
+    if (index == 1) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            index == 0 ? const AdminDashboardScreen() : const AdminCommunityScreen(),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -425,10 +439,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           'Admin Users',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
           IconButton(
             onPressed: () => _loadUsers(showLoader: false),
@@ -455,6 +465,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             : LayoutBuilder(
                 builder: (context, constraints) {
                   final columns = constraints.maxWidth >= 900 ? 2 : 1;
+                  final cardAspectRatio = columns == 1 ? 0.88 : 1.28;
                   return RefreshIndicator(
                     onRefresh: () => _loadUsers(showLoader: false),
                     child: SingleChildScrollView(
@@ -542,7 +553,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                 crossAxisCount: columns,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: columns == 1 ? 1.05 : 1.4,
+                                childAspectRatio: cardAspectRatio,
                               ),
                               itemBuilder: (context, index) =>
                                   _buildUserCard(_filteredUsers[index]),
@@ -553,6 +564,31 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   );
                 },
               ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1,
+        onTap: _onNavTapped,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF0F0F0F),
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.white54,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Overview',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Users',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Community',
+          ),
+        ],
       ),
     );
   }

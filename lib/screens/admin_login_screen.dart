@@ -106,51 +106,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Use the admin credentials below to open the moderation dashboard.',
+                    'Log in to open the moderation dashboard.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 13,
                       height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF111111),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.orange.withOpacity(0.25)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: const [
-                            Icon(Icons.key_outlined, color: Colors.orange, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'Admin Demo Credentials',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _buildCredentialRow(
-                          label: 'Email',
-                          value: 'admin@gmail.com',
-                        ),
-                        const SizedBox(height: 10),
-                        _buildCredentialRow(
-                          label: 'Password',
-                          value: 'admin123',
-                        ),
-                      ],
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -228,47 +189,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCredentialRow({
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -33,6 +33,8 @@ class _CommunityMemberProfileScreenState
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<_CommunityMemberProfileData> _profileFuture;
+  bool _showAllBestRecords = false;
+  bool _showAllWorkoutRuns = false;
 
   @override
   void initState() {
@@ -251,6 +253,28 @@ class _CommunityMemberProfileScreenState
       _profileFuture = _loadProfileData();
     });
     await _profileFuture;
+  }
+
+  Widget _buildShowMoreLessButton({
+    required bool isExpanded,
+    required int totalCount,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.orange,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      ),
+      child: Text(
+        isExpanded ? 'Show less' : 'Show all $label ($totalCount)',
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 
   @override
@@ -900,7 +924,9 @@ class _CommunityMemberProfileScreenState
       );
     }
 
-    final visibleRecords = data.bestRecords.take(8).toList();
+    final visibleRecords = _showAllBestRecords
+        ? data.bestRecords
+        : data.bestRecords.take(5).toList();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -930,6 +956,29 @@ class _CommunityMemberProfileScreenState
                 color: Colors.white54,
                 fontSize: 12,
               ),
+            ),
+            const SizedBox(height: 4),
+            _buildShowMoreLessButton(
+              isExpanded: _showAllBestRecords,
+              totalCount: data.bestRecords.length,
+              label: 'records',
+              onTap: () {
+                setState(() {
+                  _showAllBestRecords = !_showAllBestRecords;
+                });
+              },
+            ),
+          ] else if (data.bestRecords.length > 5) ...[
+            const SizedBox(height: 10),
+            _buildShowMoreLessButton(
+              isExpanded: _showAllBestRecords,
+              totalCount: data.bestRecords.length,
+              label: 'records',
+              onTap: () {
+                setState(() {
+                  _showAllBestRecords = !_showAllBestRecords;
+                });
+              },
             ),
           ],
         ],
@@ -1025,13 +1074,41 @@ class _CommunityMemberProfileScreenState
       );
     }
 
+    final visibleRuns = _showAllWorkoutRuns
+        ? data.workoutRuns
+        : data.workoutRuns.take(5).toList();
+
     return Column(
-      children: data.workoutRuns
+      children: [
+        ...visibleRuns
           .map((run) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _buildWorkoutRunCard(run),
               ))
           .toList(),
+        if (data.workoutRuns.length > visibleRuns.length)
+          _buildShowMoreLessButton(
+            isExpanded: _showAllWorkoutRuns,
+            totalCount: data.workoutRuns.length,
+            label: 'workouts',
+            onTap: () {
+              setState(() {
+                _showAllWorkoutRuns = !_showAllWorkoutRuns;
+              });
+            },
+          )
+        else if (data.workoutRuns.length > 5)
+          _buildShowMoreLessButton(
+            isExpanded: _showAllWorkoutRuns,
+            totalCount: data.workoutRuns.length,
+            label: 'workouts',
+            onTap: () {
+              setState(() {
+                _showAllWorkoutRuns = !_showAllWorkoutRuns;
+              });
+            },
+          ),
+      ],
     );
   }
 

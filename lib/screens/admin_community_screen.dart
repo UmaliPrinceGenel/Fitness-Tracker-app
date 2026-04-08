@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'admin_dashboard_screen.dart';
+import 'admin_users_screen.dart';
+import 'community_screen.dart';
 import 'community_member_profile_screen.dart';
 
 class AdminCommunityScreen extends StatefulWidget {
@@ -21,6 +24,18 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
   bool _isLoading = true;
   bool _isRefreshing = false;
   String _query = '';
+
+  void _onNavTapped(int index) {
+    if (index == 2) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            index == 0 ? const AdminDashboardScreen() : const AdminUsersScreen(),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -142,6 +157,74 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                   ? post['profileImage']?.toString()
                   : null,
         ),
+      ),
+    );
+  }
+
+  void _showImageGallery(List<String> imageUrls, int initialIndex) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ImageZoomOverlay(imageUrls: imageUrls, initialIndex: initialIndex),
+      ),
+    );
+  }
+
+  void _showVideoPlayer(String videoUrl) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            VideoPlayerOverlay(videoUrl: videoUrl),
+      ),
+    );
+  }
+
+  void _showLikesBottomSheet(String postId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => LikesBottomSheet(
+        postId: postId,
+        onOpenProfile: (userId, username, profileImageUrl) {
+          Navigator.of(context).pop();
+          Future.delayed(Duration.zero, () {
+            _openUserProfile({
+              'userId': userId,
+              'username': username,
+              'profileImage': profileImageUrl,
+            });
+          });
+        },
+      ),
+    );
+  }
+
+  void _showCommentsBottomSheet(String postId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _AdminCommentsBottomSheet(
+        postId: postId,
+        onOpenProfile: (userId, username, profileImageUrl) {
+          Navigator.of(context).pop();
+          Future.delayed(Duration.zero, () {
+            _openUserProfile({
+              'userId': userId,
+              'username': username,
+              'profileImage': profileImageUrl,
+            });
+          });
+        },
       ),
     );
   }
@@ -286,9 +369,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
   Widget _buildPostCard(Map<String, dynamic> post) {
     final imageUrls = (post['postImages'] as List<String>);
     final videoUrls = (post['postVideos'] as List<String>);
-    final previewUrl = imageUrls.isNotEmpty
-        ? imageUrls.first
-        : (videoUrls.isNotEmpty ? videoUrls.first : null);
+    final allMediaCount = imageUrls.length + videoUrls.length;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -353,26 +434,87 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
               ),
             ),
           ],
-          if (previewUrl != null) ...[
+          if (allMediaCount > 0) ...[
             const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.network(
-                  previewUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.black26,
-                    child: const Center(
-                      child: Icon(
-                        Icons.perm_media,
-                        color: Colors.white38,
-                        size: 40,
+            SizedBox(
+              height: 168,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (int index = 0; index < imageUrls.length; index++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: GestureDetector(
+                        onTap: () => _showImageGallery(imageUrls, index),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            width: 210,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.network(
+                                  imageUrls[index],
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                    color: Colors.black26,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.image_not_supported_outlined,
+                                        color: Colors.white38,
+                                        size: 34,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      'Image ${index + 1}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  for (int index = 0; index < videoUrls.length; index++)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        right: index == videoUrls.length - 1 ? 0 : 10,
+                      ),
+                      child: GestureDetector(
+                        onTap: () => _showVideoPlayer(videoUrls[index]),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            width: 210,
+                            child: VideoThumbnailWidget(
+                              videoUrl: videoUrls[index],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -381,8 +523,17 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildStatusPill('${post['likes']} likes', Colors.orange),
-              _buildStatusPill('${post['commentCount']} comments', Colors.blue),
+              GestureDetector(
+                onTap: () => _showLikesBottomSheet(post['id'].toString()),
+                child: _buildStatusPill('${post['likes']} likes', Colors.orange),
+              ),
+              GestureDetector(
+                onTap: () => _showCommentsBottomSheet(post['id'].toString()),
+                child: _buildStatusPill(
+                  '${post['commentCount']} comments',
+                  Colors.blue,
+                ),
+              ),
               if (imageUrls.isNotEmpty)
                 _buildStatusPill('${imageUrls.length} image(s)', Colors.green),
               if (videoUrls.isNotEmpty)
@@ -423,10 +574,6 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
           'Admin Community',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
           IconButton(
             onPressed: () => _loadPosts(showLoader: false),
@@ -453,6 +600,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
             : LayoutBuilder(
                 builder: (context, constraints) {
                   final statColumns = constraints.maxWidth >= 900 ? 3 : 1;
+                  final statsAspectRatio = statColumns == 1 ? 2.6 : 2.2;
                   return RefreshIndicator(
                     onRefresh: () => _loadPosts(showLoader: false),
                     child: SingleChildScrollView(
@@ -520,7 +668,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                                   shrinkWrap: true,
                                   physics:
                                       const NeverScrollableScrollPhysics(),
-                                  childAspectRatio: statColumns == 1 ? 3.1 : 2.5,
+                                  childAspectRatio: statsAspectRatio,
                                   children: [
                                     _buildStatChip(
                                       'Total Posts',
@@ -581,6 +729,190 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                   );
                 },
               ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2,
+        onTap: _onNavTapped,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF0F0F0F),
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.white54,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Overview',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Users',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Community',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminCommentsBottomSheet extends StatelessWidget {
+  final String postId;
+  final Function(String, String?, String?) onOpenProfile;
+
+  const _AdminCommentsBottomSheet({
+    required this.postId,
+    required this.onOpenProfile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final firestore = FirebaseFirestore.instance;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      height: MediaQuery.of(context).size.height * 0.8,
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Comments',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: firestore
+                  .collection('community_posts')
+                  .doc(postId)
+                  .collection('comments')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No comments yet',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    final commentData =
+                        snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                    final username = commentData['username']?.toString() ?? 'User';
+                    final comment = commentData['comment']?.toString() ?? '';
+                    final profileImage = commentData['profileImage']?.toString();
+                    final userId = commentData['userId']?.toString() ?? '';
+
+                    return GestureDetector(
+                      onTap: () => onOpenProfile(userId, username, profileImage),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF191919),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey[700],
+                              ),
+                              child: profileImage != null && profileImage.isNotEmpty
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        profileImage,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    username,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    comment,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -12,6 +12,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'screens/admin_dashboard_screen.dart';
 
 // Remove the duplicate main function - keeping only one
 
@@ -40,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   fbAuth.User? _firebaseUser;
   bool _isLoading = true;
   bool _hasCompletedProfile = false;
+  bool _isAdminSession = false;
 
   late StreamSubscription<fbAuth.User?> _authSubscription;
 
@@ -59,6 +61,7 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           _firebaseUser = null;
           _hasCompletedProfile = false;
+          _isAdminSession = false;
           _isLoading = false;
         });
       }
@@ -68,6 +71,17 @@ class _MyAppState extends State<MyApp> {
   /// ✅ Check if user has completed their profile
   Future<void> _checkUserProfileStatus(fbAuth.User user) async {
     try {
+      final normalizedEmail = user.email?.trim().toLowerCase() ?? '';
+      if (normalizedEmail == 'admin@gmail.com') {
+        setState(() {
+          _firebaseUser = user;
+          _hasCompletedProfile = false;
+          _isAdminSession = true;
+          _isLoading = false;
+        });
+        return;
+      }
+
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       
       if (userDoc.exists) {
@@ -79,6 +93,7 @@ class _MyAppState extends State<MyApp> {
           setState(() {
             _firebaseUser = null;
             _hasCompletedProfile = false;
+            _isAdminSession = false;
             _isLoading = false;
           });
           return;
@@ -89,6 +104,7 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           _firebaseUser = user;
           _hasCompletedProfile = hasCompletedProfile;
+          _isAdminSession = false;
           _isLoading = false;
         });
       } else {
@@ -96,6 +112,7 @@ class _MyAppState extends State<MyApp> {
         setState(() {
           _firebaseUser = user;
           _hasCompletedProfile = false;
+          _isAdminSession = false;
           _isLoading = false;
         });
       }
@@ -105,6 +122,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         _firebaseUser = user;
         _hasCompletedProfile = false;
+        _isAdminSession = false;
         _isLoading = false;
       });
     }
@@ -149,6 +167,9 @@ class _MyAppState extends State<MyApp> {
 
   Widget _buildHomeScreen() {
     if (_firebaseUser != null) {
+      if (_isAdminSession) {
+        return const AdminDashboardScreen();
+      }
       if (_hasCompletedProfile) {
         // User is logged in AND has completed profile - go to Health Dashboard
         return const HealthDashboard();

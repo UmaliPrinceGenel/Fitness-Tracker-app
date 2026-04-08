@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../screens/admin_dashboard_screen.dart';
 import '../screens/health_dashboard.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/signup_screen.dart';
@@ -102,6 +103,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handlePostLogin(fbAuth.User user) async {
     try {
+      final normalizedEmail = user.email?.trim().toLowerCase() ?? '';
+      if (normalizedEmail == 'admin@gmail.com') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        );
+        return;
+      }
+
       final userDoc = await _getUserDocument(user.uid).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -269,6 +279,31 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final trimmedEmail = _emailController.text.trim().toLowerCase();
+
+      if (trimmedEmail == 'admin@gmail.com') {
+        final adminCredential = await _performEmailSignIn().timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw fbAuth.FirebaseAuthException(
+              code: 'timeout',
+              message:
+                  'Authentication operation timed out. Please check your connection and try again.',
+            );
+          },
+        );
+
+        final adminUser = adminCredential.user;
+        if (adminUser == null) {
+          throw Exception('Admin login failed. No user returned.');
+        }
+
+        await _saveCredentials();
+        if (!mounted) return;
+        await _handlePostLogin(adminUser);
+        return;
+      }
+
       final credential = await _performEmailSignIn().timeout(
         const Duration(seconds: 30),
         onTimeout: () {
