@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'admin_community_screen.dart';
 import 'admin_dashboard_screen.dart';
+import 'admin_route_utils.dart';
 import 'community_member_profile_screen.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -23,16 +24,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String _query = '';
 
   int get _bannedCount => _users.where((user) => user['isBanned'] == true).length;
-  int get _deletedCount => _users.where((user) => user['isDeleted'] == true).length;
-
   void _onNavTapped(int index) {
     if (index == 1) return;
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) =>
-            index == 0 ? const AdminDashboardScreen() : const AdminCommunityScreen(),
+      buildAdminRoute(
+        index == 0 ? const AdminDashboardScreen() : const AdminCommunityScreen(),
       ),
     );
   }
@@ -218,61 +216,80 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
-  Future<void> _deleteAccount(String userId, String userEmail) async {
-    if (!await _confirm(
-      'Delete Account',
-      'Soft-delete "$userEmail"? This marks the account as deleted in Firestore.',
-    )) {
-      return;
-    }
-
-    try {
-      await _firestore.collection('users').doc(userId).update({
-        'isDeleted': true,
-        'deletedAt': FieldValue.serverTimestamp(),
-      });
-      await _loadUsers(showLoader: false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User marked as deleted'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting account: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   Widget _buildStatChip(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 92,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: color.withOpacity(0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             value,
             style: TextStyle(
               color: color,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatsGrid(List<Widget> cards) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 560 ? 3 : width >= 320 ? 2 : 1;
+        const spacing = 10.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: cards
+              .map((card) => SizedBox(width: cardWidth, child: card))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserCardsGrid(List<Map<String, dynamic>> users) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 900 ? 2 : 1;
+        const spacing = 12.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: users
+              .map(
+                (user) => SizedBox(
+                  width: cardWidth,
+                  child: _buildUserCard(user),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -416,12 +433,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     ? _unbanAccount(user['id'], email)
                     : _banAccount(user['id'], email),
               ),
-              _buildActionChip(
-                label: 'Delete',
-                icon: Icons.delete_outline,
-                color: Colors.red,
-                onTap: () => _deleteAccount(user['id'], email),
-              ),
             ],
           ),
         ],
@@ -435,25 +446,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Admin Users',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => _loadUsers(showLoader: false),
-            icon: _isRefreshing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                    ),
-                  )
-                : const Icon(Icons.refresh, color: Colors.orange),
-          ),
-        ],
       ),
       body: SafeArea(
         child: _isLoading
@@ -464,8 +461,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               )
             : LayoutBuilder(
                 builder: (context, constraints) {
-                  final columns = constraints.maxWidth >= 900 ? 2 : 1;
-                  final cardAspectRatio = columns == 1 ? 0.88 : 1.28;
                   return RefreshIndicator(
                     onRefresh: () => _loadUsers(showLoader: false),
                     child: SingleChildScrollView(
@@ -521,13 +516,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: [
-                                    _buildStatChip('Total', _users.length.toString(), Colors.blue),
-                                    _buildStatChip('Banned', _bannedCount.toString(), Colors.orange),
-                                    _buildStatChip('Deleted', _deletedCount.toString(), Colors.red),
+                                _buildStatsGrid(
+                                  [
+                                    _buildStatChip(
+                                      'Total Users',
+                                      _users.length.toString(),
+                                      Colors.blue,
+                                    ),
+                                    _buildStatChip(
+                                      'Banned',
+                                      _bannedCount.toString(),
+                                      Colors.orange,
+                                    ),
                                   ],
                                 ),
                               ],
@@ -545,19 +545,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               ),
                             )
                           else
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _filteredUsers.length,
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: cardAspectRatio,
-                              ),
-                              itemBuilder: (context, index) =>
-                                  _buildUserCard(_filteredUsers[index]),
-                            ),
+                            _buildUserCardsGrid(_filteredUsers),
                         ],
                       ),
                     ),

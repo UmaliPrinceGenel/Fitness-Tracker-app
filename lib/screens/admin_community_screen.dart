@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_dashboard_screen.dart';
+import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
 import 'community_screen.dart';
 import 'community_member_profile_screen.dart';
@@ -30,9 +31,8 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) =>
-            index == 0 ? const AdminDashboardScreen() : const AdminUsersScreen(),
+      buildAdminRoute(
+        index == 0 ? const AdminDashboardScreen() : const AdminUsersScreen(),
       ),
     );
   }
@@ -288,27 +288,54 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
 
   Widget _buildStatChip(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 92,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: color.withOpacity(0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             value,
             style: TextStyle(
               color: color,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatsGrid(List<Widget> cards) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 560 ? 3 : width >= 320 ? 2 : 1;
+        const spacing = 10.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: cards
+              .map((card) => SizedBox(width: cardWidth, child: card))
+              .toList(),
+        );
+      },
     );
   }
 
@@ -570,25 +597,11 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Admin Community',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => _loadPosts(showLoader: false),
-            icon: _isRefreshing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                    ),
-                  )
-                : const Icon(Icons.refresh, color: Colors.orange),
-          ),
-        ],
       ),
       body: SafeArea(
         child: _isLoading
@@ -599,8 +612,6 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
               )
             : LayoutBuilder(
                 builder: (context, constraints) {
-                  final statColumns = constraints.maxWidth >= 900 ? 3 : 1;
-                  final statsAspectRatio = statColumns == 1 ? 2.6 : 2.2;
                   return RefreshIndicator(
                     onRefresh: () => _loadPosts(showLoader: false),
                     child: SingleChildScrollView(
@@ -661,15 +672,8 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                GridView.count(
-                                  crossAxisCount: statColumns,
-                                  crossAxisSpacing: 10,
-                                  mainAxisSpacing: 10,
-                                  shrinkWrap: true,
-                                  physics:
-                                      const NeverScrollableScrollPhysics(),
-                                  childAspectRatio: statsAspectRatio,
-                                  children: [
+                                _buildStatsGrid(
+                                  [
                                     _buildStatChip(
                                       'Total Posts',
                                       _posts.length.toString(),

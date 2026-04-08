@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_community_screen.dart';
+import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'login_screen.dart';
@@ -32,17 +33,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int get _bannedUsersCount =>
       _users.where((user) => user['isBanned'] == true).length;
 
-  int get _deletedUsersCount =>
-      _users.where((user) => user['isDeleted'] == true).length;
-
   void _onNavTapped(int index) {
     if (index == 0) return;
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) =>
-            index == 1 ? const AdminUsersScreen() : const AdminCommunityScreen(),
+      buildAdminRoute(
+        index == 1 ? const AdminUsersScreen() : const AdminCommunityScreen(),
       ),
     );
   }
@@ -801,25 +798,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Admin Dashboard',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => _loadDashboardData(showLoader: false),
-            icon: _isRefreshing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                    ),
-                  )
-                : const Icon(Icons.refresh, color: Colors.orange),
-          ),
-        ],
       ),
       body: SafeArea(
         child: _isLoading
@@ -938,13 +921,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 label: 'Community Posts',
                                 value: _posts.length.toString(),
                                 subtitle: 'Posts available for review',
-                              ),
-                              _buildSummaryCard(
-                                icon: Icons.delete_outline,
-                                iconColor: Colors.red,
-                                label: 'Deleted Users',
-                                value: _deletedUsersCount.toString(),
-                                subtitle: 'Soft-deleted accounts',
                               ),
                             ],
                           ),
