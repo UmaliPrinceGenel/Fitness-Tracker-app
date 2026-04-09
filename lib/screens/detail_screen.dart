@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'add_data_screen.dart';
 import 'sleep_info_screen.dart';
 import 'calories_info_screen.dart';
 import 'moving_info_screen.dart';
@@ -27,7 +27,21 @@ class DetailScreen extends StatefulWidget {
   State<DetailScreen> createState() => _DetailScreenState();
 }
 
+class _MetricHistoryPoint {
+  final DateTime date;
+  final double value;
+
+  const _MetricHistoryPoint(this.date, this.value);
+}
+
 class _DetailScreenState extends State<DetailScreen> {
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
+
   late String selectedDate;
   int _currentIndex = 0;
   int _timeTab = 0;
@@ -45,6 +59,135 @@ class _DetailScreenState extends State<DetailScreen> {
   // User profile data for calculations
   double _weight = 0.0;
   double _height = 0.0;
+
+  double _parseDoubleValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  double _computeSafeBmi(double weightKg, double heightCm) {
+    if (weightKg < _minValidWeightKg ||
+        weightKg > _maxValidWeightKg ||
+        heightCm < _minValidHeightCm ||
+        heightCm > _maxValidHeightCm) {
+      return 0.0;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) {
+      return 0.0;
+    }
+
+    return double.parse(bmi.toStringAsFixed(1));
+  }
+
+  bool _isDisplayableBmiPair(double weightKg, double heightCm) {
+    if (weightKg < _minValidWeightKg ||
+        weightKg > _maxValidWeightKg ||
+        heightCm < _minValidHeightCm ||
+        heightCm > _maxValidHeightCm) {
+      return false;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    return bmi >= _minDisplayBmi && bmi <= _maxDisplayBmi;
+  }
+
+  List<_MetricHistoryPoint> _extractHistoryPoints(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+    String valueKey,
+  ) {
+    final points = <_MetricHistoryPoint>[];
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final value = _parseDoubleValue(data[valueKey]);
+      final dateValue = data['date'];
+      DateTime? date;
+
+      if (dateValue is Timestamp) {
+        date = dateValue.toDate();
+      } else if (dateValue is DateTime) {
+        date = dateValue;
+      } else if (dateValue is String) {
+        date = DateTime.tryParse(dateValue);
+      }
+
+      if (value > 0 && date != null) {
+        points.add(_MetricHistoryPoint(date, value));
+      }
+    }
+
+    points.sort((a, b) => a.date.compareTo(b.date));
+    return points;
+  }
+
+  double _resolveHeightForDate(
+    List<_MetricHistoryPoint> heightPoints,
+    DateTime target,
+  ) {
+    if (heightPoints.isEmpty) return _height;
+
+    _MetricHistoryPoint selected = heightPoints.first;
+    for (final point in heightPoints) {
+      if (point.date.isAfter(target)) break;
+      selected = point;
+    }
+    return selected.value;
+  }
+
+  String _getRecordedEntriesText(String label) {
+    final count = _historicalData.length;
+    final suffix = count == 1 ? "entry" : "entries";
+    return "Recorded $count $label $suffix";
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool _hasSleepEntryForToday() {
+    final today = DateTime.now();
+    return _historicalDates.any((date) => _isSameDay(date, today));
+  }
+
+  String _getSleepCoachingMessage() {
+    if (!_hasSleepEntryForToday()) {
+      return "Enter your new sleep hours for last night to update today's sleep record.";
+    }
+    if (_currentData < 7) {
+      return "You need more sleep today. Try to add rest tonight or over the next few days.";
+    }
+    if (_currentData <= 9) {
+      return "Great job. You slept the recommended number of hours today.";
+    }
+    return "You slept longer than the usual healthy range today. Try to balance your next days and avoid oversleep.";
+  }
+
+  DateTime _startOfToday() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  DateTime _startOfTomorrow() {
+    return _startOfToday().add(const Duration(days: 1));
+  }
+
+  Future<QuerySnapshot<Map<String, dynamic>>> _loadTodaySleepEntries() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('No signed in user');
+    }
+
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('sleep_history')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(_startOfToday()))
+        .where('date', isLessThan: Timestamp.fromDate(_startOfTomorrow()))
+        .get();
+  }
 
   @override
   void initState() {
@@ -64,9 +207,14 @@ class _DetailScreenState extends State<DetailScreen> {
             .get();
         if (userDoc.exists) {
           final userData = userDoc.data()!;
+          final profileData = userData['profile'] as Map<String, dynamic>? ?? <String, dynamic>{};
           setState(() {
-            _weight = (userData['profile']?['weight'] ?? 0.0).toDouble();
-            _height = (userData['profile']?['height'] ?? 0.0).toDouble();
+            _weight = _parseDoubleValue(profileData['weight']) > 0
+                ? _parseDoubleValue(profileData['weight'])
+                : _parseDoubleValue(userData['profile.weight']);
+            _height = _parseDoubleValue(profileData['height']) > 0
+                ? _parseDoubleValue(profileData['height'])
+                : _parseDoubleValue(userData['profile.height']);
           });
         }
 
@@ -115,28 +263,50 @@ class _DetailScreenState extends State<DetailScreen> {
             .get();
 
         setState(() {
+          _dailyActivityHistory = dailyActivitySnapshot.docs
+              .map((doc) => DailyActivity.fromMap(doc.data()))
+              .toList();
+
           if (healthDoc.exists) {
             final healthData = healthDoc.data()!;
 
             switch (widget.title) {
+              case "kcal":
               case "Calories":
-                _currentData = (healthData['calories'] ?? 0.0).toDouble();
-                _goalData = 600.0;
-                _loadTimeBasedData('calories');
+                _currentData =
+                    (healthData['dailyCalories'] ??
+                            healthData['weeklyCalories'] ??
+                            0)
+                        .toDouble();
+                _goalData = 2500.0;
+                _loadTimeBasedData('dailyCalories');
                 break;
+              case "Minutes":
               case "Steps":
-                _currentData = (healthData['steps'] ?? 0).toDouble();
-                _goalData = 7000.0;
-                _loadTimeBasedData('steps');
+                _currentData =
+                    (healthData['dailyMinutes'] ??
+                            healthData['weeklyMinutes'] ??
+                            0)
+                        .toDouble();
+                _goalData = 300.0;
+                _loadTimeBasedData('dailyMinutes');
                 break;
+              case "Workouts":
               case "Moving":
-                _currentData = (healthData['movingMinutes'] ?? 0.0).toDouble();
-                _goalData = 60.0;
-                _loadTimeBasedData('movingMinutes');
+                _currentData =
+                    (healthData['dailyWorkoutsCount'] ??
+                            healthData['weeklyWorkoutsCount'] ??
+                            0)
+                        .toDouble();
+                _goalData = 5.0;
+                _loadTimeBasedData('dailyWorkoutsCount');
                 break;
               case "Waist Measurement":
-                _currentData = (healthData['waistMeasurement'] ?? 0.0)
-                    .toDouble();
+                _currentData = waistHistorySnapshot.docs.isNotEmpty
+                    ? ((waistHistorySnapshot.docs.first.data()['waist'] ?? 0.0)
+                        as num)
+                        .toDouble()
+                    : (healthData['waistMeasurement'] ?? 0.0).toDouble();
                 _goalData = 80.0;
                 // Use subcollection data if main history is empty (Android compatibility)
                 List<double> waistHistoryFromSubcollection = [];
@@ -154,8 +324,14 @@ class _DetailScreenState extends State<DetailScreen> {
                 _historicalDates = _generateDatesForHistory(_historicalData.length);
                 break;
               case "Weight":
-                _currentData = (healthData['weight'] ?? _weight).toDouble();
-                _goalData = 62.0;
+                _currentData = weightHistorySnapshot.docs.isNotEmpty
+                    ? ((weightHistorySnapshot.docs.first.data()['weight'] ?? _weight)
+                        as num)
+                        .toDouble()
+                    : (healthData['weight'] ?? _weight).toDouble();
+                _goalData =
+                    (healthData['weightGoalKg'] ?? widget.goalValue ?? 62.0)
+                        .toDouble();
                 _historicalData = [];
                 _historicalDates = [];
 
@@ -167,11 +343,49 @@ class _DetailScreenState extends State<DetailScreen> {
                 _historicalData = _historicalData.reversed.toList();
                 _historicalDates = _historicalDates.reversed.toList();
                 break;
+              case "Height":
+                _currentData = _parseDoubleValue(healthData['height']) > 0
+                    ? _parseDoubleValue(healthData['height'])
+                    : _height;
+                _goalData = 170.0;
+                _historicalData = [];
+                _historicalDates = [];
+                break;
               case "BMI":
                 _calculateBMI();
                 _goalData = 22.0;
                 _historicalData = [];
                 _historicalDates = [];
+
+                final weightPoints = _extractHistoryPoints(
+                  weightHistorySnapshot,
+                  'weight',
+                );
+                final heightPoints = <_MetricHistoryPoint>[
+                  if (_height >= _minValidHeightCm)
+                    _MetricHistoryPoint(DateTime.now(), _height),
+                ];
+
+                for (final weightPoint in weightPoints) {
+                  final heightAtDate = _resolveHeightForDate(
+                    heightPoints,
+                    weightPoint.date,
+                  );
+                  final bmiAtDate = _computeSafeBmi(
+                    weightPoint.value,
+                    heightAtDate,
+                  );
+
+                  if (bmiAtDate > 0) {
+                    _historicalData.add(bmiAtDate);
+                    _historicalDates.add(weightPoint.date);
+                  }
+                }
+
+                if (_historicalData.isEmpty && _currentData > 0) {
+                  _historicalData = [_currentData];
+                  _historicalDates = [DateTime.now()];
+                }
                 break;
               case "Sleep Hours":
                 // First try to get the latest sleep entry from sleep_history
@@ -184,8 +398,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       .toDouble();
                 }
 
-                _currentData =
-                    latestSleepHours; // Use latest sleep hours instead of current
+                _currentData = latestSleepHours > 0
+                    ? latestSleepHours
+                    : (healthData['sleepHours'] ?? 0.0).toDouble();
                 _goalData = 8.0;
 
                 // Load sleep history with actual dates
@@ -203,11 +418,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 _historicalDates = _historicalDates.reversed.toList();
                 break;
             }
-
-            // Load daily activity history
-            _dailyActivityHistory = dailyActivitySnapshot.docs
-                .map((doc) => DailyActivity.fromMap(doc.data()))
-                .toList();
           } else {
             _currentData = 0.0;
             _goalData = _getDefaultGoal();
@@ -253,14 +463,20 @@ class _DetailScreenState extends State<DetailScreen> {
       double value = 0.0;
 
       switch (metric) {
+        case 'dailyCalories':
+        case 'weeklyCalories':
         case 'calories':
-          value = _dailyActivityHistory[i].calories;
+          value = _dailyActivityHistory[i].weeklyCalories.toDouble();
           break;
+        case 'dailyMinutes':
+        case 'weeklyMinutes':
         case 'steps':
-          value = _dailyActivityHistory[i].steps.toDouble();
+          value = _dailyActivityHistory[i].weeklyMinutes.toDouble();
           break;
+        case 'dailyWorkoutsCount':
+        case 'weeklyWorkoutsCount':
         case 'movingMinutes':
-          value = _dailyActivityHistory[i].movingMinutes;
+          value = _dailyActivityHistory[i].weeklyWorkoutsCount.toDouble();
           break;
       }
 
@@ -274,40 +490,32 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _calculateBMI() {
-    if (_height > 0 && _weight > 0) {
-      // Use _weight and _height from user profile
-      double bmi = _weight / ((_height / 100) * (_height / 100));
-      setState(() {
-        _currentData = double.parse(bmi.toStringAsFixed(1));
-      });
-    } else {
-      // If no valid data, set to 0.0
-      setState(() {
-        _currentData = 0.0;
-      });
-    }
+    setState(() {
+      _currentData = _computeSafeBmi(_weight, _height);
+    });
   }
 
   double _calculateCurrentBMI() {
-    if (_height > 0 && _weight > 0) {
-      // Use _weight and _height from user profile
-      return _weight / ((_height / 100) * (_height / 100));
-    }
-    return 0.0;
+    return _computeSafeBmi(_weight, _height);
   }
 
   double _getDefaultGoal() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
-        return 600.0;
+        return 2500.0;
+      case "Minutes":
       case "Steps":
-        return 7000.0;
+        return 300.0;
+      case "Workouts":
       case "Moving":
-        return 60.0;
+        return 5.0;
       case "Waist Measurement": // UPDATED
         return 80.0;
       case "Weight":
         return 62.0;
+      case "Height":
+        return 170.0;
       case "BMI":
         return 22.0;
       case "Sleep Hours": // UPDATED
@@ -323,12 +531,17 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (widget.title) {
       case "Waist Measurement": // UPDATED
         return "${_currentData.toStringAsFixed(1)} cm";
+      case "Height":
+        return "${_currentData.toStringAsFixed(1)} cm";
       case "Weight":
         return "${_currentData.toStringAsFixed(1)} kg";
       case "BMI":
         return _currentData.toStringAsFixed(1);
       case "Sleep Hours": // UPDATED
         return "${_currentData.toStringAsFixed(1)} hrs";
+      case "kcal":
+      case "Minutes":
+      case "Workouts":
       case "Calories":
       case "Steps":
       case "Moving":
@@ -345,12 +558,17 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (widget.title) {
       case "Waist Measurement": // UPDATED
         return "${average.toStringAsFixed(1)} cm";
+      case "Height":
+        return "${average.toStringAsFixed(1)} cm";
       case "Weight":
         return "${average.toStringAsFixed(1)} kg";
       case "BMI":
         return average.toStringAsFixed(1);
       case "Sleep Hours": // UPDATED
         return "${average.toStringAsFixed(1)} hrs";
+      case "kcal":
+      case "Minutes":
+      case "Workouts":
       case "Calories":
       case "Steps":
       case "Moving":
@@ -374,18 +592,23 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (widget.title) {
       case "Waist Measurement": // UPDATED
         return "${_goalData.toStringAsFixed(1)} cm";
+      case "Height":
+        return "${_goalData.toStringAsFixed(1)} cm";
       case "Weight":
         return "${_goalData.toStringAsFixed(1)} kg";
       case "BMI":
         return _goalData.toStringAsFixed(1);
       case "Sleep Hours": // UPDATED
         return "${_goalData.toStringAsFixed(1)} hrs";
+      case "kcal":
       case "Calories":
         return "${_goalData.toInt()} kcal";
+      case "Minutes":
       case "Steps":
-        return "${_goalData.toInt()} steps";
-      case "Moving":
         return "${_goalData.toInt()} mins";
+      case "Workouts":
+      case "Moving":
+        return "${_goalData.toInt()} workouts";
       default:
         return "N/A";
     }
@@ -395,12 +618,15 @@ class _DetailScreenState extends State<DetailScreen> {
     if (_isLoading) return _getUnit();
 
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return "/${_goalData.toInt()} kcal";
+      case "Minutes":
       case "Steps":
-        return "/${_goalData.toInt()} steps";
-      case "Moving":
         return "/${_goalData.toInt()} mins";
+      case "Workouts":
+      case "Moving":
+        return "/${_goalData.toInt()} workouts";
       default:
         return _getUnit();
     }
@@ -408,13 +634,17 @@ class _DetailScreenState extends State<DetailScreen> {
 
   String _getUnit() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return "kcal";
+      case "Minutes":
       case "Steps":
-        return "steps";
+        return "mins";
+      case "Workouts":
       case "Moving":
-        return "min";
+        return "workouts";
       case "Waist Measurement": // UPDATED
+      case "Height":
         return "cm";
       case "Weight":
         return "kg";
@@ -427,14 +657,19 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Color _getThemeColor() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return const Color(0xFFFF6B35);
+      case "Minutes":
       case "Steps":
         return const Color(0xFFFF9800);
+      case "Workouts":
       case "Moving":
         return const Color(0xFF2196F3);
       case "Waist Measurement": // UPDATED: Changed to blue
         return Colors.blue;
+      case "Height":
+        return const Color(0xFF4FC3F7);
       case "Sleep Hours": // UPDATED: Changed to purple
         return Colors.purple;
       default:
@@ -443,6 +678,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   String _getBMICategory(double bmi) {
+    if (bmi <= 0) return "Check data";
     if (bmi < 18.5) return "Underweight";
     if (bmi < 25) return "Normal";
     if (bmi < 30) return "Overweight";
@@ -450,6 +686,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Color _getBMIColor(double bmi) {
+    if (bmi <= 0) return Colors.white54;
     if (bmi < 18.5) return Colors.blue;
     if (bmi < 25) return Colors.green;
     if (bmi < 30) return Colors.orange;
@@ -482,14 +719,19 @@ class _DetailScreenState extends State<DetailScreen> {
 
   IconData _getIconForMetric() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
         return Icons.local_fire_department;
+      case "Minutes":
       case "Steps":
         return Icons.directions_walk;
+      case "Workouts":
       case "Moving":
         return Icons.directions_run;
       case "Waist Measurement": // UPDATED
         return Icons.straighten;
+      case "Height":
+        return Icons.height;
       case "Sleep Hours": // UPDATED
         return Icons.bedtime;
       default:
@@ -528,7 +770,6 @@ class _DetailScreenState extends State<DetailScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            widget.onDataSaved?.call();
             Navigator.pop(context);
           },
         ),
@@ -563,30 +804,171 @@ class _DetailScreenState extends State<DetailScreen> {
   // In the _buildAppBarActions method
   List<Widget> _buildAppBarActions() {
     if (widget.title == "Weight" ||
+        widget.title == "Height" ||
         widget.title == "Waist Measurement" ||
         widget.title == "Sleep Hours") {
       return [
         IconButton(
           icon: const Icon(Icons.add, color: Colors.white),
-          onPressed: () => _navigateToAddDataScreen(),
+          onPressed: _showMetricInputDialog,
         ),
       ];
     }
     return [];
   }
 
-  // Add this new method
-  void _navigateToAddDataScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            AddDataScreen(title: widget.title, onDataSaved: _refreshData),
-      ),
-    ).then((value) {
-      // This will be called when the AddDataScreen is popped (by back button or save)
-      _refreshData();
-    });
+  Future<void> _showMetricInputDialog() async {
+    final isSleepMetric = widget.title == "Sleep Hours";
+    final todaySleepEntries = isSleepMetric ? await _loadTodaySleepEntries() : null;
+    final hasTodaySleepEntry = todaySleepEntries?.docs.isNotEmpty ?? false;
+    final dialogTitle = isSleepMetric
+        ? (hasTodaySleepEntry
+            ? "Update Sleep Hours"
+            : "Add Your Sleep Hours Last Night")
+        : "Update ${widget.title}";
+    final hintText = isSleepMetric
+        ? (hasTodaySleepEntry
+            ? "Update today's sleep hours"
+            : "Enter your sleep hours last night")
+        : "Enter ${widget.title.toLowerCase()}";
+    final initialText = isSleepMetric
+        ? (hasTodaySleepEntry && _currentData > 0
+            ? _currentData.toStringAsFixed(1)
+            : '')
+        : (_currentData > 0 ? _currentData.toStringAsFixed(1) : '');
+
+    final controller = TextEditingController(text: initialText);
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: Text(
+            dialogTitle,
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+            ],
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Colors.white38),
+              suffixText: _getUnit().isEmpty ? null : _getUnit(),
+              suffixStyle: const TextStyle(color: Colors.white70),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _getThemeColor()),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final value = double.tryParse(controller.text);
+                if (value == null || value <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid positive number'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (widget.title == "Weight" &&
+                    (value < _minValidWeightKg || value > _maxValidWeightKg)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a realistic weight between 20 and 400 kg'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (widget.title == "Height" &&
+                    (value < _minValidHeightCm || value > _maxValidHeightCm)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a realistic height between 80 and 250 cm'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (widget.title == "Weight" &&
+                    _height >= _minValidHeightCm &&
+                    !_isDisplayableBmiPair(value, _height)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('That weight does not match your current height. Please enter a more realistic value'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (widget.title == "Height" &&
+                    _weight >= _minValidWeightKg &&
+                    !_isDisplayableBmiPair(_weight, value)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('That height does not match your current weight. Please enter a more realistic value'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+
+                switch (widget.title) {
+                  case "Weight":
+                    await _updateWeightData(value);
+                    break;
+                  case "Height":
+                    await _updateHeightData(value);
+                    break;
+                  case "Waist Measurement":
+                    await _updateWaistMeasurementData(value);
+                    break;
+                  case "Sleep Hours": {
+                    await _updateSleepHoursData(
+                      value,
+                      existingTodayEntries: todaySleepEntries,
+                    );
+                    break;
+                  }
+                }
+
+                _refreshData();
+              },
+              child: Text(
+                "Save",
+                style: TextStyle(color: _getThemeColor()),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Add refresh method
@@ -594,7 +976,101 @@ class _DetailScreenState extends State<DetailScreen> {
     setState(() {
       _isLoading = true;
     });
+    widget.onDataSaved?.call();
     _loadDataFromFirebase();
+  }
+
+  bool _isWeightGoalReached() {
+    return (_currentData - _goalData).abs() < 0.1;
+  }
+
+  Future<void> _showWeightGoalDialog() async {
+    final controller = TextEditingController(
+      text: _goalData > 0 ? _goalData.toStringAsFixed(1) : '',
+    );
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            'Set Weight Goal',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Enter goal in kg',
+              hintStyle: const TextStyle(color: Colors.white38),
+              suffixText: 'kg',
+              suffixStyle: const TextStyle(color: Colors.white70),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.green),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                final goal = double.tryParse(controller.text);
+                if (goal == null || goal <= 0 || goal > 500) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter a valid goal in kg'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+                await _saveWeightGoal(goal);
+              },
+              child: const Text(
+                'Save',
+                style: TextStyle(color: Colors.green),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _saveWeightGoal(double goal) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('health_metrics')
+        .doc('current')
+        .set({
+      'weightGoalKg': goal,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    setState(() {
+      _goalData = goal;
+    });
+
+    widget.onDataSaved?.call();
   }
 
   // Add method to update waist measurement data in subcollection
@@ -626,10 +1102,52 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
+  Future<void> _updateHeightData(double newValue) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final updatedBmi = _computeSafeBmi(_weight, newValue);
+
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'height': newValue,
+            'bmi': updatedBmi,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'profile': {
+          'weight': _weight,
+          'height': newValue,
+          'bmi': updatedBmi,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+  }
+
   // Add method to update weight data in subcollection
   Future<void> _updateWeightData(double newValue) async {
     final user = _auth.currentUser;
     if (user != null) {
+      if (_height >= _minValidHeightCm && !_isDisplayableBmiPair(newValue, _height)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'That weight does not match your current height. Please enter a more realistic value',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final updatedBmi = _computeSafeBmi(newValue, _height);
+
       // Update in health metrics collection
       await _firestore
           .collection('users')
@@ -638,12 +1156,18 @@ class _DetailScreenState extends State<DetailScreen> {
           .doc('current')
           .set({
             'weight': newValue,
+            'bmi': updatedBmi,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
       // Update in user profile
       await _firestore.collection('users').doc(user.uid).set({
-        'profile.weight': newValue,
+        'profile': {
+          'weight': newValue,
+          'height': _height,
+          'bmi': updatedBmi,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -662,7 +1186,10 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   // Add method to update sleep hours data in subcollection
-  Future<void> _updateSleepHoursData(double newValue) async {
+  Future<void> _updateSleepHoursData(
+    double newValue, {
+    QuerySnapshot<Map<String, dynamic>>? existingTodayEntries,
+  }) async {
     final user = _auth.currentUser;
     if (user != null) {
       // Update in health metrics collection
@@ -676,17 +1203,31 @@ class _DetailScreenState extends State<DetailScreen> {
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
-      // Add to sleep history subcollection for Android compatibility
-      await _firestore
+      final sleepHistoryRef = _firestore
           .collection('users')
           .doc(user.uid)
-          .collection('sleep_history')
-          .doc(DateTime.now().toIso8601String())
-          .set({
-            'sleepHours': newValue,
-            'date': DateTime.now(),
-            'timestamp': FieldValue.serverTimestamp(),
-          });
+          .collection('sleep_history');
+
+      if (existingTodayEntries != null && existingTodayEntries.docs.isNotEmpty) {
+        final docs = existingTodayEntries.docs;
+        final primaryDoc = docs.first;
+
+        await primaryDoc.reference.set({
+          'sleepHours': newValue,
+          'date': Timestamp.fromDate(DateTime.now()),
+          'timestamp': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        for (final extraDoc in docs.skip(1)) {
+          await extraDoc.reference.delete();
+        }
+      } else {
+        await sleepHistoryRef.doc(DateTime.now().toIso8601String()).set({
+          'sleepHours': newValue,
+          'date': DateTime.now(),
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      }
     }
   }
 
@@ -694,10 +1235,15 @@ class _DetailScreenState extends State<DetailScreen> {
     switch (widget.title) {
       case "Weight":
         return _buildWeightContent();
+      case "Height":
+        return _buildHeightContent();
       case "BMI":
         return _buildBMIContent();
       case "Sleep Hours": // UPDATED
         return _buildSleepContent();
+      case "kcal":
+      case "Minutes":
+      case "Workouts":
       case "Calories":
       case "Steps":
       case "Moving":
@@ -709,14 +1255,15 @@ class _DetailScreenState extends State<DetailScreen> {
     }
   }
 
-   Widget _buildWeightContent() {
+  Widget _buildHeightContent() {
+    final currentBmi = _computeSafeBmi(_weight, _currentData);
+
     return SingleChildScrollView(
       child: Column(
         children: [
-          // Current weight display
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
@@ -729,43 +1276,300 @@ class _DetailScreenState extends State<DetailScreen> {
               ],
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
-                    color: Colors.green, // Changed to green for weight
-                    fontSize: 56,
+                    color: Color(0xFF4FC3F7),
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Weight (kg)",
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                  "Height (cm)",
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.green.withOpacity(0.4)),
+                    color: const Color(0xFF4FC3F7).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFF4FC3F7).withOpacity(0.28),
+                    ),
                   ),
                   child: Text(
-                    "Goal: ${_goalData.toStringAsFixed(1)} kg",
+                    "Current saved height for your profile",
                     style: const TextStyle(
-                      color: Colors.green,
+                      color: Colors.white,
                       fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          // Weight chart
+          _buildHeightProfileCard(currentBmi),
+          const SizedBox(height: 20),
+          _buildHeightInfoCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeightProfileCard(double currentBmi) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.height, color: Color(0xFF4FC3F7), size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Height Profile",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4FC3F7).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF4FC3F7).withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Height usually changes rarely, so this screen keeps only your latest measured value.",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildHeightSummaryChip(
+                      label: "Current Height",
+                      value: "${_currentData.toStringAsFixed(1)} cm",
+                    ),
+                    _buildHeightSummaryChip(
+                      label: "Current Weight",
+                      value: _weight > 0
+                          ? "${_weight.toStringAsFixed(1)} kg"
+                          : "Add weight",
+                    ),
+                    _buildHeightSummaryChip(
+                      label: "BMI from this height",
+                      value: currentBmi > 0
+                          ? currentBmi.toStringAsFixed(1)
+                          : "Check data",
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeightSummaryChip({
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151515),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF191919),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Text(
+                  _currentData.toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 52,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Weight (kg)",
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.green.withOpacity(0.35)),
+                      ),
+                      child: Text(
+                        "Goal: ${_goalData.toStringAsFixed(1)} kg",
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton(
+                      onPressed: _showWeightGoalDialog,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.green.withOpacity(0.35)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      child: const Text(
+                        "Set Goal",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _isWeightGoalReached()
+                        ? Colors.green.withOpacity(0.16)
+                        : Colors.white.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isWeightGoalReached()
+                          ? Colors.green.withOpacity(0.35)
+                          : Colors.white10,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isWeightGoalReached()
+                            ? Icons.check_circle
+                            : Icons.track_changes,
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _isWeightGoalReached()
+                              ? "Goal reached"
+                              : "Difference: ${(_currentData - _goalData).abs().toStringAsFixed(1)} kg",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           Container(
             height: 220,
             decoration: BoxDecoration(
@@ -786,9 +1590,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       painter: RealDataChartPainter(
                         data: _historicalData,
                         dates: _historicalDates,
-                        color: Colors.green, // Changed to green for weight
+                        color: Colors.green,
                         goal: _goalData,
-                        timeTab: 2, // Always show full history for weight
+                        timeTab: 2,
                       ),
                       size: const Size(double.infinity, 180),
                     )
@@ -801,11 +1605,9 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          // Weight history section
-          _buildWeightHistorySection(), // New method for weight history
+          _buildWeightHistorySection(),
           const SizedBox(height: 20),
-          // Body composition card
-          _buildBodyCompositionCard(), // Keep the BMI card
+          _buildBodyCompositionCard(),
           const SizedBox(height: 20),
         ],
       ),
@@ -829,26 +1631,31 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, // Changed to start alignment
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with proper alignment
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.history, color: Colors.green, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "Weight History",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                Flexible(
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, color: Colors.green, size: 20),
+                      const SizedBox(width: 8),
+                      const Flexible(
+                        child: Text(
+                          "Weight History",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Text(
                   "${_historicalData.length} entries",
                   style: const TextStyle(
@@ -884,38 +1691,36 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget _buildWeightHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   DateFormat('MMMM d, yyyy').format(date),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('HH:mm').format(date),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -1157,19 +1962,19 @@ class _DetailScreenState extends State<DetailScreen> {
                         // BMI Scale Bar
                         Container(
                           height: 16,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            gradient: const LinearGradient(
-                              colors: [
-                                Colors.blue,
-                                Colors.green,
-                                Colors.orange,
-                                Colors.deepOrange,
-                              ],
-                              stops: [0.24, 0.49, 0.74, 1.0],
-                            ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          gradient: const LinearGradient(
+                            colors: [
+                              Colors.blue,
+                              Colors.green,
+                              Colors.orange,
+                              Colors.deepOrange,
+                            ],
+                            stops: [0.14, 0.40, 0.60, 1.0],
                           ),
                         ),
+                      ),
 
                         // BMI Indicator Arrow
                         Positioned(
@@ -1396,10 +2201,17 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1408,14 +2220,33 @@ class _DetailScreenState extends State<DetailScreen> {
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
                     color: Colors.purple,
-                    fontSize: 56,
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   "Sleep Hours",
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    _getSleepCoachingMessage(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -1474,11 +2305,9 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Centered header
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.history, color: Colors.purple, size: 24),
                 const SizedBox(width: 8),
@@ -1518,38 +2347,36 @@ class _DetailScreenState extends State<DetailScreen> {
   Widget _buildSleepHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   DateFormat('MMMM d, yyyy').format(date),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('HH:mm').format(date),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -1573,22 +2400,8 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _buildMetricContent() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              _buildTimeTabButton('Day', 0),
-              _buildTimeTabButton('Week', 1),
-              _buildTimeTabButton('Month', 2),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1620,34 +2433,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 style: const TextStyle(color: Colors.white70, fontSize: 18),
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: CustomPaint(
-              painter: RealDataChartPainter(
-                data: _historicalData,
-                dates: _historicalDates,
-                color: _getThemeColor(),
-                goal: _goalData,
-                timeTab: _timeTab,
-              ),
-              size: const Size(double.infinity, 180),
-            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -1686,7 +2471,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      _getSummaryTitle(),
+                      "Today",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -1701,7 +2486,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      flex: 1,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1724,38 +2508,6 @@ class _DetailScreenState extends State<DetailScreen> {
                         ],
                       ),
                     ),
-                    if (_timeTab > 0 && _historicalData.isNotEmpty) ...[
-                      Container(
-                        width: 0.5,
-                        height: 40,
-                        color: Colors.white38,
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${_getAverageValue()} ${_getUnit()}",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              "Average",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],
@@ -1763,10 +2515,202 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        GestureDetector(
-          onTap: () => _showAboutInfo(context),
-          child: Container(
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: _getThemeColor(), size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "About ${widget.title}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(color: Colors.white38, height: 1, thickness: 0.5),
+                const SizedBox(height: 14),
+                Text(
+                  _getInlineMetricInfo(),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildMetricTipsCard(),
+      ],
+    );
+  }
+
+  String _getInlineMetricInfo() {
+    switch (widget.title) {
+      case "kcal":
+      case "Calories":
+        return "Calories here show the energy you burned from recorded workouts today. Completing more workout volume usually increases this number.";
+      case "Minutes":
+      case "Steps":
+        return "Minutes show how much workout time you logged today based on your completed workout exercises and their estimated duration.";
+      case "Workouts":
+      case "Moving":
+        return "Workouts show how many workout sessions you completed today. Each finished workout adds to this total.";
+      default:
+        return "Information about this metric is shown here.";
+    }
+  }
+
+  List<String> _getMetricTips() {
+    switch (widget.title) {
+      case "kcal":
+      case "Calories":
+        return [
+          "Longer workouts and more total sets usually increase calories burned.",
+          "Compound exercises often burn more energy than isolation exercises.",
+          "If this stays low, try finishing a full workout instead of stopping early.",
+        ];
+      case "Minutes":
+      case "Steps":
+        return [
+          "Workout minutes increase when you complete more exercises in one session.",
+          "Resting too long between exercises can make the session feel slower without adding useful minutes.",
+          "A short routine still counts, but longer consistent sessions usually improve this total.",
+        ];
+      case "Workouts":
+      case "Moving":
+        return [
+          "Each fully completed session adds to your workout count for today.",
+          "Several short finished workouts count better than opening a workout and leaving it unfinished.",
+          "Use this number to stay consistent, even on lighter training days.",
+        ];
+      default:
+        return [
+          "Keep logging this metric regularly to build a more useful daily record.",
+        ];
+    }
+  }
+
+  Widget _buildMetricTipsCard() {
+    final tips = _getMetricTips();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.tips_and_updates_outlined, color: _getThemeColor(), size: 24),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    "Tips",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const Divider(color: Colors.white38, height: 1, thickness: 0.5),
+            const SizedBox(height: 14),
+            ...tips.asMap().entries.map((entry) {
+              final isLast = entry.key == tips.length - 1;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      margin: const EdgeInsets.only(top: 1),
+                      decoration: BoxDecoration(
+                        color: _getThemeColor().withOpacity(0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${entry.key + 1}',
+                          style: TextStyle(
+                            color: _getThemeColor(),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent
+  Widget _buildWaistContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
             width: double.infinity,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFF191919),
               borderRadius: BorderRadius.circular(20),
@@ -1778,48 +2722,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: _getThemeColor(), size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      "About ${widget.title}",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white70,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent
-  Widget _buildWaistContent() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1827,14 +2729,33 @@ class _DetailScreenState extends State<DetailScreen> {
                   _currentData.toStringAsFixed(1),
                   style: const TextStyle(
                     color: Colors.blue, // UPDATED: Changed color
-                    fontSize: 56,
+                    fontSize: 52,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   "Waist Measurement", // UPDATED: Changed text
-                  style: TextStyle(color: Colors.white70, fontSize: 18),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    _getRecordedEntriesText("waist"),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -1869,6 +2790,8 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
           const SizedBox(height: 20),
           _buildWaistHistorySection(), // UPDATED: Changed method name
+          const SizedBox(height: 20),
+          _buildAboutWaistCard(),
         ],
       ),
     );
@@ -1944,12 +2867,15 @@ class _DetailScreenState extends State<DetailScreen> {
 
   String _getMetricKey() {
     switch (widget.title) {
+      case "kcal":
       case "Calories":
-        return 'calories';
+        return 'dailyCalories';
+      case "Minutes":
       case "Steps":
-        return 'steps';
+        return 'dailyMinutes';
+      case "Workouts":
       case "Moving":
-        return 'movingMinutes';
+        return 'dailyWorkoutsCount';
       default:
         return '';
     }
@@ -2438,13 +3364,9 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Center the entire section
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Centered header
             Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.center, // Center the header row
               children: [
                 const Icon(Icons.history, color: Colors.blue, size: 24),
                 const SizedBox(width: 8),
@@ -2481,42 +3403,143 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
+  Widget _buildAboutWaistCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "About Waist Measurement",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 14),
+            Divider(color: Colors.white38, height: 1, thickness: 0.5),
+            SizedBox(height: 14),
+            Text(
+              "Waist measurement helps you track body changes over time. Updating it regularly gives a clearer picture of your progress together with weight, height, and BMI.",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeightInfoCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFF4FC3F7), size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "About Height",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 14),
+            Divider(color: Colors.white38, height: 1, thickness: 0.5),
+            SizedBox(height: 14),
+            Text(
+              "Height is a body profile measurement, not a workout progress stat. Update it only when you take a new measurement so your BMI, dashboard, and profile stay accurate.",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCenteredHistoryItem(DateTime date, double value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Center the entire row
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.center, // Center the date info
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   DateFormat('MMMM d, yyyy').format(date),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   DateFormat('HH:mm').format(date),
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -2649,17 +3672,17 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _showAboutInfo(BuildContext context) {
-    if (widget.title == "Calories") {
+    if (widget.title == "Calories" || widget.title == "kcal") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const CaloriesInfoScreen()),
       );
-    } else if (widget.title == "Moving") {
+    } else if (widget.title == "Moving" || widget.title == "Workouts") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MovingInfoScreen()),
       );
-    } else if (widget.title == "Steps") {
+    } else if (widget.title == "Steps" || widget.title == "Minutes") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const StepsInfoScreen()),
@@ -2753,32 +3776,38 @@ class _DetailScreenState extends State<DetailScreen> {
 // Daily Activity Model (same as in healthdashboard.dart)
 class DailyActivity {
   final DateTime date;
-  final int steps;
-  final double calories;
-  final double movingMinutes;
+  final int weeklyMinutes;
+  final int weeklyCalories;
+  final int weeklyWorkoutsCount;
 
   DailyActivity({
     required this.date,
-    required this.steps,
-    required this.calories,
-    required this.movingMinutes,
+    required this.weeklyMinutes,
+    required this.weeklyCalories,
+    required this.weeklyWorkoutsCount,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'date': date.toIso8601String(),
-      'steps': steps,
-      'calories': calories,
-      'movingMinutes': movingMinutes,
+      'dailyMinutes': weeklyMinutes,
+      'dailyCalories': weeklyCalories,
+      'dailyWorkoutsCount': weeklyWorkoutsCount,
     };
   }
 
   factory DailyActivity.fromMap(Map<String, dynamic> map) {
     return DailyActivity(
       date: DateTime.parse(map['date']),
-      steps: map['steps'],
-      calories: (map['calories'] ?? 0).toDouble(),
-      movingMinutes: (map['movingMinutes'] ?? 0).toDouble(),
+      weeklyMinutes:
+          (map['dailyMinutes'] ?? map['weeklyMinutes'] ?? map['movingMinutes'] ?? 0)
+              .toInt(),
+      weeklyCalories:
+          (map['dailyCalories'] ?? map['weeklyCalories'] ?? map['calories'] ?? 0)
+              .toInt(),
+      weeklyWorkoutsCount:
+          (map['dailyWorkoutsCount'] ?? map['weeklyWorkoutsCount'] ?? 0)
+              .toInt(),
     );
   }
 }
@@ -2826,10 +3855,11 @@ class RealDataChartPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
-    double xStep = size.width / (data.length - 1);
+    final bool hasMultiplePoints = data.length > 1;
+    double xStep = hasMultiplePoints ? size.width / (data.length - 1) : 0;
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
@@ -2888,7 +3918,16 @@ class RealDataChartPainter extends CustomPainter {
   }
 
   String _getDateLabel(DateTime date) {
-    if (timeTab == 0) {
+    final bool sameDayOnly =
+        dates.isNotEmpty &&
+        dates.every(
+          (entry) =>
+              entry.year == dates.first.year &&
+              entry.month == dates.first.month &&
+              entry.day == dates.first.day,
+        );
+
+    if (timeTab == 0 || sameDayOnly) {
       return DateFormat('HH:mm').format(date);
     } else if (timeTab == 1) {
       return DateFormat('MMM dd').format(date);

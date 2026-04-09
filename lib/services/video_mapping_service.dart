@@ -14,8 +14,9 @@ class VideoMappingService {
     // Biceps exercises
     'Barbell/Dumbbell Bicep Curls': 'assets/videos/Biceps/barbell_dumbbell_bicep_curls.mp4',
     'Hammer Curls': 'assets/videos/Biceps/hammer_curls.mp4',
-    'Concentration Curls': 'assets/videos/Biceps/concentration_curls.mp4',
+    'Concentration Curls': 'assets/videos/Biceps/ccncentration_curls.mp4',
     'Preacher Curls': 'assets/videos/Biceps/preacher_curls.mp4',
+    'Cable Bicep Curls': 'assets/videos/Biceps/barbell_dumbbell_bicep_curls.mp4',
     
     // Back exercises (Lats)
     'Lat Pulldowns': 'assets/videos/Back/Lats/lat_pulldowns.mp4',
@@ -25,7 +26,7 @@ class VideoMappingService {
     // Back exercises (Mid-Back)
     'Barbell Rows': 'assets/videos/Back/Mid-Back/barbell_rows.mp4',
     'Seated Cable Rows': 'assets/videos/Back/Mid-Back/seated_cable_rows.mp4',
-    'T-Bar Rows': 'assets/videos/Back/Mid-Back/t_bar_rows.mp4',
+    'T-Bar Rows': 'assets/videos/Back/Mid-Back/t_bar_row_machine_row.mp4',
     'Face Pulls': 'assets/videos/Back/Mid-Back/face_pulls_back.mp4',
 
     // Calves exercises
@@ -48,6 +49,8 @@ class VideoMappingService {
     'Leg Extensions': 'assets/videos/Quads/leg_extensions.mp4',
     'Leg Press': 'assets/videos/Quads/leg_press.mp4',
     'Lunges': 'assets/videos/Quads/lunges.mp4',
+    'Bodyweight Squats': 'assets/videos/Quads/barbell_squat.mp4',
+    'Calf Press': 'assets/videos/Calves/standing_calf_raises.mp4',
     
     // Shoulder exercises
     //Anterior
@@ -57,6 +60,7 @@ class VideoMappingService {
 
     //Medial
     'Dumbbell_Cable Lateral Raises': 'assets/videos/Shoulder/Medial/dumbbell_cable_lateral_raises.mp4',
+    'Dumbbell Lateral Raises': 'assets/videos/Shoulder/Medial/dumbbell_cable_lateral_raises.mp4',
     'Upright Rows': 'assets/videos/Shoulder/Medial/upright_rows.mp4',
 
     //Posterior
@@ -70,6 +74,7 @@ class VideoMappingService {
     
     // Triceps exercises
     'Skull Crusher': 'assets/videos/Triceps/dumbbell_skull_crusher_opex_exercise_library.mp4',
+    'Skull Crushers': 'assets/videos/Triceps/dumbbell_skull_crusher_opex_exercise_library.mp4',
     'Tricep Pushdowns': 'assets/videos/Triceps/tricep_pushdowns.mp4',
     'Overhead Tricep Extension': 'assets/videos/Triceps/overhead_tricep_extension.mp4',
     
@@ -84,6 +89,11 @@ class VideoMappingService {
     'Cable Woodchopper': 'assets/videos/Rotational - Anti-Rotation (Obliques-Deep Core)/wood_chops.mp4',
     'Pallof Press': 'assets/videos/Rotational - Anti-Rotation (Obliques-Deep Core)/pallof_press.mp4',
     'Side Plank': 'assets/videos/Rotational - Anti-Rotation (Obliques-Deep Core)/side_plank.mp4',
+    'Plank': 'assets/videos/Rotational - Anti-Rotation (Obliques-Deep Core)/side_plank.mp4',
+  };
+
+  static final Map<String, String> _normalizedVideoMapping = {
+    for (final entry in _videoMapping.entries) _normalizeName(entry.key): entry.value,
   };
 
   // Method to get video path for an exercise name
@@ -99,6 +109,13 @@ class VideoMappingService {
     // If no exact match, try to find a partial match by normalizing the name
     String normalizedExerciseName = _normalizeName(exerciseName);
     print("Normalized exercise name: '$normalizedExerciseName'"); // Debug log
+
+    if (_normalizedVideoMapping.containsKey(normalizedExerciseName)) {
+      print(
+        "Found normalized match for: '$exerciseName' -> '${_normalizedVideoMapping[normalizedExerciseName]}'",
+      );
+      return _normalizedVideoMapping[normalizedExerciseName];
+    }
     
     for (String key in _videoMapping.keys) {
       String normalizedKey = _normalizeName(key);

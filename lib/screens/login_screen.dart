@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../screens/admin_dashboard_screen.dart';
 import '../screens/health_dashboard.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/signup_screen.dart';
@@ -102,6 +103,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handlePostLogin(fbAuth.User user) async {
     try {
+      final normalizedEmail = user.email?.trim().toLowerCase() ?? '';
+      if (normalizedEmail == 'admin@gmail.com') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        );
+        return;
+      }
+
       final userDoc = await _getUserDocument(user.uid).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -111,6 +121,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (userDoc.exists) {
         final userData = userDoc.data()!;
+        final bool isBanned = userData['isBanned'] ?? false;
+
+        if (isBanned) {
+          await _firebaseAuth.signOut();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This account has been banned by the admin.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
         final hasCompletedProfile = userData['hasCompletedProfile'] ?? false;
 
         if (hasCompletedProfile) {
@@ -255,6 +279,31 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final trimmedEmail = _emailController.text.trim().toLowerCase();
+
+      if (trimmedEmail == 'admin@gmail.com') {
+        final adminCredential = await _performEmailSignIn().timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw fbAuth.FirebaseAuthException(
+              code: 'timeout',
+              message:
+                  'Authentication operation timed out. Please check your connection and try again.',
+            );
+          },
+        );
+
+        final adminUser = adminCredential.user;
+        if (adminUser == null) {
+          throw Exception('Admin login failed. No user returned.');
+        }
+
+        await _saveCredentials();
+        if (!mounted) return;
+        await _handlePostLogin(adminUser);
+        return;
+      }
+
       final credential = await _performEmailSignIn().timeout(
         const Duration(seconds: 30),
         onTimeout: () {
@@ -335,6 +384,11 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final double logoSize =
+                (constraints.maxWidth * 0.38).clamp(140.0, 220.0).toDouble();
+            final double logoPadding =
+                (logoSize * 0.105).clamp(14.0, 22.0).toDouble();
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: ConstrainedBox(
@@ -344,19 +398,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const SizedBox(height: 20),
-                      Align(
-                        alignment: Alignment.topLeft,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF191919),
-                            shape: BoxShape.circle,
+                      if (Navigator.of(context).canPop())
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF191919),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: _isLoading ? null : () => Navigator.pop(context),
+                            ),
                           ),
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: _isLoading ? null : () => Navigator.pop(context),
-                          ),
-                        ),
-                      ),
+                        )
+                      else
+                        const SizedBox(height: 48),
                       const SizedBox(height: 20),
                       const Text(
                         'Welcome Back',
@@ -372,7 +429,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 28),
+                      Center(
+                        child: Container(
+                          width: logoSize,
+                          height: logoSize,
+                          padding: EdgeInsets.all(logoPadding),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111111),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.35),
+                                blurRadius: 24,
+                                offset: const Offset(0, 12),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/logo.jpg',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 36),
                       Expanded(
                         child: Center(
                           child: Container(

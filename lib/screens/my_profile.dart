@@ -7,17 +7,29 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'progress_album_screen.dart';
-import 'login_screen.dart';
 import 'about_app_screen.dart';
+import 'login_screen.dart';
 
 class MyProfile extends StatefulWidget {
-  const MyProfile({super.key});
+  final int refreshVersion;
+
+  const MyProfile({
+    super.key,
+    this.refreshVersion = 0,
+  });
 
   @override
   State<MyProfile> createState() => _MyProfileState();
 }
 
 class _MyProfileState extends State<MyProfile> {
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
+
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -25,6 +37,7 @@ class _MyProfileState extends State<MyProfile> {
 
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
+  bool _isUpdatingProfile = false;
   String? _profileImageUrl;
   String? _recentProgressImage; // Store the most recent progress image URL
 
@@ -36,11 +49,12 @@ class _MyProfileState extends State<MyProfile> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print('🔄 Profile tab opened - refreshing data');
-    _loadUserData();
-    _loadRecentProgressImage();
+  void didUpdateWidget(covariant MyProfile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refreshVersion != oldWidget.refreshVersion) {
+      _loadUserData();
+      _loadRecentProgressImage();
+    }
   }
 
   @override
@@ -232,14 +246,56 @@ class _MyProfileState extends State<MyProfile> {
 
   /// ✅ Calculate BMI
   double? _calculateBMI() {
-    final weight = _userData?['profile']?['weight']?.toDouble();
-    final height = _userData?['profile']?['height']?.toDouble();
+    final weight = _safeProfileNumber('weight');
+    final height = _safeProfileNumber('height');
 
-    if (weight == null || height == null || height == 0) return null;
+    if (weight < _minValidWeightKg ||
+        weight > _maxValidWeightKg ||
+        height < _minValidHeightCm ||
+        height > _maxValidHeightCm) {
+      return null;
+    }
 
     final heightInMeters = height / 100;
     final bmi = weight / (heightInMeters * heightInMeters);
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) return null;
     return double.parse(bmi.toStringAsFixed(1));
+  }
+
+  double _safeProfileNumber(String key) {
+    final dynamic nestedValue = _userData?['profile']?[key];
+    if (nestedValue is num) return nestedValue.toDouble();
+    if (nestedValue is String) return double.tryParse(nestedValue) ?? 0.0;
+
+    final dynamic dottedValue = _userData?['profile.$key'];
+    if (dottedValue is num) return dottedValue.toDouble();
+    if (dottedValue is String) return double.tryParse(dottedValue) ?? 0.0;
+    return 0.0;
+  }
+
+  String _formatProfileMetric(String key, String unit) {
+    final value = _safeProfileNumber(key);
+    final formatted =
+        value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    return '$formatted $unit';
+  }
+
+  double _weightProgress() {
+    final weight = _safeProfileNumber('weight');
+    if (weight <= 0) return 0.0;
+    return (weight / 100).clamp(0.0, 1.0);
+  }
+
+  double _heightProgress() {
+    final height = _safeProfileNumber('height');
+    if (height <= 0) return 0.0;
+    return (height / 220).clamp(0.0, 1.0);
+  }
+
+  double _bmiProgress() {
+    final bmi = _calculateBMI() ?? 0.0;
+    if (bmi <= 0) return 0.0;
+    return (bmi / 40).clamp(0.0, 1.0);
   }
 
   /// ✅ Delete old avatar from Supabase
@@ -332,7 +388,7 @@ class _MyProfileState extends State<MyProfile> {
 
       if (pickedFile != null && mounted) {
         setState(() {
-          _isLoading = true;
+          _isUpdatingProfile = true;
         });
 
         final user = _firebaseAuth.currentUser;
@@ -393,7 +449,7 @@ class _MyProfileState extends State<MyProfile> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isUpdatingProfile = false;
         });
       }
     }
@@ -474,7 +530,7 @@ class _MyProfileState extends State<MyProfile> {
 
       if (mounted) {
         setState(() {
-          _isLoading = true;
+          _isUpdatingProfile = true;
         });
       }
 
@@ -510,7 +566,7 @@ class _MyProfileState extends State<MyProfile> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isUpdatingProfile = false;
         });
       }
     }
@@ -560,18 +616,13 @@ class _MyProfileState extends State<MyProfile> {
   Future<void> _performLogout() async {
     try {
       await _firebaseAuth.signOut();
+      if (!mounted) {
+        return;
+      }
 
-      Navigator.pushAndRemoveUntil(
-        context,
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Logged out successfully'),
-          backgroundColor: Colors.green,
-        ),
       );
     } catch (e) {
       print('Error during logout: $e');
@@ -678,6 +729,28 @@ class _MyProfileState extends State<MyProfile> {
                                         ),
                                       ),
                                     ),
+                                    if (_isUpdatingProfile)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.45),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.4,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<Color>(
+                                                  Colors.orange,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -730,7 +803,7 @@ class _MyProfileState extends State<MyProfile> {
                                             ),
                                           ),
                                           Text(
-                                            "${_userData?['profile']?['height']?.toString() ?? '0'} cm",
+                                            _formatProfileMetric('height', 'cm'),
                                             style: const TextStyle(
                                               color: Colors.white60,
                                               fontSize: 14,
@@ -774,20 +847,18 @@ class _MyProfileState extends State<MyProfile> {
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               _buildHealthCard(
-                                value:
-                                    "${_userData?['profile']?['weight']?.toString() ?? '0'} kg",
+                                value: _formatProfileMetric('weight', 'kg'),
                                 label: "Weight",
                                 icon: Icons.monitor_weight,
-                                progressValue: 0.7,
+                                progressValue: _weightProgress(),
                                 color: Colors.green,
                               ),
                               const SizedBox(width: 12),
                               _buildHealthCard(
-                                value:
-                                    "${_userData?['profile']?['height']?.toString() ?? '0'} cm",
+                                value: _formatProfileMetric('height', 'cm'),
                                 label: "Height",
-                                icon: Icons.straighten,
-                                progressValue: 0.6,
+                                icon: Icons.height,
+                                progressValue: _heightProgress(),
                                 color: Colors.blue,
                               ),
                               const SizedBox(width: 12),
@@ -795,7 +866,7 @@ class _MyProfileState extends State<MyProfile> {
                                 value: _calculateBMI()?.toString() ?? '0',
                                 label: "BMI",
                                 icon: Icons.monitor_heart,
-                                progressValue: 0.5,
+                                progressValue: _bmiProgress(),
                                 color: Colors.orange,
                               ),
                             ],
@@ -805,8 +876,9 @@ class _MyProfileState extends State<MyProfile> {
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(16),
+                              color: const Color(0xFF141414),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: Colors.white10),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.3),
@@ -823,50 +895,61 @@ class _MyProfileState extends State<MyProfile> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
+                                    Expanded(
+                                      child: Row(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(8),
+                                          padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.2),
+                                            color: Colors.blue.withOpacity(0.14),
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
+                                            border: Border.all(
+                                              color: Colors.blue.withOpacity(0.22),
+                                            ),
                                           ),
                                           child: const Icon(
-                                            Icons.image,
+                                            Icons.photo_library_outlined,
                                             color: Colors.blue,
-                                            size: 24,
+                                            size: 22,
                                           ),
                                         ),
                                         const SizedBox(width: 12),
-                                        const Text(
-                                          "Progress Album",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
+                                        const Flexible(
+                                          child: Text(
+                                            "Progress Album",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ],
+                                    ),
                                     ),
                                     GestureDetector(
                                       onTap: _navigateToProgressAlbum,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
+                                          horizontal: 14,
                                           vertical: 8,
                                         ),
                                         decoration: BoxDecoration(
                                           gradient: const LinearGradient(
-                                            colors: [
-                                              Colors.blue,
-                                              Colors.lightBlue,
-                                            ],
+                                            colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
                                           ),
                                           borderRadius: BorderRadius.circular(
                                             20,
                                           ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF3EA6FF).withOpacity(0.22),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
                                         ),
                                         child: const Text(
                                           "View",
@@ -879,21 +962,22 @@ class _MyProfileState extends State<MyProfile> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  "Recently Added",
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Latest photo from your album",
                                   style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
+                                    color: Colors.grey[400],
+                                    fontSize: 13,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 Container(
                                   width: double.infinity,
-                                  height: 200,
+                                  height: 208,
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: const Color(0xFF202020),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white10),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.2),
@@ -903,7 +987,7 @@ class _MyProfileState extends State<MyProfile> {
                                     ],
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(18),
                                     child: _recentProgressImage != null
                                         ? Image.network(
                                             _recentProgressImage!,
@@ -1088,18 +1172,31 @@ class _MyProfileState extends State<MyProfile> {
           height: double.infinity,
         ),
         Container(
-          color: Colors.black.withOpacity(0.5),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.photo_library, color: Colors.white60, size: 50),
-                SizedBox(height: 8),
-                Text(
-                  "No progress photos yet",
-                  style: TextStyle(color: Colors.white60, fontSize: 16),
-                ),
-              ],
+          color: Colors.black.withOpacity(0.58),
+          child: Center(
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.34),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.photo_library_outlined, color: Colors.white70, size: 42),
+                  SizedBox(height: 10),
+                  Text(
+                    "No progress photos yet",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

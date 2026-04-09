@@ -14,12 +14,22 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   List<DateTime> _completedWorkoutDates = [];
   ExerciseRecord? _highestWeightRecord;
   List<ExerciseRecord> _allExerciseRecords = [];
- List<ExerciseRecord> _filteredExerciseRecords = [];
+  List<ExerciseRecord> _filteredExerciseRecords = [];
   String _selectedCategory = 'All';
   String _selectedDifficulty = 'All';
-  
+  bool _showAllRecords = false;
+
   // Categories and difficulties for filtering
-  final List<String> _categories = ['All', 'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Abs', 'Core'];
+  final List<String> _categories = [
+    'All',
+    'Chest',
+    'Back',
+    'Shoulders',
+    'Arms',
+    'Legs',
+    'Abs',
+    'Core',
+  ];
   final List<String> _difficulties = ['All', 'Easy', 'Medium', 'Hard'];
 
   @override
@@ -40,6 +50,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     
     // Set filtered records to all records initially
     _filteredExerciseRecords = _allExerciseRecords;
+    _showAllRecords = false;
 
     setState(() {});
   }
@@ -69,11 +80,17 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
 
     setState(() {
       _filteredExerciseRecords = filtered;
+      _showAllRecords = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final visibleRecords = _showAllRecords
+        ? _filteredExerciseRecords
+        : _filteredExerciseRecords.take(5).toList();
+    final hasMoreThanFiveRecords = _filteredExerciseRecords.length > 5;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -271,14 +288,46 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       const SizedBox(height: 16),
 
                       // Personal Records Section
-                      const Text(
-                        "Personal Records",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              "Personal Records",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (hasMoreThanFiveRecords)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showAllRecords = !_showAllRecords;
+                                });
+                              },
+                              child: Text(
+                                _showAllRecords ? 'Show less' : 'Show all',
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                      const SizedBox(height: 12),
+
+                      if (!hasMoreThanFiveRecords &&
+                          _filteredExerciseRecords.isNotEmpty)
+                        Text(
+                          'Showing ${_filteredExerciseRecords.length} record${_filteredExerciseRecords.length == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
+                        ),
                       const SizedBox(height: 12),
 
                       // Filter Controls
@@ -389,7 +438,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                             : Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Column(
-                                  children: _filteredExerciseRecords
+                                  children: visibleRecords
                                       .map((record) => _buildPersonalRecordItem(
                                             record.exerciseName,
                                             "${record.weightUsed} kg",
@@ -401,6 +450,22 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                                 ),
                               ),
                       ),
+
+                      if (hasMoreThanFiveRecords)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Center(
+                            child: Text(
+                              _showAllRecords
+                                  ? 'Showing all ${_filteredExerciseRecords.length} records'
+                                  : 'Showing 5 of ${_filteredExerciseRecords.length} records',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
                       
                       // Additional progress metrics
                       const SizedBox(height: 16),

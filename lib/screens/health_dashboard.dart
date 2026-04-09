@@ -27,12 +27,12 @@ class _HealthDashboardState extends State<HealthDashboard>
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Health data - will be loaded from Firestore
-  int _weeklyCalories = 0; // Replaced calories with weeklyCalories from workout screen
-  int _weeklyCaloriesGoal = 2500; // Weekly goal for calories burned
-  int _weeklyMinutes = 0; // Replaced steps with weeklyMinutes from workout screen
-  int _weeklyMinutesGoal = 300; // Weekly goal for minutes exercised
-  int _weeklyWorkoutsCount = 0; // Replaced moving with weeklyWorkouts from workout screen
- int _weeklyWorkoutsGoal = 5; // Weekly goal for workouts completed
+  int _weeklyCalories = 0; // Current daily calories from workout tracking
+  int _weeklyCaloriesGoal = 500; // Daily calories goal
+  int _weeklyMinutes = 0; // Current daily workout minutes
+  int _weeklyMinutesGoal = 60; // Daily workout minutes goal
+  int _weeklyWorkoutsCount = 0; // Current daily completed workouts
+ int _weeklyWorkoutsGoal = 1; // Daily workout goal
 
   // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
   double _waistMeasurement = 0.0;
@@ -52,9 +52,17 @@ class _HealthDashboardState extends State<HealthDashboard>
   // Step tracking variables
   bool _isLoading = true;
   bool _isTrackingSteps = false;
+  int _profileRefreshVersion = 0;
 
  // Date tracking for daily reset
   DateTime _currentDate = DateTime.now();
+  String? _lastDailyResetDate;
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
 
 
   @override
@@ -65,31 +73,98 @@ class _HealthDashboardState extends State<HealthDashboard>
     _checkDailyReset();
   }
 
+  String _todayKey() {
+    return DateFormat('yyyy-MM-dd').format(DateTime.now());
+  }
+
+  DateTime _dateFromKey(String dateKey) {
+    return DateTime.tryParse(dateKey) ?? DateTime.now();
+  }
+
+  String _historyDayKey(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  List<DailyActivity> _dedupeDailyActivityHistory(List<DailyActivity> entries) {
+    final Map<String, DailyActivity> uniqueByDay = {};
+
+    for (final entry in entries) {
+      uniqueByDay[_historyDayKey(entry.date)] = entry;
+    }
+
+    final deduped = uniqueByDay.values.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return deduped;
+  }
+
+  String? _resolveStoredDayKey(dynamic explicitValue, dynamic fallbackValue) {
+    if (explicitValue is String && explicitValue.isNotEmpty) {
+      return explicitValue;
+    }
+    if (explicitValue is Timestamp) {
+      return _todayKeyFromDate(explicitValue.toDate());
+    }
+    if (explicitValue is DateTime) {
+      return _todayKeyFromDate(explicitValue);
+    }
+    if (fallbackValue is Timestamp) {
+      return _todayKeyFromDate(fallbackValue.toDate());
+    }
+    if (fallbackValue is DateTime) {
+      return _todayKeyFromDate(fallbackValue);
+    }
+    if (fallbackValue is String) {
+      final parsed = DateTime.tryParse(fallbackValue);
+      if (parsed != null) {
+        return _todayKeyFromDate(parsed);
+      }
+    }
+    return null;
+  }
+
+  String _todayKeyFromDate(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
   // Check if we need to reset daily data
   void _checkDailyReset() {
-    final now = DateTime.now();
-    if (now.day != _currentDate.day ||
-        now.month != _currentDate.month ||
-        now.year != _currentDate.year) {
-      _resetDailyData();
-    }
+    _syncDailyResetIfNeeded();
 
     // Check every minute for date change
     Future.delayed(const Duration(minutes: 1), _checkDailyReset);
   }
 
+  Future<void> _syncDailyResetIfNeeded() async {
+    final todayKey = _todayKey();
+    if (_lastDailyResetDate == null) {
+      _lastDailyResetDate = todayKey;
+      return;
+    }
+
+    if (_lastDailyResetDate != todayKey) {
+      await _resetDailyData(archiveDate: _dateFromKey(_lastDailyResetDate!));
+    }
+  }
+
   // Reset daily activity data and save to history
-  Future<void> _resetDailyData() async {
+  Future<void> _resetDailyData({DateTime? archiveDate}) async {
     final user = _auth.currentUser;
+    final activityDate = archiveDate ?? _currentDate;
+    final activityDateKey = DateFormat('yyyy-MM-dd').format(activityDate);
+    final todayKey = _todayKey();
+
     if (user != null && (_weeklyMinutes > 0 || _weeklyCalories > 0 || _weeklyWorkoutsCount > 0)) {
       // Save current day's data to history
       final dailyActivity = DailyActivity(
-        date: _currentDate,
+        date: activityDate,
         weeklyMinutes: _weeklyMinutes,
         weeklyCalories: _weeklyCalories,
         weeklyWorkoutsCount: _weeklyWorkoutsCount,
       );
 
+      _dailyActivityHistory.removeWhere(
+        (entry) => DateFormat('yyyy-MM-dd').format(entry.date) == activityDateKey,
+      );
       _dailyActivityHistory.add(dailyActivity);
 
       // Keep only last 30 days
@@ -102,7 +177,7 @@ class _HealthDashboardState extends State<HealthDashboard>
           .collection('users')
           .doc(user.uid)
           .collection('daily_activity')
-          .doc(_currentDate.toIso8601String().split('T')[0])
+          .doc(activityDateKey)
           .set(dailyActivity.toMap());
 
       // Update activity history in health metrics
@@ -115,6 +190,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             'dailyActivityHistory': _dailyActivityHistory
                 .map((e) => e.toMap())
                 .toList(),
+            'lastDailyResetDate': todayKey,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
     }
@@ -122,28 +198,99 @@ class _HealthDashboardState extends State<HealthDashboard>
     // Reset daily counters
     setState(() {
       _currentDate = DateTime.now();
+      _lastDailyResetDate = todayKey;
       _weeklyMinutes = 0;
       _weeklyCalories = 0;
       _weeklyWorkoutsCount = 0;
     });
 
-    // Update Firestore with reset data
-    _updateHealthData(weeklyMinutes: 0, weeklyCalories: 0, weeklyWorkoutsCount: 0);
+    if (user != null) {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_metrics')
+          .doc('current')
+          .set({
+            'dailyMinutes': 0,
+            'dailyCalories': 0,
+            'dailyWorkoutsCount': 0,
+            'lastDailyResetDate': todayKey,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      try {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('health_metrics')
+            .doc('current')
+            .update({
+              'weeklyMinutes': FieldValue.delete(),
+              'weeklyCalories': FieldValue.delete(),
+              'weeklyWorkoutsCount': FieldValue.delete(),
+            });
+      } catch (_) {}
+    }
+  }
+
+  double _parseDoubleValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  double _readProfileNumber(Map<String, dynamic> userData, String key) {
+    final profile = userData['profile'];
+    if (profile is Map<String, dynamic>) {
+      final nestedValue = profile[key];
+      final parsedNested = _parseDoubleValue(nestedValue);
+      if (parsedNested > 0) return parsedNested;
+    }
+
+    final dottedValue = userData['profile.$key'];
+    return _parseDoubleValue(dottedValue);
+  }
+
+  bool _hasValidBodyMetrics({double? heightCm, double? weightKg}) {
+    final safeHeight = heightCm ?? _height;
+    final safeWeight = weightKg ?? _weight;
+    return safeHeight >= _minValidHeightCm &&
+        safeHeight <= _maxValidHeightCm &&
+        safeWeight >= _minValidWeightKg &&
+        safeWeight <= _maxValidWeightKg;
+  }
+
+  bool _isDisplayableBmiPair({required double heightCm, required double weightKg}) {
+    if (!_hasValidBodyMetrics(heightCm: heightCm, weightKg: weightKg)) {
+      return false;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    return bmi >= _minDisplayBmi && bmi <= _maxDisplayBmi;
+  }
+
+  double _computeSafeBmi({double? heightCm, double? weightKg}) {
+    final safeHeight = heightCm ?? _height;
+    final safeWeight = weightKg ?? _weight;
+
+    if (!_hasValidBodyMetrics(heightCm: safeHeight, weightKg: safeWeight)) {
+      return 0.0;
+    }
+
+    final heightInMeters = safeHeight / 100;
+    final bmi = safeWeight / (heightInMeters * heightInMeters);
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) {
+      return 0.0;
+    }
+
+    return double.parse(bmi.toStringAsFixed(1));
   }
 
   // Automatic BMI Calculation
   void _calculateBMI() {
-    if (_height > 0 && _weight > 0) {
-      double heightInMeters = _height / 100;
-      double newBmi = _weight / (heightInMeters * heightInMeters);
-      setState(() {
-        _bmi = double.parse(newBmi.toStringAsFixed(1));
-      });
-    } else {
-      setState(() {
-        _bmi = 0.0; // Reset BMI if height or weight is not available
-      });
-    }
+    setState(() {
+      _bmi = _computeSafeBmi();
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -157,7 +304,7 @@ class _HealthDashboardState extends State<HealthDashboard>
         if (userDoc.exists) {
           final userData = userDoc.data()!;
 
-          final healthDoc = await _firestore
+          var healthDoc = await _firestore
               .collection('users')
               .doc(user.uid)
               .collection('health_metrics')
@@ -165,13 +312,41 @@ class _HealthDashboardState extends State<HealthDashboard>
               .get();
 
           // Load daily activity history
-          final dailyActivitySnapshot = await _firestore
+          var dailyActivitySnapshot = await _firestore
               .collection('users')
               .doc(user.uid)
               .collection('daily_activity')
               .orderBy('date', descending: true)
               .limit(30)
               .get();
+
+          if (healthDoc.exists) {
+            final initialHealthData = healthDoc.data()!;
+            final incomingResetKey = _resolveStoredDayKey(
+              initialHealthData['lastDailyResetDate'],
+              initialHealthData['updatedAt'],
+            );
+
+            if (incomingResetKey != null && incomingResetKey != _todayKey()) {
+              _lastDailyResetDate = incomingResetKey;
+              await _syncDailyResetIfNeeded();
+
+              healthDoc = await _firestore
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('health_metrics')
+                  .doc('current')
+                  .get();
+
+              dailyActivitySnapshot = await _firestore
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('daily_activity')
+                  .orderBy('date', descending: true)
+                  .limit(30)
+                  .get();
+            }
+          }
 
           // Load weight history from weight_history subcollection (for Android compatibility)
           final weightHistorySnapshot = await _firestore
@@ -264,25 +439,31 @@ class _HealthDashboardState extends State<HealthDashboard>
           sleepHistoryFromSubcollection = sleepHistoryFromSubcollection.reversed.toList(); // Chronological order
 
           setState(() {
-            // SAFE PARSING: Handle profile data safely
-            var weightData = userData['profile']?['weight'];
-            var heightData = userData['profile']?['height'];
-            _weight = (weightData != null && weightData is num) ? weightData.toDouble() : (weightData != null && weightData is String) ? double.tryParse(weightData) ?? 0.0 : 0.0;
-            _height = (heightData != null && heightData is num) ? heightData.toDouble() : (heightData != null && heightData is String) ? double.tryParse(heightData) ?? 0.0 : 0.0;
+            _weight = _readProfileNumber(userData, 'weight');
+            _height = _readProfileNumber(userData, 'height');
 
             if (healthDoc.exists) {
               final healthData = healthDoc.data()!;
               
               // SAFE PARSING: Handle health metrics safely
-              var weeklyCaloriesData = healthData['weeklyCalories'];
-              var weeklyMinutesData = healthData['weeklyMinutes'];
-              var weeklyWorkoutsCountData = healthData['weeklyWorkoutsCount'];
+              var weeklyCaloriesData =
+                  healthData['dailyCalories'] ?? healthData['weeklyCalories'];
+              var weeklyMinutesData =
+                  healthData['dailyMinutes'] ?? healthData['weeklyMinutes'];
+              var weeklyWorkoutsCountData =
+                  healthData['dailyWorkoutsCount'] ??
+                  healthData['weeklyWorkoutsCount'];
               var waistMeasurementData = healthData['waistMeasurement'];
               var sleepHoursData = healthData['sleepHours'];
+              var lastDailyResetDateData = healthData['lastDailyResetDate'];
               
               _weeklyCalories = (weeklyCaloriesData != null && weeklyCaloriesData is int) ? weeklyCaloriesData : (weeklyCaloriesData != null && weeklyCaloriesData is double) ? weeklyCaloriesData.toInt() : 0;
               _weeklyMinutes = (weeklyMinutesData != null && weeklyMinutesData is int) ? weeklyMinutesData : (weeklyMinutesData != null && weeklyMinutesData is double) ? weeklyMinutesData.toInt() : 0;
               _weeklyWorkoutsCount = (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is int) ? weeklyWorkoutsCountData : (weeklyWorkoutsCountData != null && weeklyWorkoutsCountData is double) ? weeklyWorkoutsCountData.toInt() : 0;
+              _lastDailyResetDate = _resolveStoredDayKey(
+                lastDailyResetDateData,
+                healthData['updatedAt'],
+              );
               
               _waistMeasurement = (waistMeasurementData != null && waistMeasurementData is num) ? waistMeasurementData.toDouble() : (waistMeasurementData != null && waistMeasurementData is String) ? double.tryParse(waistMeasurementData) ?? 0.0 : 0.0;
               _sleepHours = (sleepHoursData != null && sleepHoursData is num) ? sleepHoursData.toDouble() : (sleepHoursData != null && sleepHoursData is String) ? double.tryParse(sleepHoursData) ?? 0.0 : 0.0;
@@ -293,7 +474,9 @@ class _HealthDashboardState extends State<HealthDashboard>
               var sleepHistoryData = healthData['sleepHistory'];
 
               // Use subcollection data if main history is empty (Android compatibility) - SAFE PARSING
-              if (waistHistoryData != null && waistHistoryData is List) {
+              if (waistHistoryFromSubcollection.isNotEmpty) {
+                _waistHistory = waistHistoryFromSubcollection;
+              } else if (waistHistoryData != null && waistHistoryData is List) {
                 _waistHistory = [];
                 for (var item in waistHistoryData) {
                   if (item is num) {
@@ -306,10 +489,12 @@ class _HealthDashboardState extends State<HealthDashboard>
                   }
                 }
               } else {
-                _waistHistory = waistHistoryFromSubcollection.isEmpty ? [] : waistHistoryFromSubcollection;
+                _waistHistory = [];
               }
 
-              if (weightHistoryData != null && weightHistoryData is List) {
+              if (weightHistoryFromSubcollection.isNotEmpty) {
+                _weightHistory = weightHistoryFromSubcollection;
+              } else if (weightHistoryData != null && weightHistoryData is List) {
                 _weightHistory = [];
                 for (var item in weightHistoryData) {
                   if (item is num) {
@@ -322,10 +507,12 @@ class _HealthDashboardState extends State<HealthDashboard>
                   }
                 }
               } else {
-                _weightHistory = weightHistoryFromSubcollection.isEmpty ? [] : weightHistoryFromSubcollection;
+                _weightHistory = [];
               }
 
-              if (sleepHistoryData != null && sleepHistoryData is List) {
+              if (sleepHistoryFromSubcollection.isNotEmpty) {
+                _sleepHistory = sleepHistoryFromSubcollection;
+              } else if (sleepHistoryData != null && sleepHistoryData is List) {
                 _sleepHistory = [];
                 for (var item in sleepHistoryData) {
                   if (item is num) {
@@ -338,7 +525,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                   }
                 }
               } else {
-                _sleepHistory = sleepHistoryFromSubcollection.isEmpty ? [] : sleepHistoryFromSubcollection;
+                _sleepHistory = [];
               }
 
               // Load daily activity history - SAFE PARSING
@@ -362,13 +549,16 @@ class _HealthDashboardState extends State<HealthDashboard>
                   .toList(),
             );
 
-            // Remove duplicates and sort by date
-            _dailyActivityHistory.sort((a, b) => a.date.compareTo(b.date));
+            // Remove duplicate day entries coming from both cached metrics and subcollection.
+            _dailyActivityHistory = _dedupeDailyActivityHistory(
+              _dailyActivityHistory,
+            );
 
             _isLoading = false;
           });
 
           _calculateBMI();
+          await _syncDailyResetIfNeeded();
         }
       }
     } catch (e) {
@@ -389,18 +579,32 @@ class _HealthDashboardState extends State<HealthDashboard>
           .collection('health_metrics')
           .doc('current')
           .set({
-            'weeklyCalories': 0,
-            'weeklyMinutes': 0,
-            'weeklyWorkoutsCount': 0,
+            'dailyCalories': 0,
+            'dailyMinutes': 0,
+            'dailyWorkoutsCount': 0,
             'waistMeasurement': _waistMeasurement, // UPDATED
             'sleepHours': _sleepHours, // UPDATED
             'waistHistory': [_waistMeasurement], // UPDATED
             'weightHistory': [_weight],
             'sleepHistory': [_sleepHours], // UPDATED
             'dailyActivityHistory': [],
+            'lastDailyResetDate': _todayKey(),
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
+
+      try {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('health_metrics')
+            .doc('current')
+            .update({
+              'weeklyCalories': FieldValue.delete(),
+              'weeklyMinutes': FieldValue.delete(),
+              'weeklyWorkoutsCount': FieldValue.delete(),
+            });
+      } catch (_) {}
     } catch (e) {
       print('Error initializing health data: $e');
     }
@@ -421,9 +625,15 @@ class _HealthDashboardState extends State<HealthDashboard>
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
-        if (weeklyCalories != null) updates['weeklyCalories'] = weeklyCalories;
-        if (weeklyMinutes != null) updates['weeklyMinutes'] = weeklyMinutes;
-        if (weeklyWorkoutsCount != null) updates['weeklyWorkoutsCount'] = weeklyWorkoutsCount;
+        if (weeklyCalories != null) {
+          updates['dailyCalories'] = weeklyCalories;
+        }
+        if (weeklyMinutes != null) {
+          updates['dailyMinutes'] = weeklyMinutes;
+        }
+        if (weeklyWorkoutsCount != null) {
+          updates['dailyWorkoutsCount'] = weeklyWorkoutsCount;
+        }
         if (waistMeasurement != null)
           updates['waistMeasurement'] = waistMeasurement; // UPDATED
         if (sleepHours != null) updates['sleepHours'] = sleepHours; // UPDATED
@@ -435,9 +645,30 @@ class _HealthDashboardState extends State<HealthDashboard>
             .doc('current')
             .set(updates, SetOptions(merge: true));
 
+        if (weeklyCalories != null ||
+            weeklyMinutes != null ||
+            weeklyWorkoutsCount != null) {
+          try {
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .collection('health_metrics')
+                .doc('current')
+                .update({
+                  'weeklyCalories': FieldValue.delete(),
+                  'weeklyMinutes': FieldValue.delete(),
+                  'weeklyWorkoutsCount': FieldValue.delete(),
+                });
+          } catch (_) {}
+        }
+
         if (weight != null && weight != _weight) {
           await _firestore.collection('users').doc(user.uid).set({
-            'profile.weight': weight,
+            'profile': {
+              'weight': weight,
+              'bmi': _bmi,
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
@@ -543,9 +774,20 @@ class _HealthDashboardState extends State<HealthDashboard>
     }
   }
 
- void _onItemTapped(int index) {
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+
+    if (index == 0) {
+      _loadUserData();
+    }
+  }
+
+  void _handleHealthDataChanged() {
+    _loadUserData();
+    setState(() {
+      _profileRefreshVersion++;
     });
   }
 
@@ -626,7 +868,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                     pinned: true,
                     automaticallyImplyLeading: false,
                     title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         const Padding(
                           padding: EdgeInsets.only(left: 10, top: 30),
@@ -637,29 +879,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 30),
-                          child: PopupMenuButton<String>(
-                            icon: const Icon(
-                              Icons.add_circle_outline,
-                              color: Colors.white,
-                            ),
-                            color: Colors.grey[800],
-                            onSelected: (String result) {
-                              _showAddDataDialog();
-                            },
-                            itemBuilder: (BuildContext context) =>
-                                <PopupMenuEntry<String>>[
-                                  const PopupMenuItem<String>(
-                                    value: 'add',
-                                    child: Text(
-                                      'Add Data',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
                           ),
                         ),
                       ],
@@ -692,7 +911,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                                         0.0,
                                         100.0,
                                       ),
-                                  stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 10)
+                                  stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 100)
                                       .clamp(0.0, 100.0),
                                   movingPercent:
                                       (_weeklyWorkoutsCount / _weeklyWorkoutsGoal * 100)
@@ -757,110 +976,124 @@ class _HealthDashboardState extends State<HealthDashboard>
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Metrics row
-                                Expanded(
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: _ModernMetricItem(
-                                          icon: Icons.local_fire_department,
-                                          iconColor: const Color(0xFFFF6B35),
-                                          label: "kcal",
-                                          value: _weeklyCalories.toStringAsFixed(0),
-                                          goal:
-                                              "/${_weeklyCaloriesGoal.toInt()} kcal",
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "kcal",
-                                                      currentValue: _weeklyCalories.toDouble(),
-                                                      goalValue: _weeklyCaloriesGoal.toDouble(),
-                                                      onDataSaved:
-                                                          _loadUserData,
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: _ModernMetricItem(
-                                          icon: Icons.timer,
-                                          iconColor: const Color(0xFFFF9800),
-                                          label: "Minutes",
-                                          value: _weeklyMinutes.toString(),
-                                          goal: "/$_weeklyMinutesGoal mins",
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Minutes",
-                                                      currentValue: _weeklyMinutes.toDouble(),
-                                                      goalValue: _weeklyMinutesGoal.toDouble(),
-                                                      onDataSaved:
-                                                          _loadUserData,
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: _ModernMetricItem(
-                                          icon: Icons.fitness_center,
-                                          iconColor: const Color(0xFF2196F3),
-                                          label: "Workouts",
-                                          value: _weeklyWorkoutsCount.toStringAsFixed(
-                                            0,
+                            child: LayoutBuilder(
+                              builder: (context, metricConstraints) {
+                                return Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: _ModernMetricItem(
+                                            icon: Icons.local_fire_department,
+                                            iconColor: const Color(0xFFFF6B35),
+                                            label: "kcal",
+                                            value: _weeklyCalories.toStringAsFixed(0),
+                                            goal:
+                                                "/${_weeklyCaloriesGoal.toInt()} kcal",
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailScreen(
+                                                        title: "kcal",
+                                                        currentValue: _weeklyCalories.toDouble(),
+                                                        goalValue: _weeklyCaloriesGoal.toDouble(),
+                                                        onDataSaved: _loadUserData,
+                                                      ),
+                                                ),
+                                              );
+                                            },
                                           ),
-                                          goal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreen(
-                                                      title: "Workouts",
-                                                      currentValue: _weeklyWorkoutsCount.toDouble(),
-                                                      goalValue: _weeklyWorkoutsGoal.toDouble(),
-                                                      onDataSaved:
-                                                          _loadUserData,
-                                                    ),
-                                              ),
-                                            );
-                                          },
                                         ),
+                                        Expanded(
+                                          child: _ModernMetricItem(
+                                            icon: Icons.timer,
+                                            iconColor: const Color(0xFFFF9800),
+                                            label: "Minutes",
+                                            value: _weeklyMinutes.toString(),
+                                            goal: "/$_weeklyMinutesGoal mins",
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailScreen(
+                                                        title: "Minutes",
+                                                        currentValue: _weeklyMinutes.toDouble(),
+                                                        goalValue: _weeklyMinutesGoal.toDouble(),
+                                                        onDataSaved: _loadUserData,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _ModernMetricItem(
+                                            icon: Icons.fitness_center,
+                                            iconColor: const Color(0xFF2196F3),
+                                            label: "Workouts",
+                                            value: _weeklyWorkoutsCount.toStringAsFixed(0),
+                                            goal:
+                                                "/${_weeklyWorkoutsGoal.toInt()} workouts",
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      DetailScreen(
+                                                        title: "Workouts",
+                                                        currentValue: _weeklyWorkoutsCount.toDouble(),
+                                                        goalValue: _weeklyWorkoutsGoal.toDouble(),
+                                                        onDataSaved: _loadUserData,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Data resets daily at midnight • ${_dailyActivityHistory.length} days of history',
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 12,
                                       ),
-                                    ],
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                // Bottom text
-                                Text(
-                                  'Data resets daily at midnight • ${_dailyActivityHistory.length} days of history',
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 12,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        _BmiSummaryStrip(
+                          bmi: _bmi,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailScreen(
+                                  title: "BMI",
+                                  currentValue: _bmi,
+                                  goalValue: 22.0,
+                                  onDataSaved: _loadUserData,
+                                ),
+                              ),
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 16),
@@ -869,12 +1102,12 @@ class _HealthDashboardState extends State<HealthDashboard>
                         _DraggableCardGrid(
                           waistMeasurement: _waistMeasurement,
                           weight: _weight,
-                          bmi: _bmi,
+                          height: _height,
                           sleepHours: _sleepHours,
                           waistHistory: _waistHistory,
                           weightHistory: _weightHistory,
                           sleepHistory: _sleepHistory,
-                          onDataSaved: _loadUserData,
+                          onDataSaved: _handleHealthDataChanged,
                         ),
                       ]),
                     ),
@@ -884,9 +1117,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             ),
             const WorkoutScreen(),
             const CommunityScreen(),
-            MyProfile(
-              key: ValueKey('profile_${DateTime.now().millisecondsSinceEpoch}'),
-            ),
+            MyProfile(refreshVersion: _profileRefreshVersion),
           ],
         ),
       ),
@@ -907,7 +1138,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.straighten, color: Colors.blue),
+                leading: const Icon(Icons.height, color: Colors.blue),
                 title: const Text(
                   'Update Height',
                   style: TextStyle(color: Colors.white),
@@ -919,21 +1150,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                 onTap: () {
                   Navigator.pop(context);
                   _showUpdateDialog('Height', _height, 250.0);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.monitor_weight, color: Colors.green),
-                title: const Text(
-                  'Update Weight',
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: const Text(
-                  'Manual weight input',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showUpdateDialog('Weight', _weight, 300.0);
                 },
               ),
             ],
@@ -965,7 +1181,9 @@ class _HealthDashboardState extends State<HealthDashboard>
             ],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'New $type Value (cm)',
+              labelText: type == 'Height'
+                  ? 'New Height Value (cm)'
+                  : 'New $type Value',
               labelStyle: const TextStyle(color: Colors.white70),
               enabledBorder: const UnderlineInputBorder(
                 borderSide: BorderSide(color: Colors.orange),
@@ -986,14 +1204,31 @@ class _HealthDashboardState extends State<HealthDashboard>
             ElevatedButton(
               onPressed: () {
                 final newValue = double.tryParse(controller.text) ?? 0.0;
-                if (newValue >= 0 && newValue <= maxValue) {
+                final minValue = type == 'Height' ? _minValidHeightCm : 0.0;
+                final invalidHeightForCurrentWeight =
+                    type == 'Height' &&
+                    _weight >= _minValidWeightKg &&
+                    !_isDisplayableBmiPair(heightCm: newValue, weightKg: _weight);
+
+                if (invalidHeightForCurrentWeight) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'That height does not match your current weight. Please enter a more realistic height.',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                } else if (newValue >= minValue && newValue <= maxValue) {
                   Navigator.pop(context);
                   _handleDataUpdate(type, newValue);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Please enter a value between 0 and $maxValue',
+                        type == 'Height'
+                            ? 'Please enter a realistic height between ${_minValidHeightCm.toStringAsFixed(0)} and ${maxValue.toStringAsFixed(0)} cm'
+                            : 'Please enter a value greater than 0 and up to $maxValue',
                       ),
                       backgroundColor: Colors.red,
                     ),
@@ -1031,9 +1266,10 @@ class _HealthDashboardState extends State<HealthDashboard>
           await _firestore.collection('users').doc(user.uid).set({
             'profile': {
               'height': newValue,
-              'bmi': _bmi, // Use the locally calculated BMI
+              'bmi': _bmi,
               'lastUpdated': FieldValue.serverTimestamp(),
             },
+            'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
           // Update health metrics with new BMI
@@ -1062,9 +1298,11 @@ class _HealthDashboardState extends State<HealthDashboard>
           await _firestore.collection('users').doc(user.uid).set({
             'profile': {
               'weight': newValue,
+              'height': _height,
               'bmi': _bmi, // Use the locally calculated BMI
               'lastUpdated': FieldValue.serverTimestamp(),
             },
+            'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
           // Update health metrics with new BMI
@@ -1088,6 +1326,8 @@ class _HealthDashboardState extends State<HealthDashboard>
           backgroundColor: Colors.green,
         ),
       );
+
+      _handleHealthDataChanged();
     } catch (e) {
       print('Error updating $type: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1117,18 +1357,22 @@ class DailyActivity {
   Map<String, dynamic> toMap() {
     return {
       'date': date.toIso8601String(),
-      'weeklyMinutes': weeklyMinutes,
-      'weeklyCalories': weeklyCalories,
-      'weeklyWorkoutsCount': weeklyWorkoutsCount,
+      'dailyMinutes': weeklyMinutes,
+      'dailyCalories': weeklyCalories,
+      'dailyWorkoutsCount': weeklyWorkoutsCount,
     };
   }
 
   factory DailyActivity.fromMap(Map<String, dynamic> map) {
     return DailyActivity(
       date: DateTime.parse(map['date']),
-      weeklyMinutes: (map['weeklyMinutes'] ?? 0).toInt(),
-      weeklyCalories: (map['weeklyCalories'] ?? 0).toInt(),
-      weeklyWorkoutsCount: (map['weeklyWorkoutsCount'] ?? 0).toInt(),
+      weeklyMinutes:
+          (map['dailyMinutes'] ?? map['weeklyMinutes'] ?? 0).toInt(),
+      weeklyCalories:
+          (map['dailyCalories'] ?? map['weeklyCalories'] ?? 0).toInt(),
+      weeklyWorkoutsCount:
+          (map['dailyWorkoutsCount'] ?? map['weeklyWorkoutsCount'] ?? 0)
+              .toInt(),
     );
   }
 }
@@ -1206,11 +1450,224 @@ class _ModernMetricItem extends StatelessWidget {
  }
 }
 
+class _BmiSummaryStrip extends StatelessWidget {
+  final double bmi;
+  final VoidCallback? onTap;
+
+  const _BmiSummaryStrip({
+    required this.bmi,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _getBmiAccentColor(bmi);
+    final displayValue = bmi > 0 ? bmi.toStringAsFixed(1) : "--";
+    final category = _getBmiCategoryLabel(bmi);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                Icons.monitor_heart,
+                color: accent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "BMI",
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              displayValue,
+              style: TextStyle(
+                color: accent,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              bmi > 0 ? "$category • Goal 22" : "Tap to view BMI details",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 16,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: const Color(0xFF202020),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final indicatorLeft = _calculateBmiStripPosition(width, bmi);
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Row(
+                        children: const [
+                          Expanded(
+                            flex: 14,
+                            child: _BmiScaleSegment(color: Colors.blue),
+                          ),
+                          Expanded(
+                            flex: 26,
+                            child: _BmiScaleSegment(color: Colors.green),
+                          ),
+                          Expanded(
+                            flex: 20,
+                            child: _BmiScaleSegment(color: Colors.orange),
+                          ),
+                          Expanded(
+                            flex: 40,
+                            child: _BmiScaleSegment(color: Colors.deepOrange),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        left: indicatorLeft,
+                        top: -4,
+                        bottom: -4,
+                        child: Container(
+                          width: 3,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black54,
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                return SizedBox(
+                  height: 14,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _buildBmiLabel("15", 0, width),
+                      _buildBmiLabel("18.5", 18.5, width),
+                      _buildBmiLabel("25", 25, width),
+                      _buildBmiLabel("30", 30, width),
+                      _buildBmiLabel("40+", 40, width),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _getBmiCategoryLabel(double bmi) {
+    if (bmi <= 0) return "Check data";
+    if (bmi < 18.5) return "Underweight";
+    if (bmi < 25) return "Normal";
+    if (bmi < 30) return "Overweight";
+    return "Obese";
+  }
+
+  static Color _getBmiAccentColor(double bmi) {
+    if (bmi <= 0) return const Color(0xFFFFB020);
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25) return Colors.green;
+    if (bmi < 30) return Colors.orange;
+    return Colors.deepOrange;
+  }
+
+  static double _calculateBmiStripPosition(double width, double bmi) {
+    if (width <= 0) return 0;
+    final clamped = bmi <= 0 ? 15.0 : bmi.clamp(15.0, 40.0);
+    final percentage = (clamped - 15.0) / 25.0;
+    return (percentage * width).clamp(0.0, width - 3.0);
+  }
+
+  Widget _buildBmiLabel(String text, double value, double width) {
+    final left = _calculateBmiStripPosition(width, value);
+    final alignment = value <= 15
+        ? -1.0
+        : value >= 40
+            ? 1.0
+            : 0.0;
+    final resolvedLeft = value <= 15 ? 0.0 : left - 14;
+
+    return Positioned(
+      left: value >= 40 ? null : resolvedLeft,
+      right: value >= 40 ? 0 : null,
+      child: SizedBox(
+        width: 28,
+        child: Text(
+          text,
+          style: TextStyle(color: Colors.grey[500], fontSize: 10),
+          textAlign: alignment < 0
+              ? TextAlign.left
+              : alignment > 0
+                  ? TextAlign.right
+                  : TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+class _BmiScaleSegment extends StatelessWidget {
+  final Color color;
+
+  const _BmiScaleSegment({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(color: color);
+  }
+}
+
 // UPDATED: Changed parameters to waistMeasurement and sleepHours
 class _DraggableCardGrid extends StatefulWidget {
   final double waistMeasurement;
   final double weight;
-  final double bmi;
+  final double height;
   final double sleepHours;
   final List<double> waistHistory;
   final List<double> weightHistory;
@@ -1219,7 +1676,7 @@ class _DraggableCardGrid extends StatefulWidget {
   const _DraggableCardGrid({
     required this.waistMeasurement,
     required this.weight,
-    required this.bmi,
+    required this.height,
     required this.sleepHours,
     required this.waistHistory,
     required this.weightHistory,
@@ -1253,7 +1710,10 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
         weightHistory: widget.weightHistory,
         onDataSaved: widget.onDataSaved,
       ), // ADD THIS
-      _BMICard(bmi: widget.bmi, onDataSaved: widget.onDataSaved), // ADD THIS
+      _HeightCard(
+        height: widget.height,
+        onDataSaved: widget.onDataSaved,
+      ),
       _SleepCard(
         sleepHours: widget.sleepHours,
         sleepHistory: widget.sleepHistory,
@@ -1413,15 +1873,17 @@ class _WaistCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 16 : 20,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isVerySmallScreen ? 16 : 20,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1440,7 +1902,7 @@ class _WaistCard extends StatelessWidget {
                       color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: waistHistory.length >= 2
+                    child: waistHistory.isNotEmpty
                         ? CustomPaint(
                             painter: LineChartPainter(
                               data: waistHistory,
@@ -1554,15 +2016,17 @@ class _WeightCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    "${weight.toStringAsFixed(1)} kg",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 16 : 20,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "${weight.toStringAsFixed(1)} kg",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isVerySmallScreen ? 16 : 20,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1581,7 +2045,7 @@ class _WeightCard extends StatelessWidget {
                       color: Colors.grey[800],
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: weightHistory.length >= 2
+                    child: weightHistory.isNotEmpty
                         ? CustomPaint(
                             painter: WeightLineChartPainter(
                               data: weightHistory,
@@ -1622,6 +2086,135 @@ class _WeightCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeightCard extends StatelessWidget {
+  final double height;
+  final VoidCallback onDataSaved;
+
+  const _HeightCard({
+    required this.height,
+    required this.onDataSaved,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(
+              title: "Height",
+              onDataSaved: onDataSaved,
+            ),
+          ),
+        );
+      },
+      child: Card(
+        color: const Color(0xFF191919),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isSmallScreen = constraints.maxWidth < 160;
+              final bool isVerySmallScreen = constraints.maxWidth < 140;
+              const accentColor = Color(0xFF4FC3F7);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.height,
+                        color: accentColor,
+                        size: isVerySmallScreen ? 20 : 24,
+                      ),
+                      if (!isSmallScreen) ...[const Spacer()],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Height",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isVerySmallScreen ? 12 : 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "${height.toStringAsFixed(1)} cm",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isVerySmallScreen ? 16 : 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Current profile height",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isVerySmallScreen ? 8 : 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isVerySmallScreen ? 8 : 10,
+                      vertical: isVerySmallScreen ? 6 : 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: accentColor.withOpacity(0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Used for BMI",
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: isVerySmallScreen ? 8 : 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Update this only when your measured height changes.",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: isVerySmallScreen ? 8 : 9,
+                            height: 1.25,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               );
@@ -1841,6 +2434,7 @@ class _BMICard extends StatelessWidget {
   }
 
  String _getBMICategory(double bmi) {
+    if (bmi <= 0) return "Check data";
     if (bmi < 18.5) return "Underweight";
     if (bmi < 25) return "Normal";
     if (bmi < 30) return "Overweight";
@@ -1848,6 +2442,7 @@ class _BMICard extends StatelessWidget {
   }
 
   Color _getBMIColor(double bmi) {
+    if (bmi <= 0) return Colors.white54;
     if (bmi < 18.5) return Colors.blue;
     if (bmi < 25) return Colors.green;
     if (bmi < 30) return Colors.orange;
@@ -1906,9 +2501,13 @@ class _SleepCard extends StatelessWidget {
                   fontSize: 14,
                 ),
               ),
-              Text(
-                "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
-                style: const TextStyle(color: Colors.white70, fontSize: 18),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
+                  style: const TextStyle(color: Colors.white70, fontSize: 18),
+                ),
               ),
               Text(
                 "${DateTime.now().day} ${_getMonthName(DateTime.now().month)}",
@@ -1998,10 +2597,11 @@ class LineChartPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
+    final bool hasMultiplePoints = data.length > 1;
     double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
@@ -2089,10 +2689,11 @@ class WeightLineChartPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
+    final bool hasMultiplePoints = data.length > 1;
     double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }
@@ -2181,10 +2782,11 @@ class SleepGraphPainter extends CustomPainter {
 
     // Draw data points and lines
     List<Offset> points = [];
+    final bool hasMultiplePoints = data.length > 1;
     double xStep = size.width / (data.length - 1 > 0 ? data.length - 1 : 1);
 
     for (int i = 0; i < data.length; i++) {
-      double x = i * xStep;
+      double x = hasMultiplePoints ? i * xStep : 0;
       double y = size.height - (data[i] / maxValue * size.height);
       points.add(Offset(x, y));
     }

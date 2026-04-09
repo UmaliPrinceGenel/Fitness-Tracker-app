@@ -17,10 +17,51 @@ class AddDataScreen extends StatefulWidget {
 }
 
 class _AddDataScreenState extends State<AddDataScreen> {
+  static const double _minValidWeightKg = 20.0;
+  static const double _maxValidWeightKg = 400.0;
+  static const double _minValidHeightCm = 80.0;
+  static const double _maxValidHeightCm = 250.0;
+  static const double _minDisplayBmi = 10.0;
+  static const double _maxDisplayBmi = 80.0;
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _valueController = TextEditingController();
   bool _isLoading = false;
+
+  double _parseDoubleValue(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  double _computeSafeBmi(double weightKg, double heightCm) {
+    if (weightKg < _minValidWeightKg ||
+        weightKg > _maxValidWeightKg ||
+        heightCm < _minValidHeightCm ||
+        heightCm > _maxValidHeightCm) {
+      return 0.0;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    if (bmi < _minDisplayBmi || bmi > _maxDisplayBmi) {
+      return 0.0;
+    }
+
+    return double.parse(bmi.toStringAsFixed(1));
+  }
+
+  bool _isDisplayableBmiPair(double weightKg, double heightCm) {
+    if (weightKg < _minValidWeightKg ||
+        weightKg > _maxValidWeightKg ||
+        heightCm < _minValidHeightCm ||
+        heightCm > _maxValidHeightCm) {
+      return false;
+    }
+
+    final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    return bmi >= _minDisplayBmi && bmi <= _maxDisplayBmi;
+  }
 
   Future<void> _saveData() async {
     if (_valueController.text.isEmpty) {
@@ -34,7 +75,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
     }
 
     final value = double.tryParse(_valueController.text);
-    if (value == null || value < 0) {
+    if (value == null || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid positive number'),
@@ -76,7 +117,89 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   'timestamp': FieldValue.serverTimestamp(),
                 });
             break;
+          case "Height":
+            if (value < _minValidHeightCm || value > _maxValidHeightCm) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please enter a realistic height between 80 and 250 cm'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
+
+            final userDoc = await _firestore.collection('users').doc(user.uid).get();
+            final userData = userDoc.data() ?? <String, dynamic>{};
+            final profileData = userData['profile'] as Map<String, dynamic>? ?? <String, dynamic>{};
+            final currentWeight = _parseDoubleValue(profileData['weight']) > 0
+                ? _parseDoubleValue(profileData['weight'])
+                : _parseDoubleValue(userData['profile.weight']);
+
+            if (currentWeight >= _minValidWeightKg &&
+                !_isDisplayableBmiPair(currentWeight, value)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('That height does not match your current weight. Please enter a more realistic value'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
+
+            final updatedHeightBmi = _computeSafeBmi(currentWeight, value);
+
+            await _firestore
+                .collection('users')
+                .doc(user.uid)
+                .collection('health_metrics')
+                .doc('current')
+                .set({
+                  'height': value,
+                  'bmi': updatedHeightBmi,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+
+            await _firestore.collection('users').doc(user.uid).set({
+              'profile': {
+                'weight': currentWeight,
+                'height': value,
+                'bmi': updatedHeightBmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              },
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            break;
           case "Weight":
+            if (value < _minValidWeightKg || value > _maxValidWeightKg) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please enter a realistic weight between 20 and 400 kg'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
+
+            final userDoc = await _firestore.collection('users').doc(user.uid).get();
+            final userData = userDoc.data() ?? <String, dynamic>{};
+            final profileData = userData['profile'] as Map<String, dynamic>? ?? <String, dynamic>{};
+            final currentHeight = _parseDoubleValue(profileData['height']) > 0
+                ? _parseDoubleValue(profileData['height'])
+                : _parseDoubleValue(userData['profile.height']);
+
+            if (currentHeight >= _minValidHeightCm &&
+                !_isDisplayableBmiPair(value, currentHeight)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('That weight does not match your current height. Please enter a more realistic value'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+              return;
+            }
+
+            final updatedBmi = _computeSafeBmi(value, currentHeight);
+
             // Update weight in main health metrics and subcollection
             await _firestore
                 .collection('users')
@@ -85,12 +208,18 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 .doc('current')
                 .set({
                   'weight': value,
+                  'bmi': updatedBmi,
                   'updatedAt': FieldValue.serverTimestamp(),
                 }, SetOptions(merge: true));
 
             // Update in user profile
             await _firestore.collection('users').doc(user.uid).set({
-              'profile.weight': value,
+              'profile': {
+                'weight': value,
+                'height': currentHeight,
+                'bmi': updatedBmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              },
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
 
