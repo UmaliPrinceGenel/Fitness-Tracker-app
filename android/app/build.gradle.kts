@@ -1,5 +1,4 @@
 import java.util.Properties
-import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
@@ -10,6 +9,11 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val bundledKeystoreFile = file("upload-keystore.jks")
+val hasKeyProperties = keystorePropertiesFile.exists()
+val hasBundledKeystore = bundledKeystoreFile.exists()
 
 android {
     namespace = "com.example.rockies_fitness_app"
@@ -37,9 +41,9 @@ android {
     }
 
     signingConfigs {
-        if (project.hasProperty("key.properties")) {
+        if (hasKeyProperties) {
             val keystoreProperties = Properties()
-            keystoreProperties.load(file("key.properties").inputStream())
+            keystoreProperties.load(keystorePropertiesFile.inputStream())
             
             create("release") {
                 storeFile = file(keystoreProperties.getProperty("storeFile"))
@@ -47,9 +51,9 @@ android {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
             }
-        } else {
+        } else if (hasBundledKeystore) {
             create("release") {
-                storeFile = file("upload-keystore.jks")
+                storeFile = bundledKeystoreFile
                 storePassword = "123456"
                 keyAlias = "upload"
                 keyPassword = "123456"
@@ -59,7 +63,13 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig =
+                if (hasKeyProperties || hasBundledKeystore) {
+                    signingConfigs.getByName("release")
+                } else {
+                    // Fallback for local testing when no custom keystore exists yet.
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 }
