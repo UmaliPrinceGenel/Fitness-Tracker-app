@@ -17,6 +17,7 @@ class WorkoutScreen extends StatefulWidget {
 class _WorkoutScreenState extends State<WorkoutScreen>
     with WidgetsBindingObserver {
   int _selectedTabIndex = 0;
+  int _selectedJourneyIndex = 0;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<int> _monthlyCategoryCounts = [
@@ -49,6 +50,77 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     Colors.green, // Core
     Colors.orange, // Lower Body
     Colors.purple,   // Shoulders
+  ];
+  final List<FitnessJourneyPreview> _journeys = const [
+    FitnessJourneyPreview(
+      title: 'Weight Loss',
+      durationLabel: '4 WORKOUTS',
+      headline: 'Burn\nLean',
+      description: 'High-energy circuits that keep calories burning.',
+      buttonLabel: 'Open Journey',
+      icon: Icons.local_fire_department_rounded,
+      accentColor: Color(0xFFFF6B35),
+      buttonTextColor: Color(0xFFFF6B35),
+      gradientStart: Color(0xFF5C2427),
+      gradientEnd: Color(0xFF231318),
+      thumbnailAsset:
+          'assets/thumbnails/Journeys/journey_weight_loss_thumb.png',
+    ),
+    FitnessJourneyPreview(
+      title: 'Cardio',
+      durationLabel: '4 WORKOUTS',
+      headline: 'Heart\nRush',
+      description: 'Intervals and endurance sessions for stamina.',
+      buttonLabel: 'Open Journey',
+      icon: Icons.favorite_rounded,
+      accentColor: Color(0xFF2EC4E6),
+      buttonTextColor: Color(0xFF1EA7D1),
+      gradientStart: Color(0xFF1C4461),
+      gradientEnd: Color(0xFF0C1E2E),
+      thumbnailAsset: 'assets/thumbnails/Journeys/journey_cardio_thumb.png',
+    ),
+    FitnessJourneyPreview(
+      title: 'Strength & Power',
+      durationLabel: '5 WORKOUTS',
+      headline: 'Raw\nPower',
+      description: 'Compound lifts and explosive training sessions.',
+      buttonLabel: 'Open Journey',
+      icon: Icons.fitness_center_rounded,
+      accentColor: Color(0xFF8FA3BF),
+      buttonTextColor: Color(0xFF5E7393),
+      gradientStart: Color(0xFF2F3847),
+      gradientEnd: Color(0xFF10151C),
+      thumbnailAsset:
+          'assets/thumbnails/Journeys/journey_strength_power_thumb.png',
+    ),
+    FitnessJourneyPreview(
+      title: 'Muscular Endurance',
+      durationLabel: '4 WORKOUTS',
+      headline: 'Keep\nGoing',
+      description: 'High-rep plans built for stamina and control.',
+      buttonLabel: 'Open Journey',
+      icon: Icons.timelapse_rounded,
+      accentColor: Color(0xFF5BE7A9),
+      buttonTextColor: Color(0xFF35C98A),
+      gradientStart: Color(0xFF24504B),
+      gradientEnd: Color(0xFF102525),
+      thumbnailAsset:
+          'assets/thumbnails/Journeys/journey_muscular_endurance_thumb.png',
+    ),
+    FitnessJourneyPreview(
+      title: 'Health & Wellness',
+      durationLabel: '4 WORKOUTS',
+      headline: 'Daily\nReset',
+      description: 'Beginner-friendly sessions for everyday fitness.',
+      buttonLabel: 'Open Journey',
+      icon: Icons.spa_rounded,
+      accentColor: Color(0xFFF4D58D),
+      buttonTextColor: Color(0xFF8E7340),
+      gradientStart: Color(0xFF59604A),
+      gradientEnd: Color(0xFF242A20),
+      thumbnailAsset:
+          'assets/thumbnails/Journeys/journey_health_wellness_thumb.png',
+    ),
   ];
 
   String _currentMonthLabel() {
@@ -594,6 +666,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
                   const SizedBox(height: 20),
 
+                  _buildJourneySection(),
+
+                  const SizedBox(height: 20),
+
                   // Body Focus
                   const Text(
                     "Body Focus",
@@ -661,6 +737,202 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildJourneySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Fitness Journey",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 250,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _journeys.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final journey = _journeys[index];
+              final isSelected = index == _selectedJourneyIndex;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedJourneyIndex = index;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 292,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isSelected
+                          ? journey.accentColor
+                          : Colors.white.withOpacity(0.08),
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: journey.accentColor.withOpacity(
+                          isSelected ? 0.18 : 0.08,
+                        ),
+                        blurRadius: isSelected ? 18 : 10,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(
+                          journey.thumbnailAsset,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildJourneyFallback(journey);
+                          },
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.08),
+                                Colors.black.withOpacity(0.18),
+                                Colors.black.withOpacity(0.76),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  journey.durationLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                journey.headline.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  height: 0.98,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                journey.description,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.92),
+                                  fontSize: 13,
+                                  height: 1.25,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(26),
+                                ),
+                                child: Text(
+                                  isSelected
+                                      ? 'Selected Journey'
+                                      : journey.buttonLabel,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? journey.buttonTextColor
+                                        : journey.buttonTextColor,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJourneyFallback(FitnessJourneyPreview journey) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            journey.gradientStart,
+            journey.gradientEnd,
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            top: 28,
+            child: Container(
+              width: 170,
+              height: 170,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 26,
+            top: 58,
+            child: Icon(
+              journey.icon,
+              color: journey.accentColor.withOpacity(0.88),
+              size: 86,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -914,4 +1186,32 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
     return totalMinutes > 1 ? "${totalMinutes} mins" : "${totalMinutes} min";
   }
+}
+
+class FitnessJourneyPreview {
+  final String title;
+  final String durationLabel;
+  final String headline;
+  final String description;
+  final String buttonLabel;
+  final String thumbnailAsset;
+  final IconData icon;
+  final Color accentColor;
+  final Color buttonTextColor;
+  final Color gradientStart;
+  final Color gradientEnd;
+
+  const FitnessJourneyPreview({
+    required this.title,
+    required this.durationLabel,
+    required this.headline,
+    required this.description,
+    required this.buttonLabel,
+    required this.thumbnailAsset,
+    required this.icon,
+    required this.accentColor,
+    required this.buttonTextColor,
+    required this.gradientStart,
+    required this.gradientEnd,
+  });
 }
