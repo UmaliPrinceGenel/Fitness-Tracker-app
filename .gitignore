@@ -75,3 +75,4 @@ app.*.map.json
 /android/app/release
 
 
+.gradle-cache/
