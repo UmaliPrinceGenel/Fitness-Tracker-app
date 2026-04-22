@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../data/fitness_journey_workouts.dart';
 import '../services/progress_tracking_service.dart';
 
 class ProgressTrackingScreen extends StatefulWidget {
@@ -11,7 +14,10 @@ class ProgressTrackingScreen extends StatefulWidget {
 
 class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   final ProgressTrackingService _progressService = ProgressTrackingService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<DateTime> _completedWorkoutDates = [];
+  List<_JourneyProgressSummary> _startedJourneySummaries = [];
   ExerciseRecord? _highestWeightRecord;
   List<ExerciseRecord> _allExerciseRecords = [];
   List<ExerciseRecord> _filteredExerciseRecords = [];
@@ -41,6 +47,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   Future<void> _loadProgressData() async {
     // Get all completed workout dates
     _completedWorkoutDates = await _progressService.getCompletedWorkoutDates();
+    _startedJourneySummaries = await _loadStartedJourneySummaries();
 
     // Get highest weight record
     _highestWeightRecord = await _progressService.getHighestWeightRecord();
@@ -53,6 +60,54 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     _showAllRecords = false;
 
     setState(() {});
+  }
+
+  Future<List<_JourneyProgressSummary>> _loadStartedJourneySummaries() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return [];
+    }
+
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('journey_progress')
+          .get();
+
+      const journeyOrder = [
+        weightLossJourneyId,
+        cardioJourneyId,
+        strengthPowerJourneyId,
+        muscularEnduranceJourneyId,
+        healthWellnessJourneyId,
+      ];
+
+      final summaries = snapshot.docs
+          .map((doc) => _JourneyProgressSummary.fromMap(doc.id, doc.data()))
+          .where((summary) => summary.hasStarted)
+          .toList()
+        ..sort((a, b) {
+          final aIndex = journeyOrder.indexOf(a.journeyId);
+          final bIndex = journeyOrder.indexOf(b.journeyId);
+          final resolvedAIndex = aIndex == -1 ? 999 : aIndex;
+          final resolvedBIndex = bIndex == -1 ? 999 : bIndex;
+          return resolvedAIndex.compareTo(resolvedBIndex);
+        });
+
+      return summaries;
+    } catch (e) {
+      print('Error loading journey progress summaries: $e');
+      return [];
+    }
+  }
+
+  int _completedWorkoutsThisWeek() {
+    final now = DateTime.now();
+    final startOfWindow = DateTime(now.year, now.month, now.day)
+        .subtract(const Duration(days: 6));
+
+    return _completedWorkoutDates.where((date) => !date.isBefore(startOfWindow)).length;
   }
 
   // Filter exercises based on selected category and difficulty
@@ -112,7 +167,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: _allExerciseRecords.isEmpty && _completedWorkoutDates.isEmpty
+        child: _allExerciseRecords.isEmpty &&
+                _completedWorkoutDates.isEmpty &&
+                _startedJourneySummaries.isEmpty
             ? const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -286,6 +343,34 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      if (_startedJourneySummaries.isNotEmpty) ...[
+                        const Text(
+                          "Fitness Journeys",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF191919),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              children: _startedJourneySummaries
+                                  .map(_buildJourneyProgressItem)
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Personal Records Section
                       Row(
@@ -493,10 +578,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                               _buildInsightItem(
                                 icon: Icons.calendar_today,
                                 title: "Workout Frequency",
-                                value: _completedWorkoutDates.isEmpty 
-                                    ? "0 workouts" 
-                                    : "${(_completedWorkoutDates.length / 4).toStringAsFixed(1)} per week",
-                                description: "Average workouts per week",
+                                value: "${_completedWorkoutsThisWeek()} this week",
+                                description: "Clean workouts in the last 7 days",
                               ),
                               const Divider(height: 20, color: Colors.grey),
                               // Most frequent exercise
@@ -584,6 +667,103 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     );
   }
 
+  Widget _buildJourneyProgressItem(_JourneyProgressSummary summary) {
+    final statusColor = summary.isCompleted ? Colors.greenAccent : Colors.orange;
+    final statusLabel = summary.isCompleted ? 'Completed' : 'In Progress';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    summary.journeyName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: statusColor.withOpacity(0.5),
+                    ),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: summary.progressRatio,
+                minHeight: 10,
+                backgroundColor: Colors.white.withOpacity(0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${summary.completedWorkoutsCount} of ${summary.totalWorkoutsCount} workouts completed',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${summary.progressPercent.toStringAsFixed(0)}% progress',
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (summary.completionCount > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                summary.repeatCompletionCount > 0
+                    ? 'Finished again ${summary.repeatCompletionCount} ${summary.repeatCompletionCount == 1 ? 'time' : 'times'}'
+                    : 'First completion unlocked',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPersonalRecordItem(String exercise, String record, String date) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -616,6 +796,60 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _JourneyProgressSummary {
+  final String journeyId;
+  final String journeyName;
+  final int completedWorkoutsCount;
+  final int totalWorkoutsCount;
+  final int completionCount;
+  final int repeatCompletionCount;
+  final double progressPercent;
+  final String status;
+
+  const _JourneyProgressSummary({
+    required this.journeyId,
+    required this.journeyName,
+    required this.completedWorkoutsCount,
+    required this.totalWorkoutsCount,
+    required this.completionCount,
+    required this.repeatCompletionCount,
+    required this.progressPercent,
+    required this.status,
+  });
+
+  bool get hasStarted => status == 'in_progress' || status == 'completed';
+
+  bool get isCompleted => status == 'completed';
+
+  double get progressRatio {
+    if (totalWorkoutsCount <= 0) {
+      return 0.0;
+    }
+    return (completedWorkoutsCount / totalWorkoutsCount).clamp(0.0, 1.0);
+  }
+
+  factory _JourneyProgressSummary.fromMap(
+    String journeyId,
+    Map<String, dynamic> data,
+  ) {
+    return _JourneyProgressSummary(
+      journeyId: journeyId,
+      journeyName: (data['journeyName'] ?? 'Fitness Journey').toString(),
+      completedWorkoutsCount:
+          (data['completedWorkoutsCount'] as num?)?.toInt() ?? 0,
+      totalWorkoutsCount: (data['totalWorkoutsCount'] as num?)?.toInt() ?? 0,
+      completionCount: (data['completionCount'] as num?)?.toInt() ??
+          (((data['status'] ?? 'not_started').toString() == 'completed')
+              ? 1
+              : 0),
+      repeatCompletionCount: (data['repeatCompletionCount'] as num?)?.toInt() ??
+          0,
+      progressPercent: (data['progressPercent'] as num?)?.toDouble() ?? 0.0,
+      status: (data['status'] ?? 'not_started').toString(),
     );
   }
 }

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../data/fitness_journey_workouts.dart';
+import 'fitness_journey_detail_screen.dart';
 import 'progress_tracking_screen.dart'; // Import the new progress tracking screen
 import '../data/exercise_data2.dart'; // Import workout data
 import '../models/workout_model.dart'; // Import workout model
+import '../services/journey_progress_service.dart';
 import 'workout_detail_screen.dart'; // Import workout detail screen
 
 class WorkoutScreen extends StatefulWidget {
@@ -18,6 +21,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     with WidgetsBindingObserver {
   int _selectedTabIndex = 0;
   int _selectedJourneyIndex = 0;
+  int _selectedMonthlyTrackingView = 0;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<int> _monthlyCategoryCounts = [
@@ -34,6 +38,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     0,
     0,
   ]; // Cheated count for each category
+  List<int> _monthlyJourneyCounts = [0, 0, 0, 0, 0];
+  List<int> _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
   bool _isLoading = true;
 
   // List of tab titles and corresponding colors
@@ -51,8 +57,30 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     Colors.orange, // Lower Body
     Colors.purple,   // Shoulders
   ];
+  final List<String> _monthlyJourneyTitles = const [
+    'Weight Loss',
+    'Cardio',
+    'Strength & Power',
+    'Muscular Endurance',
+    'Health & Wellness',
+  ];
+  final List<String> _monthlyJourneyIds = const [
+    weightLossJourneyId,
+    cardioJourneyId,
+    strengthPowerJourneyId,
+    muscularEnduranceJourneyId,
+    healthWellnessJourneyId,
+  ];
+  final List<Color> _monthlyJourneyColors = const [
+    Color(0xFFFF6B35),
+    Color(0xFF2EC4E6),
+    Color(0xFF8FA3BF),
+    Color(0xFF5BE7A9),
+    Color(0xFFF4D58D),
+  ];
   final List<FitnessJourneyPreview> _journeys = const [
     FitnessJourneyPreview(
+      journeyId: weightLossJourneyId,
       title: 'Weight Loss',
       durationLabel: '4 WORKOUTS',
       headline: 'Burn\nLean',
@@ -67,6 +95,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           'assets/thumbnails/Journeys/journey_weight_loss_thumb.png',
     ),
     FitnessJourneyPreview(
+      journeyId: cardioJourneyId,
       title: 'Cardio',
       durationLabel: '4 WORKOUTS',
       headline: 'Heart\nRush',
@@ -80,6 +109,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       thumbnailAsset: 'assets/thumbnails/Journeys/journey_cardio_thumb.png',
     ),
     FitnessJourneyPreview(
+      journeyId: strengthPowerJourneyId,
       title: 'Strength & Power',
       durationLabel: '5 WORKOUTS',
       headline: 'Raw\nPower',
@@ -94,6 +124,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           'assets/thumbnails/Journeys/journey_strength_power_thumb.png',
     ),
     FitnessJourneyPreview(
+      journeyId: muscularEnduranceJourneyId,
       title: 'Muscular Endurance',
       durationLabel: '4 WORKOUTS',
       headline: 'Keep\nGoing',
@@ -108,6 +139,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           'assets/thumbnails/Journeys/journey_muscular_endurance_thumb.png',
     ),
     FitnessJourneyPreview(
+      journeyId: healthWellnessJourneyId,
       title: 'Health & Wellness',
       durationLabel: '4 WORKOUTS',
       headline: 'Daily\nReset',
@@ -146,6 +178,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   void initState() {
     super.initState();
     _loadMonthlyCategoryData();
+    _loadSelectedJourney();
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -190,6 +223,58 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     return null;
   }
 
+  int? _getJourneyIndex({
+    String? journeyId,
+    String? journeyName,
+    String? workoutTitle,
+  }) {
+    if (journeyId != null && journeyId.isNotEmpty) {
+      final idIndex = _monthlyJourneyIds.indexOf(journeyId);
+      if (idIndex >= 0) {
+        return idIndex;
+      }
+    }
+
+    if (journeyName != null && journeyName.isNotEmpty) {
+      final normalizedName = journeyName.toLowerCase().trim();
+      final nameIndex = _monthlyJourneyTitles.indexWhere(
+        (title) => title.toLowerCase() == normalizedName,
+      );
+      if (nameIndex >= 0) {
+        return nameIndex;
+      }
+    }
+
+    if (workoutTitle != null && workoutTitle.isNotEmpty) {
+      for (int i = 0; i < _monthlyJourneyIds.length; i++) {
+        final workouts = getJourneyWorkouts(_monthlyJourneyIds[i]);
+        final hasMatch = workouts.any((workout) => workout.title == workoutTitle);
+        if (hasMatch) {
+          return i;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  List<String> get _activeMonthlyTitles => _selectedMonthlyTrackingView == 0
+      ? _tabTitles
+      : _monthlyJourneyTitles;
+
+  List<Color> get _activeMonthlyColors => _selectedMonthlyTrackingView == 0
+      ? _categoryColors
+      : _monthlyJourneyColors;
+
+  List<int> get _activeMonthlyCounts => _selectedMonthlyTrackingView == 0
+      ? _monthlyCategoryCounts
+      : _monthlyJourneyCounts;
+
+  List<int> get _activeMonthlyCheatedCounts =>
+      _selectedMonthlyTrackingView == 0
+          ? _monthlyCheatedCategoryCounts
+          : _monthlyJourneyCheatedCounts;
+
   List<PieChartSectionData> _buildMonthlyChartSections({
     required bool compact,
   }) {
@@ -198,15 +283,18 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final cheatedRadius = compact ? 34.0 : 42.0;
     final cleanFontSize = compact ? 10.0 : 12.0;
     final cheatedFontSize = compact ? 9.0 : 11.0;
+    final activeCounts = _activeMonthlyCounts;
+    final activeCheatedCounts = _activeMonthlyCheatedCounts;
+    final activeColors = _activeMonthlyColors;
 
-    for (int i = 0; i < _tabTitles.length; i++) {
-      final cheatedCount = _monthlyCheatedCategoryCounts[i];
-      final cleanCount = _monthlyCategoryCounts[i] - cheatedCount;
+    for (int i = 0; i < activeCounts.length; i++) {
+      final cheatedCount = activeCheatedCounts[i];
+      final cleanCount = activeCounts[i] - cheatedCount;
 
       if (cleanCount > 0) {
         sections.add(
           PieChartSectionData(
-            color: _categoryColors[i],
+            color: activeColors[i],
             value: cleanCount.toDouble(),
             title: '$cleanCount',
             radius: cleanRadius,
@@ -222,7 +310,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       if (cheatedCount > 0) {
         sections.add(
           PieChartSectionData(
-            color: _categoryColors[i].withOpacity(0.35),
+            color: activeColors[i].withOpacity(0.35),
             value: cheatedCount.toDouble(),
             title: '!$cheatedCount',
             radius: cheatedRadius,
@@ -240,9 +328,11 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   }
 
   Widget _buildLegendItem(int index, {required bool compact}) {
-    final totalCount = _monthlyCategoryCounts[index];
-    final cheatedCount = _monthlyCheatedCategoryCounts[index];
+    final totalCount = _activeMonthlyCounts[index];
+    final cheatedCount = _activeMonthlyCheatedCounts[index];
     final cleanCount = totalCount - cheatedCount;
+    final label = _activeMonthlyTitles[index];
+    final color = _activeMonthlyColors[index];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -257,7 +347,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: _categoryColors[index],
+              color: color,
               shape: BoxShape.circle,
             ),
           ),
@@ -267,7 +357,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_tabTitles[index]}: $totalCount',
+                  '$label: $totalCount',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -284,7 +374,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                          color: _categoryColors[index].withOpacity(0.35),
+                          color: color.withOpacity(0.35),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: Colors.amber.withOpacity(0.7),
@@ -374,6 +464,12 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           spacing: 8,
           runSpacing: 8,
           children: [
+            if (workout.journeyName != null)
+              _buildWorkoutMetaChip(
+                label: workout.journeyName!,
+                backgroundColor: const Color(0xFFFF6B35).withOpacity(0.18),
+                textColor: const Color(0xFFFF9B73),
+              ),
             _buildWorkoutMetaChip(
               label: "${workout.exerciseList.length} exercises",
               backgroundColor: Colors.grey[800]!,
@@ -432,12 +528,16 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         // Initialize category counts with zeros
         List<int> categoryCounts = [0, 0, 0, 0, 0];
         List<int> cheatedCategoryCounts = [0, 0, 0, 0, 0];
+        List<int> journeyCounts = [0, 0, 0, 0, 0];
+        List<int> cheatedJourneyCounts = [0, 0, 0, 0, 0];
 
         // Process completed workouts to calculate category counts
         for (var doc in completedWorkoutsSnapshot.docs) {
           final data = doc.data();
           final workoutTitle = data['title'] as String?;
           final storedBodyFocus = data['bodyFocus'] as String?;
+          final journeyId = data['journeyId'] as String?;
+          final journeyName = data['journeyName'] as String?;
           String bodyFocus = storedBodyFocus ?? '';
 
           if (bodyFocus.isEmpty && workoutTitle != null) {
@@ -458,17 +558,33 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               cheatedCategoryCounts[categoryIndex]++;
             }
           }
+
+          final journeyIndex = _getJourneyIndex(
+            journeyId: journeyId,
+            journeyName: journeyName,
+            workoutTitle: workoutTitle,
+          );
+          if (journeyIndex != null) {
+            journeyCounts[journeyIndex]++;
+            if (isCheated) {
+              cheatedJourneyCounts[journeyIndex]++;
+            }
+          }
         }
 
         setState(() {
           _monthlyCategoryCounts = categoryCounts;
           _monthlyCheatedCategoryCounts = cheatedCategoryCounts;
+          _monthlyJourneyCounts = journeyCounts;
+          _monthlyJourneyCheatedCounts = cheatedJourneyCounts;
           _isLoading = false;
         });
       } else {
         setState(() {
           _monthlyCategoryCounts = [0, 0, 0, 0, 0];
           _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0];
+          _monthlyJourneyCounts = [0, 0, 0, 0, 0];
+          _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
           _isLoading = false;
         });
       }
@@ -477,8 +593,62 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       setState(() {
         _monthlyCategoryCounts = [0, 0, 0, 0, 0];
         _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0];
+        _monthlyJourneyCounts = [0, 0, 0, 0, 0];
+        _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadSelectedJourney() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final data = userDoc.data();
+      final selectedJourneyId = data?['selectedJourneyId'] as String?;
+
+      if (selectedJourneyId == null || selectedJourneyId.isEmpty) {
+        return;
+      }
+
+      final selectedIndex = _journeys.indexWhere(
+        (journey) => journey.journeyId == selectedJourneyId,
+      );
+
+      if (selectedIndex >= 0 && mounted) {
+        setState(() {
+          _selectedJourneyIndex = selectedIndex;
+        });
+      }
+    } catch (e) {
+      print('Error loading selected journey: $e');
+    }
+  }
+
+  Future<void> _saveSelectedJourney(FitnessJourneyPreview journey) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      await JourneyProgressService.syncJourneyProgressForUser(
+        firestore: _firestore,
+        uid: user.uid,
+        journeyId: journey.journeyId,
+        journeyName: journey.title,
+        isSelected: true,
+        markStarted: false,
+      );
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'selectedJourney': journey.title,
+        'selectedJourneyId': journey.journeyId,
+        'selectedJourneyName': journey.title,
+        'journeyUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error saving selected journey: $e');
     }
   }
 
@@ -561,6 +731,82 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                 ),
                               ),
                               const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.24),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedMonthlyTrackingView = 0;
+                                          });
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 180),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _selectedMonthlyTrackingView == 0
+                                                ? const Color(0xFFFF6B35)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            "Body Focus",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: _selectedMonthlyTrackingView == 0
+                                                  ? Colors.white
+                                                  : Colors.white70,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: compactCard ? 12 : 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedMonthlyTrackingView = 1;
+                                          });
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 180),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _selectedMonthlyTrackingView == 1
+                                                ? const Color(0xFFFF6B35)
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            "Journeys",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: _selectedMonthlyTrackingView == 1
+                                                  ? Colors.white
+                                                  : Colors.white70,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: compactCard ? 12 : 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
                               SizedBox(
                                 height: chartHeight,
                                 child: _isLoading
@@ -606,7 +852,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                               Wrap(
                                 spacing: 10,
                                 runSpacing: 8,
-                                children: List.generate(_tabTitles.length, (i) {
+                                children: List.generate(_activeMonthlyTitles.length, (i) {
                                   return SizedBox(
                                     width: legendWidth,
                                     child: _buildLegendItem(
@@ -668,7 +914,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
                   _buildJourneySection(),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
                   // Body Focus
                   const Text(
@@ -765,10 +1011,34 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               final isSelected = index == _selectedJourneyIndex;
 
               return GestureDetector(
-                onTap: () {
+                onTap: () async {
                   setState(() {
                     _selectedJourneyIndex = index;
                   });
+                  await _saveSelectedJourney(journey);
+
+                  if (!mounted) {
+                    return;
+                  }
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FitnessJourneyDetailScreen(
+                        journeyId: journey.journeyId,
+                        title: journey.title,
+                        durationLabel: journey.durationLabel,
+                        headline: journey.headline,
+                        description: journey.description,
+                        thumbnailAsset: journey.thumbnailAsset,
+                        icon: journey.icon,
+                        accentColor: journey.accentColor,
+                        buttonTextColor: journey.buttonTextColor,
+                        gradientStart: journey.gradientStart,
+                        gradientEnd: journey.gradientEnd,
+                      ),
+                    ),
+                  );
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
@@ -816,6 +1086,20 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                             ),
                           ),
                         ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              stops: const [0.0, 0.48, 1.0],
+                              colors: [
+                                Colors.black.withOpacity(0.62),
+                                Colors.black.withOpacity(0.34),
+                                Colors.black.withOpacity(0.08),
+                              ],
+                            ),
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.all(18),
                           child: Column(
@@ -836,6 +1120,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                     color: Colors.white,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black54,
+                                        blurRadius: 12,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -847,6 +1138,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                   fontSize: 26,
                                   fontWeight: FontWeight.w900,
                                   height: 0.98,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black87,
+                                      blurRadius: 18,
+                                      offset: Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -856,6 +1154,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                   color: Colors.white.withOpacity(0.92),
                                   fontSize: 13,
                                   height: 1.25,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Colors.black87,
+                                      blurRadius: 12,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -869,14 +1174,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                   borderRadius: BorderRadius.circular(26),
                                 ),
                                 child: Text(
-                                  isSelected
-                                      ? 'Selected Journey'
-                                      : journey.buttonLabel,
+                                  journey.buttonLabel,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: isSelected
-                                        ? journey.buttonTextColor
-                                        : journey.buttonTextColor,
+                                    color: journey.buttonTextColor,
                                     fontWeight: FontWeight.w900,
                                     fontSize: 15,
                                   ),
@@ -966,12 +1267,23 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       }
     }).toList();
 
+    return _buildWorkoutCollection(
+      title: "${filteredWorkouts.length} ${_tabTitles[_selectedTabIndex]} Workouts",
+      workouts: filteredWorkouts,
+      emptyMessage: "No workouts available for this category",
+    );
+  }
+
+  Widget _buildWorkoutCollection({
+    required String title,
+    required List<Workout> workouts,
+    required String emptyMessage,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Display number of workouts for the selected category
         Text(
-          "${filteredWorkouts.length} ${_tabTitles[_selectedTabIndex]} Workouts",
+          title,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -979,11 +1291,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           ),
         ),
         const SizedBox(height: 10),
-        // Check if there are workouts for the selected category
-        if (filteredWorkouts.isEmpty)
-          const Center(
+        if (workouts.isEmpty)
+          Center(
             child: Text(
-              "No workouts available for this category",
+              emptyMessage,
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -991,14 +1302,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             ),
           )
         else
-          // Build the list of workout cards
           ListView.builder(
             shrinkWrap: true,
             physics:
                 const NeverScrollableScrollPhysics(), // Disable scrolling for the list view since the parent is already scrollable
-            itemCount: filteredWorkouts.length,
+            itemCount: workouts.length,
             itemBuilder: (context, index) {
-              return _buildWorkoutCard(filteredWorkouts[index]);
+              return _buildWorkoutCard(workouts[index]);
             },
           ),
       ],
@@ -1156,7 +1466,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   // Helper method to check if there's data to display in the pie chart
   bool _hasData() {
-    return _monthlyCategoryCounts.any((count) => count > 0);
+    return _activeMonthlyCounts.any((count) => count > 0);
   }
 
   // Calculate total duration from all exercises in the workout
@@ -1189,6 +1499,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 }
 
 class FitnessJourneyPreview {
+  final String journeyId;
   final String title;
   final String durationLabel;
   final String headline;
@@ -1202,6 +1513,7 @@ class FitnessJourneyPreview {
   final Color gradientEnd;
 
   const FitnessJourneyPreview({
+    required this.journeyId,
     required this.title,
     required this.durationLabel,
     required this.headline,

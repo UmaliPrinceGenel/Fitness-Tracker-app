@@ -28,11 +28,11 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   // Health data - will be loaded from Firestore
   int _weeklyCalories = 0; // Current daily calories from workout tracking
-  int _weeklyCaloriesGoal = 500; // Daily calories goal
+  int _weeklyCaloriesGoal = 2500; // Daily calories goal
   int _weeklyMinutes = 0; // Current daily workout minutes
-  int _weeklyMinutesGoal = 60; // Daily workout minutes goal
+  int _weeklyMinutesGoal = 300; // Daily workout minutes goal
   int _weeklyWorkoutsCount = 0; // Current daily completed workouts
- int _weeklyWorkoutsGoal = 1; // Daily workout goal
+ int _weeklyWorkoutsGoal = 5; // Daily workout goal
 
   // Body metrics data - UPDATED: bodyFat to waistMeasurement, vitalityScore to sleepHours
   double _waistMeasurement = 0.0;
@@ -1063,7 +1063,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Data resets daily at midnight • ${_dailyActivityHistory.length} days of history',
+                                      'Data resets daily at midnight',
                                       style: TextStyle(
                                         color: Colors.grey[400],
                                         fontSize: 12,

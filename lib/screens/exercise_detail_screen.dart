@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -42,6 +44,7 @@ class ExerciseDetailScreen extends StatefulWidget {
   final int exerciseNumber;
   final Workout workout;
   final bool isPreviewMode;
+  final bool isReadOnlyMode;
   final ExerciseTrackingDraft? initialDraft;
   final ExerciseTrackingDraft? Function(int)? draftForExercise;
   final Function(int)? onExerciseViewed; // Callback to mark exercise as viewed
@@ -54,6 +57,7 @@ class ExerciseDetailScreen extends StatefulWidget {
     required this.exerciseNumber,
     required this.workout,
     this.isPreviewMode = false,
+    this.isReadOnlyMode = false,
     this.initialDraft,
     this.draftForExercise,
     this.onExerciseViewed,
@@ -86,6 +90,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   Timer? _exerciseTimer;
   VideoPlayerController? _controller;
   bool _isLoadingData = true;
+  bool _isVideoMuted = false;
 
   @override
   void initState() {
@@ -98,7 +103,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     setsController = TextEditingController(text: _computeDefaultSets().toString()); 
     
     // Add listeners to controllers to automatically recalculate when values change
-    if (!widget.isPreviewMode) {
+    if (!widget.isPreviewMode && !widget.isReadOnlyMode) {
       weightController.addListener(_calculateValues);
       repsController.addListener(_calculateValues);
       setsController.addListener(_calculateValues);
@@ -112,7 +117,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     // Initialize video
     _initializeVideoPlayer();
     
-    // Load saved user data only during an active workout
+    // Load saved user data for active tracking and completed-workout review.
     if (widget.initialDraft != null) {
       weightController.text = widget.initialDraft!.weight;
       repsController.text = widget.initialDraft!.reps;
@@ -242,24 +247,119 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   }
 
   Future<void> _initializeVideoPlayer() async {
+    VideoPlayerController? initializedController;
     try {
-      String? videoPath = VideoMappingService.getVideoPath(exercise.name);
-      if (videoPath != null) {
-        _controller = VideoPlayerController.asset(videoPath);
-        await _controller!.initialize();
-        // Mute the video by setting volume to 0
-        _controller!.setVolume(0.0);
-        setState(() {});
+      final candidatePaths = await _resolveVideoCandidatePaths();
+
+      for (final videoPath in candidatePaths) {
+        try {
+          final controller = kIsWeb
+              ? VideoPlayerController.networkUrl(
+                  Uri.base.resolve(Uri.encodeFull(videoPath)),
+                )
+              : VideoPlayerController.asset(videoPath);
+          await controller.initialize();
+          await controller.setVolume(_isVideoMuted ? 0.0 : 1.0);
+          initializedController = controller;
+          break;
+        } catch (error) {
+          print("Failed video candidate '$videoPath' for '${exercise.name}': $error");
+        }
+      }
+
+      if (!mounted) {
+        await initializedController?.dispose();
+        return;
+      }
+
+      if (initializedController != null) {
+        setState(() {
+          _controller = initializedController;
+        });
       }
     } catch (e) {
       print("Error initializing video player: $e");
     }
   }
 
+  String _normalizeAssetText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  Future<List<String>> _resolveVideoCandidatePaths() async {
+    final candidates = <String>[];
+
+    void addCandidate(String? path) {
+      if (path == null || path.isEmpty || candidates.contains(path)) {
+        return;
+      }
+      candidates.add(path);
+    }
+
+    final mappedCandidates = VideoMappingService.getVideoCandidatePaths(
+      exercise.name,
+      journeyName: widget.workout.journeyName,
+      workoutTitle: widget.workout.title,
+    );
+    for (final path in mappedCandidates) {
+      addCandidate(path);
+    }
+
+    try {
+      final manifestContent = await rootBundle.loadString('AssetManifest.json');
+      final manifest = jsonDecode(manifestContent) as Map<String, dynamic>;
+      final normalizedExercise = _normalizeAssetText(exercise.name);
+      final normalizedWorkout = _normalizeAssetText(widget.workout.title);
+      final normalizedJourney = _normalizeAssetText(
+        widget.workout.journeyName ?? '',
+      );
+
+      final manifestMatches = manifest.keys
+          .where((key) => key.toLowerCase().endsWith('.mp4'))
+          .map((key) {
+            final normalizedKey = _normalizeAssetText(key);
+            int score = 0;
+
+            if (normalizedKey.contains(normalizedExercise)) {
+              score += 100;
+            }
+            if (normalizedWorkout.isNotEmpty &&
+                normalizedKey.contains(normalizedWorkout)) {
+              score += 60;
+            }
+            if (normalizedJourney.isNotEmpty &&
+                normalizedKey.contains(normalizedJourney)) {
+              score += 40;
+            }
+            if ((widget.workout.journeyName ?? '').isNotEmpty &&
+                normalizedKey.contains('fitness journey')) {
+              score += 20;
+            }
+
+            return MapEntry(key, score);
+          })
+          .where((entry) => entry.value > 0)
+          .toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      for (final entry in manifestMatches) {
+        addCandidate(entry.key);
+      }
+    } catch (e) {
+      print("Error reading asset manifest for '${exercise.name}': $e");
+    }
+
+    return candidates;
+  }
+
   @override
   void dispose() {
     // Remove listeners before disposing controllers
-    if (!widget.isPreviewMode) {
+    if (!widget.isPreviewMode && !widget.isReadOnlyMode) {
       weightController.removeListener(_calculateValues);
       repsController.removeListener(_calculateValues);
       setsController.removeListener(_calculateValues);
@@ -352,6 +452,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
 
   void _notifyValidWeightInput() {
     if (!widget.isPreviewMode &&
+        !widget.isReadOnlyMode &&
         widget.onWeightInput != null &&
         (!_requiresWeightInput || _hasValidWeight())) {
       widget.onWeightInput!(widget.exerciseNumber - 1);
@@ -359,7 +460,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   }
 
   void _notifyDraftChanged() {
-    if (widget.isPreviewMode || widget.onDraftChanged == null) {
+    if (widget.isPreviewMode ||
+        widget.isReadOnlyMode ||
+        widget.onDraftChanged == null) {
       return;
     }
 
@@ -463,7 +566,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   }
 
   void _markExerciseAsViewed() {
-    if (!widget.isPreviewMode && widget.onExerciseViewed != null) {
+    if (!widget.isPreviewMode &&
+        !widget.isReadOnlyMode &&
+        widget.onExerciseViewed != null) {
       widget.onExerciseViewed!(widget.exerciseNumber - 1);
     }
   }
@@ -475,7 +580,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         builder: (context) => ExerciseDetailScreen(
           exerciseNumber: exerciseNumber,
           workout: widget.workout,
-          isPreviewMode: false,
+          isPreviewMode: widget.isPreviewMode,
+          isReadOnlyMode: widget.isReadOnlyMode,
           initialDraft: widget.draftForExercise?.call(exerciseNumber - 1),
           draftForExercise: widget.draftForExercise,
           onExerciseViewed: widget.onExerciseViewed,
@@ -487,48 +593,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     );
   }
 
-  Future<bool> _showCancelWorkoutDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF191919),
-              title: const Text(
-                "Cancel Workout?",
-                style: TextStyle(color: Colors.white),
-              ),
-              content: const Text(
-                "Do you want to cancel this workout and go back?",
-                style: TextStyle(color: Colors.white70),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(false);
-                  },
-                  child: const Text(
-                    "No",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(true);
-                  },
-                  child: const Text(
-                    "Yes",
-                    style: TextStyle(color: Colors.orange),
-                  ),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-  }
-
   Future<bool> _handleBackNavigation() async {
-    if (widget.isPreviewMode) {
+    if (widget.isPreviewMode || widget.isReadOnlyMode) {
       return true;
     }
 
@@ -543,13 +609,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       return false;
     }
 
-    final shouldCancelWorkout = await _showCancelWorkoutDialog();
-    if (shouldCancelWorkout && mounted) {
-      widget.onWorkoutCancelled?.call();
-      Navigator.pop(context);
-    }
-
-    return false;
+    _notifyDraftChanged();
+    return true;
   }
 
   // Automatic calculation method
@@ -612,7 +673,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         appBar: AppBar(
           backgroundColor: Colors.black,
           automaticallyImplyLeading: false,
-          leading: widget.isPreviewMode || widget.exerciseNumber == 1
+          leading: widget.isPreviewMode ||
+                  widget.isReadOnlyMode ||
+                  widget.exerciseNumber == 1
               ? IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () async {
@@ -669,21 +732,57 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            IconButton(
-                              icon: Icon(
-                                _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                                color: Colors.white,
-                                size: 32,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  if (_controller!.value.isPlaying) {
-                                    _controller!.pause();
-                                  } else {
-                                    _controller!.play();
-                                  }
-                                });
-                              },
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    _controller!.value.isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      if (_controller!.value.isPlaying) {
+                                        _controller!.pause();
+                                      } else {
+                                        _controller!.play();
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: Icon(
+                                    _isVideoMuted
+                                        ? Icons.volume_off
+                                        : Icons.volume_up,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                  onPressed: () async {
+                                    final controller = _controller;
+                                    if (controller == null) {
+                                      return;
+                                    }
+
+                                    final nextMutedState = !_isVideoMuted;
+                                    await controller.setVolume(
+                                      nextMutedState ? 0.0 : 1.0,
+                                    );
+
+                                    if (!mounted) {
+                                      return;
+                                    }
+
+                                    setState(() {
+                                      _isVideoMuted = nextMutedState;
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -775,7 +874,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  if (!widget.isPreviewMode) ...[
+                  if (!widget.isPreviewMode && !widget.isReadOnlyMode) ...[
                     const Text(
                       "Exercise Timer",
                       style: TextStyle(
@@ -909,6 +1008,33 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                  ] else if (widget.isReadOnlyMode) ...[
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF191919),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(
+                          "Completed workout review. Inputs are locked after finishing. Tap Again on the previous screen to log a new session.",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ] else ...[
                   // Performance Tracking
                   const Text(
@@ -954,13 +1080,17 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 Expanded(
                                   child: TextField(
                                     controller: weightController,
+                                    enabled: !widget.isReadOnlyMode,
+                                    readOnly: widget.isReadOnlyMode,
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
                                     ],
-                                    onChanged: (_) {
-                                      _notifyValidWeightInput();
-                                    },
+                                    onChanged: widget.isReadOnlyMode
+                                        ? null
+                                        : (_) {
+                                            _notifyValidWeightInput();
+                                          },
                                     style: const TextStyle(color: Colors.white),
                                     decoration: const InputDecoration(
                                       labelText: 'Weight (kg)',
@@ -1042,6 +1172,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               Expanded(
                                 child: TextField(
                                   controller: repsController,
+                                  enabled: !widget.isReadOnlyMode,
+                                  readOnly: widget.isReadOnlyMode,
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
@@ -1076,6 +1208,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               Expanded(
                                 child: TextField(
                                   controller: setsController,
+                                  enabled: !widget.isReadOnlyMode,
+                                  readOnly: widget.isReadOnlyMode,
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
@@ -1256,7 +1390,11 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       child: ElevatedButton(
                         onPressed: widget.exerciseNumber > 1
                             ? () async {
-                                await _handleBackNavigation();
+                                if (widget.isReadOnlyMode) {
+                                  await _openExercise(widget.exerciseNumber - 1);
+                                } else {
+                                  await _handleBackNavigation();
+                                }
                               }
                             : null,
                         style: ElevatedButton.styleFrom(
@@ -1283,6 +1421,15 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       child: ElevatedButton(
                         onPressed: () async {
                           int totalExercises = widget.workout.exerciseList.length;
+
+                          if (widget.isReadOnlyMode) {
+                            if (widget.exerciseNumber < totalExercises) {
+                              await _openExercise(widget.exerciseNumber + 1);
+                            } else if (mounted) {
+                              Navigator.pop(context);
+                            }
+                            return;
+                          }
 
                           if (!await _validateTrackingInputs()) {
                             return;
@@ -1312,9 +1459,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                           ),
                         ),
                         child: Text(
-                          widget.exerciseNumber < widget.workout.exerciseList.length
-                              ? "Next"
-                              : "Done", // Changed from "Finish Workout" to "Done"
+                          widget.isReadOnlyMode
+                              ? (widget.exerciseNumber < widget.workout.exerciseList.length
+                                  ? "Next"
+                                  : "Back")
+                              : widget.exerciseNumber < widget.workout.exerciseList.length
+                                  ? "Next"
+                                  : "Done",
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -1333,23 +1484,33 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: Colors.orange, size: 20),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
+          Expanded(
+            flex: 3,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
             ),
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 4,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              overflow: TextOverflow.visible,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],

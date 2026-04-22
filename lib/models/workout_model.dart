@@ -83,6 +83,9 @@ class Workout {
   final String bodyFocus;
   final String videoAsset;
   final String thumbnailAsset;
+  final String? journeyId;
+  final String? journeyName;
+  final int? journeyOrder;
   final List<Exercise> exerciseList; // List of individual exercises with calorie info
 
   Workout({
@@ -94,6 +97,9 @@ class Workout {
     required this.bodyFocus,
     required this.videoAsset,
     required this.thumbnailAsset,
+    this.journeyId,
+    this.journeyName,
+    this.journeyOrder,
     required this.exerciseList, // Add the exercise list parameter
   });
 }
