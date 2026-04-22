@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'admin_community_screen.dart';
 import 'admin_dashboard_screen.dart';
+import 'admin_feedback_screen.dart';
 import 'admin_route_utils.dart';
 import 'community_member_profile_screen.dart';
 
@@ -27,11 +28,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   void _onNavTapped(int index) {
     if (index == 1) return;
 
+    final Widget page;
+    if (index == 0) {
+      page = const AdminDashboardScreen();
+    } else if (index == 2) {
+      page = const AdminCommunityScreen();
+    } else {
+      page = const AdminFeedbackScreen();
+    }
+
     Navigator.pushReplacement(
       context,
-      buildAdminRoute(
-        index == 0 ? const AdminDashboardScreen() : const AdminCommunityScreen(),
-      ),
+      buildAdminRoute(page),
     );
   }
 
@@ -575,6 +583,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             icon: Icon(Icons.forum_outlined),
             activeIcon: Icon(Icons.forum),
             label: 'Community',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.rate_review_outlined),
+            activeIcon: Icon(Icons.rate_review),
+            label: 'Feedback',
           ),
         ],
       ),

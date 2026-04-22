@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_community_screen.dart';
+import 'admin_feedback_screen.dart';
 import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
 import 'community_member_profile_screen.dart';
@@ -36,11 +37,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _onNavTapped(int index) {
     if (index == 0) return;
 
+    final Widget page;
+    if (index == 1) {
+      page = const AdminUsersScreen();
+    } else if (index == 2) {
+      page = const AdminCommunityScreen();
+    } else {
+      page = const AdminFeedbackScreen();
+    }
+
     Navigator.pushReplacement(
       context,
-      buildAdminRoute(
-        index == 1 ? const AdminUsersScreen() : const AdminCommunityScreen(),
-      ),
+      buildAdminRoute(page),
     );
   }
 
@@ -75,11 +83,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     try {
-      final usersSnapshot = await _firestore.collection('users').get();
-      final postsSnapshot = await _firestore
-          .collection('community_posts')
-          .orderBy('timePosted', descending: true)
-          .get();
+      final results = await Future.wait([
+        _firestore.collection('users').get(),
+        _firestore
+            .collection('community_posts')
+            .orderBy('timePosted', descending: true)
+            .get(),
+      ]);
+
+      final usersSnapshot = results[0] as QuerySnapshot<Map<String, dynamic>>;
+      final postsSnapshot = results[1] as QuerySnapshot<Map<String, dynamic>>;
 
       final users = usersSnapshot.docs.map((doc) {
         final data = doc.data();
@@ -853,40 +866,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  'Overview only. Use the admin bottom navigation to open the Users and Community panels.',
+                                  'Use the admin bottom navigation to open the Users, Community, and Feedback panels.',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
                                     height: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.white10),
-                                  ),
-                                  child: const Row(
-                                    children: [
-                                      Icon(
-                                        Icons.admin_panel_settings_outlined,
-                                        color: Colors.orange,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          'This dashboard stays focused on totals so the layout remains clean on any screen size.',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 13,
-                                            height: 1.45,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ],
@@ -1005,6 +989,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             icon: Icon(Icons.forum_outlined),
             activeIcon: Icon(Icons.forum),
             label: 'Community',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.rate_review_outlined),
+            activeIcon: Icon(Icons.rate_review),
+            label: 'Feedback',
           ),
         ],
       ),

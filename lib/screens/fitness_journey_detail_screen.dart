@@ -58,6 +58,7 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
   double _progressPercent = 0.0;
   bool _hasStartedJourney = false;
   bool _isJourneyCompleted = false;
+  DateTime? _activeJourneyCycleStartedAt;
   int _trackingPageIndex = 0;
   double _trackingPagePosition = 0.0;
 
@@ -96,11 +97,12 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
           _isLoadingProgress = false;
           _completedWorkoutsCount = 0;
           _progressRatio = 0.0;
-          _progressPercent = 0.0;
-          _hasStartedJourney = false;
-          _totalWorkoutsCount = _journeyWorkouts.length;
-        });
-        return;
+        _progressPercent = 0.0;
+        _hasStartedJourney = false;
+        _activeJourneyCycleStartedAt = null;
+        _totalWorkoutsCount = _journeyWorkouts.length;
+      });
+      return;
       }
 
       final snapshot = await JourneyProgressService.syncJourneyProgressForUser(
@@ -125,6 +127,7 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
         _progressPercent = snapshot.progressPercent;
         _hasStartedJourney = snapshot.hasStarted;
         _isJourneyCompleted = snapshot.isCompleted;
+        _activeJourneyCycleStartedAt = snapshot.startedAt;
         _isLoadingProgress = false;
         _isJourneyStarting = false;
       });
@@ -180,6 +183,7 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
         _progressPercent = snapshot.progressPercent;
         _hasStartedJourney = snapshot.hasStarted;
         _isJourneyCompleted = snapshot.isCompleted;
+        _activeJourneyCycleStartedAt = snapshot.startedAt;
         _isLoadingProgress = false;
         _isJourneyStarting = false;
       });
@@ -316,8 +320,17 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
-          isCompleted = data['completedAt'] != null;
-          isCheated = data['isCheated'] == true;
+          final completedAt = data['completedAt'];
+          final completedDate = completedAt is Timestamp
+              ? completedAt.toDate()
+              : null;
+          final cycleStartedAt = _activeJourneyCycleStartedAt;
+          final isInActiveJourneyCycle = completedDate != null &&
+              (cycleStartedAt == null ||
+                  !completedDate.isBefore(cycleStartedAt));
+
+          isCompleted = completedDate != null && isInActiveJourneyCycle;
+          isCheated = isCompleted && data['isCheated'] == true;
         }
 
         return GestureDetector(
