@@ -8,6 +8,7 @@ import 'progress_tracking_screen.dart'; // Import the new progress tracking scre
 import '../data/exercise_data2.dart'; // Import workout data
 import '../models/workout_model.dart'; // Import workout model
 import '../services/journey_progress_service.dart';
+import '../services/workout_goal_service.dart';
 import 'workout_detail_screen.dart'; // Import workout detail screen
 
 class WorkoutScreen extends StatefulWidget {
@@ -22,6 +23,11 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   int _selectedTabIndex = 0;
   int _selectedJourneyIndex = 0;
   int _selectedMonthlyTrackingView = 0;
+  int _recommendedJourneyIndex = 4;
+  String _recommendedGoalType = generalFitnessGoal;
+  String _recommendationReason =
+      'Begin with a balanced plan to build consistency.';
+  Set<String> _completedJourneyIds = <String>{};
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<int> _monthlyCategoryCounts = [
@@ -174,6 +180,145 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     return '${months[now.month - 1]} ${now.year}';
   }
 
+  int _journeyIndexForGoal(String goalType) {
+    return _journeys.indexWhere(
+      (journey) => goalForJourneyId(journey.journeyId) == normalizeGoalType(goalType),
+    );
+  }
+
+  FitnessJourneyPreview get _recommendedJourney {
+    if (_recommendedJourneyIndex >= 0 &&
+        _recommendedJourneyIndex < _journeys.length) {
+      return _journeys[_recommendedJourneyIndex];
+    }
+    final fallbackIndex = _journeyIndexForGoal(_recommendedGoalType);
+    return _journeys[fallbackIndex >= 0 ? fallbackIndex : 0];
+  }
+
+  bool get _allJourneysCompleted =>
+      _completedJourneyIds.length >= _journeys.length && _journeys.isNotEmpty;
+
+  bool _isJourneyCompleted(String journeyId) =>
+      _completedJourneyIds.contains(journeyId);
+
+  int _defaultRecommendationIndex() {
+    final generalFitnessIndex = _journeyIndexForGoal(generalFitnessGoal);
+    if (generalFitnessIndex >= 0) {
+      return generalFitnessIndex;
+    }
+    return _journeys.isEmpty ? 0 : 0;
+  }
+
+  ({int index, String goalType, String reason}) _resolveAutomaticRecommendation({
+    required Map<String, dynamic>? userData,
+    required QuerySnapshot<Map<String, dynamic>> journeyProgressSnapshot,
+    required QuerySnapshot<Map<String, dynamic>> doneInfosSnapshot,
+  }) {
+    final selectedJourneyId = userData?['selectedJourneyId']?.toString();
+    final selectedGoalType = normalizeGoalType(
+      userData?['selectedGoalType']?.toString(),
+    );
+    final completedJourneyIds = journeyProgressSnapshot.docs
+        .where((doc) {
+          final data = doc.data();
+          return data['isCompleted'] == true ||
+              (data['status']?.toString() == 'completed');
+        })
+        .map((doc) => doc.id)
+        .toSet();
+    final allJourneysCompleted =
+        completedJourneyIds.length >= _journeys.length && _journeys.isNotEmpty;
+
+    final activeJourneyDoc = journeyProgressSnapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>?>().firstWhere(
+      (doc) => doc != null && doc.data()['status']?.toString() == 'in_progress',
+      orElse: () => null,
+    );
+    if (activeJourneyDoc != null) {
+      final activeIndex = _journeys.indexWhere(
+        (journey) => journey.journeyId == activeJourneyDoc.id,
+      );
+      if (activeIndex >= 0) {
+        return (
+          index: activeIndex,
+          goalType: goalForJourneyId(activeJourneyDoc.id),
+          reason: 'Continue your active journey first.',
+        );
+      }
+    }
+
+    final cleanGoalCounts = <String, int>{};
+    for (final doc in doneInfosSnapshot.docs) {
+      final data = doc.data();
+      if (data['isCheated'] == true) {
+        continue;
+      }
+      final journeyId = data['journeyId']?.toString();
+      if (journeyId == null || journeyId.trim().isEmpty) {
+        continue;
+      }
+
+      final primaryGoal = normalizeGoalType(data['primaryGoal']?.toString());
+      cleanGoalCounts[primaryGoal] = (cleanGoalCounts[primaryGoal] ?? 0) + 1;
+    }
+
+    String resolvedGoalType = selectedGoalType;
+    if (cleanGoalCounts.isNotEmpty) {
+      resolvedGoalType = cleanGoalCounts.entries
+          .reduce((current, next) => current.value >= next.value ? current : next)
+          .key;
+    }
+
+    final recommendedPool = _journeys
+        .asMap()
+        .entries
+        .where(
+          (entry) => goalForJourneyId(entry.value.journeyId) == resolvedGoalType,
+        )
+        .toList(growable: false);
+
+    for (final entry in recommendedPool) {
+      if (!completedJourneyIds.contains(entry.value.journeyId)) {
+        return (
+          index: entry.key,
+          goalType: resolvedGoalType,
+          reason: cleanGoalCounts.isNotEmpty
+              ? 'Recommended from your workout history.'
+              : 'Recommended from your current journey setup.',
+        );
+      }
+    }
+
+    if (selectedJourneyId != null && selectedJourneyId.isNotEmpty) {
+      final selectedIndex = _journeys.indexWhere(
+        (journey) => journey.journeyId == selectedJourneyId,
+      );
+      if (selectedIndex >= 0) {
+        return (
+          index: selectedIndex,
+          goalType: goalForJourneyId(selectedJourneyId),
+          reason: allJourneysCompleted
+              ? 'All journeys are complete, so this is kept ready for replay.'
+              : 'This matches your saved journey selection.',
+        );
+      }
+    }
+
+    if (recommendedPool.isNotEmpty) {
+      return (
+        index: recommendedPool.first.key,
+        goalType: resolvedGoalType,
+        reason: 'This is your closest match right now.',
+      );
+    }
+
+    final fallbackIndex = _defaultRecommendationIndex();
+    return (
+      index: fallbackIndex,
+      goalType: goalForJourneyId(_journeys[fallbackIndex].journeyId),
+      reason: 'Start here for a balanced and beginner-friendly path.',
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -194,6 +339,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     if (state == AppLifecycleState.resumed) {
       // Refresh data when the app resumes (e.g., when returning from workout detail screen)
       _loadMonthlyCategoryData();
+      _loadSelectedJourney();
     }
   }
 
@@ -606,20 +752,54 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       if (user == null) return;
 
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final journeyProgressSnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('journey_progress')
+          .get();
+      final doneInfosSnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('doneInfos')
+          .get();
       final data = userDoc.data();
       final selectedJourneyId = data?['selectedJourneyId'] as String?;
+      final completedJourneyIds = journeyProgressSnapshot.docs
+          .where((doc) {
+            final progress = doc.data();
+            return progress['isCompleted'] == true ||
+                (progress['status']?.toString() == 'completed');
+          })
+          .map((doc) => doc.id)
+          .toSet();
+      final recommendation = _resolveAutomaticRecommendation(
+        userData: data,
+        journeyProgressSnapshot: journeyProgressSnapshot,
+        doneInfosSnapshot: doneInfosSnapshot,
+      );
 
-      if (selectedJourneyId == null || selectedJourneyId.isEmpty) {
-        return;
-      }
-
-      final selectedIndex = _journeys.indexWhere(
+      int selectedIndex = _journeys.indexWhere(
         (journey) => journey.journeyId == selectedJourneyId,
       );
+
+      if (selectedIndex < 0) {
+        selectedIndex = recommendation.index;
+      }
 
       if (selectedIndex >= 0 && mounted) {
         setState(() {
           _selectedJourneyIndex = selectedIndex;
+          _recommendedJourneyIndex = recommendation.index;
+          _recommendedGoalType = recommendation.goalType;
+          _recommendationReason = recommendation.reason;
+          _completedJourneyIds = completedJourneyIds;
+        });
+      } else if (mounted) {
+        setState(() {
+          _recommendedJourneyIndex = recommendation.index;
+          _recommendedGoalType = recommendation.goalType;
+          _recommendationReason = recommendation.reason;
+          _completedJourneyIds = completedJourneyIds;
         });
       }
     } catch (e) {
@@ -627,10 +807,16 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     }
   }
 
-  Future<void> _saveSelectedJourney(FitnessJourneyPreview journey) async {
+  Future<void> _saveSelectedJourney(
+    FitnessJourneyPreview journey, {
+    String? overrideGoalType,
+  }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
+      final resolvedGoalType = normalizeGoalType(
+        overrideGoalType ?? goalForJourneyId(journey.journeyId),
+      );
 
       await JourneyProgressService.syncJourneyProgressForUser(
         firestore: _firestore,
@@ -645,6 +831,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         'selectedJourney': journey.title,
         'selectedJourneyId': journey.journeyId,
         'selectedJourneyName': journey.title,
+        'selectedGoalType': resolvedGoalType,
+        'selectedGoalLabel': goalLabel(resolvedGoalType),
         'journeyUpdatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
@@ -988,6 +1176,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   }
 
   Widget _buildJourneySection() {
+    final recommendedJourney = _recommendedJourney;
+    final recommendedJourneyCompleted =
+        _isJourneyCompleted(recommendedJourney.journeyId);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1000,6 +1192,94 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           ),
         ),
         const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Recommended Journey",
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _allJourneysCompleted
+                    ? "All journeys are complete. You can still replay any journey anytime."
+                    : "The app automatically highlights the journey that fits your current progress best.",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.72),
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: recommendedJourney.accentColor.withOpacity(0.35)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      goalLabel(_recommendedGoalType),
+                      style: TextStyle(
+                        color: recommendedJourney.accentColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      recommendedJourney.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _allJourneysCompleted
+                          ? '${recommendedJourney.description} Replay any journey whenever you want.'
+                          : recommendedJourneyCompleted
+                              ? '${recommendedJourney.description} This journey is already complete, but you can start it again anytime.'
+                              : recommendedJourney.description,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _recommendationReason,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.58),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
         SizedBox(
           height: 250,
           child: ListView.separated(
@@ -1009,6 +1289,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             itemBuilder: (context, index) {
               final journey = _journeys[index];
               final isSelected = index == _selectedJourneyIndex;
+              final isRecommended = index == _recommendedJourneyIndex;
+              final isCompletedJourney = _isJourneyCompleted(journey.journeyId);
 
               return GestureDetector(
                 onTap: () async {
@@ -1021,7 +1303,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                     return;
                   }
 
-                  Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => FitnessJourneyDetailScreen(
@@ -1039,6 +1321,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                       ),
                     ),
                   );
+
+                  await _loadSelectedJourney();
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
@@ -1115,7 +1399,11 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Text(
-                                  journey.durationLabel,
+                                  isRecommended
+                                      ? 'RECOMMENDED'
+                                      : isCompletedJourney
+                                          ? 'COMPLETED'
+                                      : journey.durationLabel,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,

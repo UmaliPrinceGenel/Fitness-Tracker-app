@@ -2,8 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../data/exercise_data2.dart';
 import '../data/fitness_journey_workouts.dart';
+import '../models/workout_model.dart';
 import '../services/progress_tracking_service.dart';
+import '../services/workout_goal_service.dart';
 
 class ProgressTrackingScreen extends StatefulWidget {
   const ProgressTrackingScreen({super.key});
@@ -16,13 +19,20 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   final ProgressTrackingService _progressService = ProgressTrackingService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final List<Workout> _knownWorkouts = [
+    ...exerciseWorkouts,
+    ...fitnessJourneyWorkoutsById.values.expand((workouts) => workouts),
+  ];
   List<DateTime> _completedWorkoutDates = [];
   List<_JourneyProgressSummary> _startedJourneySummaries = [];
+  List<_WorkoutCompletionSummary> _currentMonthWorkoutCompletions = [];
   ExerciseRecord? _highestWeightRecord;
   List<ExerciseRecord> _allExerciseRecords = [];
-  List<ExerciseRecord> _filteredExerciseRecords = [];
+  List<_WorkoutCompletionSummary> _filteredWorkoutCompletions = [];
+  String _selectedGoal = 'All';
   String _selectedCategory = 'All';
   String _selectedDifficulty = 'All';
+  String? _recommendedGoalType;
   bool _showAllRecords = false;
 
   // Categories and difficulties for filtering
@@ -36,6 +46,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     'Abs',
     'Core',
   ];
+  final List<String> _goalOptions = ['All', ...supportedGoalTypes];
   final List<String> _difficulties = ['All', 'Easy', 'Medium', 'Hard'];
 
   @override
@@ -48,15 +59,19 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     // Get all completed workout dates
     _completedWorkoutDates = await _progressService.getCompletedWorkoutDates();
     _startedJourneySummaries = await _loadStartedJourneySummaries();
+    _recommendedGoalType = await _progressService.getRecommendedGoalType();
 
     // Get highest weight record
     _highestWeightRecord = await _progressService.getHighestWeightRecord();
-    
+
     // Get all exercise records
     _allExerciseRecords = await _progressService.getExerciseRecords();
-    
-    // Set filtered records to all records initially
-    _filteredExerciseRecords = _allExerciseRecords;
+    _currentMonthWorkoutCompletions = await _loadCurrentMonthWorkoutCompletions();
+
+    // Personal Records should match completed workouts, so filter doneInfos entries.
+    _filteredWorkoutCompletions = _applyWorkoutCompletionFilters(
+      _currentMonthWorkoutCompletions,
+    );
     _showAllRecords = false;
 
     setState(() {});
@@ -110,31 +125,150 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     return _completedWorkoutDates.where((date) => !date.isBefore(startOfWindow)).length;
   }
 
-  // Filter exercises based on selected category and difficulty
-  Future<void> _filterExercises() async {
-    List<ExerciseRecord> filtered = _allExerciseRecords;
+  bool _matchesCategory(ExerciseRecord record, String category) {
+    final normalizedCategory = category.toLowerCase().trim();
+    final normalizedFocus = record.bodyFocus.toLowerCase().trim();
 
-    // Apply category filter if not 'All'
-    if (_selectedCategory != 'All') {
-      filtered = await _progressService.getExerciseRecordsByCategory(_selectedCategory);
+    if (normalizedFocus.contains(normalizedCategory) ||
+        normalizedCategory.contains(normalizedFocus)) {
+      return true;
     }
 
-    // Apply difficulty filter if not 'All'
-    if (_selectedDifficulty != 'All') {
-      final difficultyFiltered = await _progressService.getExerciseRecordsByDifficulty(_selectedDifficulty);
-      
-      // If both filters are applied, find the intersection
-      if (_selectedCategory != 'All') {
-        filtered = filtered.where((record) => 
-          difficultyFiltered.any((r) => r.exerciseName == record.exerciseName)
-        ).toList();
-      } else {
-        filtered = difficultyFiltered;
+    if (normalizedCategory == 'arms') {
+      return normalizedFocus == 'arm' ||
+          normalizedFocus == 'arms' ||
+          normalizedFocus == 'triceps' ||
+          normalizedFocus == 'biceps' ||
+          normalizedFocus == 'forearms';
+    }
+
+    if (normalizedCategory == 'abs') {
+      return normalizedFocus == 'abs' || normalizedFocus == 'core';
+    }
+
+    return false;
+  }
+
+  bool _matchesGoalFilter({
+    required String primaryGoal,
+    required List<String> goalTags,
+  }) {
+    if (_selectedGoal == 'All') {
+      return true;
+    }
+
+    final normalizedSelectedGoal = normalizeGoalType(_selectedGoal);
+    return primaryGoal == normalizedSelectedGoal ||
+        goalTags.contains(normalizedSelectedGoal);
+  }
+
+  Future<List<_WorkoutCompletionSummary>> _loadCurrentMonthWorkoutCompletions() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return [];
+    }
+
+    try {
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('doneInfos')
+          .where('completedAt', isGreaterThanOrEqualTo: startOfMonth)
+          .where('completedAt', isLessThan: startOfNextMonth)
+          .get();
+
+      final completions = snapshot.docs
+          .map(
+            (doc) => _WorkoutCompletionSummary.fromMap(
+              doc.data(),
+              fallbackWorkout: _findWorkoutForCompletion(doc.data()),
+            ),
+          )
+          .toList()
+        ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+
+      return completions;
+    } catch (e) {
+      print('Error loading current month workout completions: $e');
+      return [];
+    }
+  }
+
+  Workout? _findWorkoutForCompletion(Map<String, dynamic> data) {
+    final workoutId = (data['workoutId'] ?? '').toString();
+    final workoutTitle = (data['title'] ?? '').toString();
+
+    for (final workout in _knownWorkouts) {
+      if (workoutId.isNotEmpty && workout.id == workoutId) {
+        return workout;
       }
     }
 
+    for (final workout in _knownWorkouts) {
+      if (workoutTitle.isNotEmpty && workout.title == workoutTitle) {
+        return workout;
+      }
+    }
+
+    return null;
+  }
+
+  List<_WorkoutCompletionSummary> _applyWorkoutCompletionFilters(
+    List<_WorkoutCompletionSummary> completions,
+  ) {
+    return completions.where((completion) {
+      final goalMatch = _matchesGoalFilter(
+        primaryGoal: completion.primaryGoal,
+        goalTags: completion.goalTags,
+      );
+      final categoryMatch = _selectedCategory == 'All'
+          ? true
+          : _matchesCompletionCategory(completion, _selectedCategory);
+      final difficultyMatch = _selectedDifficulty == 'All'
+          ? true
+          : completion.level.toLowerCase().contains(
+                _selectedDifficulty.toLowerCase(),
+              );
+
+      return goalMatch && categoryMatch && difficultyMatch;
+    }).toList(growable: false);
+  }
+
+  bool _matchesCompletionCategory(
+    _WorkoutCompletionSummary completion,
+    String category,
+  ) {
+    final normalizedCategory = category.toLowerCase().trim();
+    final normalizedFocus = completion.bodyFocus.toLowerCase().trim();
+
+    if (normalizedFocus.contains(normalizedCategory) ||
+        normalizedCategory.contains(normalizedFocus)) {
+      return true;
+    }
+
+    if (normalizedCategory == 'arms') {
+      return normalizedFocus == 'arm' ||
+          normalizedFocus == 'arms' ||
+          normalizedFocus == 'triceps' ||
+          normalizedFocus == 'biceps' ||
+          normalizedFocus == 'forearms';
+    }
+
+    if (normalizedCategory == 'abs') {
+      return normalizedFocus == 'abs' || normalizedFocus == 'core';
+    }
+
+    return false;
+  }
+
+  void _filterWorkoutRecords() {
     setState(() {
-      _filteredExerciseRecords = filtered;
+      _filteredWorkoutCompletions = _applyWorkoutCompletionFilters(
+        _currentMonthWorkoutCompletions,
+      );
       _showAllRecords = false;
     });
   }
@@ -142,9 +276,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     final visibleRecords = _showAllRecords
-        ? _filteredExerciseRecords
-        : _filteredExerciseRecords.take(5).toList();
-    final hasMoreThanFiveRecords = _filteredExerciseRecords.length > 5;
+        ? _filteredWorkoutCompletions
+        : _filteredWorkoutCompletions.take(5).toList();
+    final hasMoreThanFiveRecords = _filteredWorkoutCompletions.length > 5;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -404,10 +538,26 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      if (_selectedGoal != 'All' ||
+                          (_recommendedGoalType != null &&
+                              _recommendedGoalType!.trim().isNotEmpty))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            _selectedGoal == 'All'
+                                ? 'Recommended goal: ${goalLabel(_recommendedGoalType!)}.'
+                                : 'Filtering workouts by ${goalLabel(_selectedGoal)}.',
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+
                       if (!hasMoreThanFiveRecords &&
-                          _filteredExerciseRecords.isNotEmpty)
+                          _filteredWorkoutCompletions.isNotEmpty)
                         Text(
-                          'Showing ${_filteredExerciseRecords.length} record${_filteredExerciseRecords.length == 1 ? '' : 's'}',
+                          'Showing ${_filteredWorkoutCompletions.length} workout record${_filteredWorkoutCompletions.length == 1 ? '' : 's'}',
                           style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 12,
@@ -425,6 +575,40 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             children: [
+                              DropdownButtonFormField<String>(
+                                value: _selectedGoal,
+                                decoration: const InputDecoration(
+                                  labelText: 'Goal',
+                                  labelStyle: TextStyle(color: Colors.orange),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.orange),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.orange),
+                                  ),
+                                ),
+                                items: _goalOptions.map((String goalType) {
+                                  return DropdownMenuItem(
+                                    value: goalType,
+                                    child: Text(
+                                      goalType == 'All'
+                                          ? 'All Goals'
+                                          : goalLabel(goalType),
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  if (newValue == null) {
+                                    return;
+                                  }
+                                  _selectedGoal = newValue;
+                                  _filterWorkoutRecords();
+                                },
+                                dropdownColor: const Color(0xFF191919),
+                                iconEnabledColor: Colors.white,
+                              ),
+                              const SizedBox(height: 16),
                               Row(
                                 children: [
                                   Expanded(
@@ -450,10 +634,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                                         );
                                       }).toList(),
                                       onChanged: (String? newValue) {
-                                        setState(() {
-                                          _selectedCategory = newValue!;
-                                          _filterExercises();
-                                        });
+                                        _selectedCategory = newValue!;
+                                        _filterWorkoutRecords();
                                       },
                                       dropdownColor: const Color(0xFF191919),
                                       iconEnabledColor: Colors.white,
@@ -483,10 +665,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                                         );
                                       }).toList(),
                                       onChanged: (String? newValue) {
-                                        setState(() {
-                                          _selectedDifficulty = newValue!;
-                                          _filterExercises();
-                                        });
+                                        _selectedDifficulty = newValue!;
+                                        _filterWorkoutRecords();
                                       },
                                       dropdownColor: const Color(0xFF191919),
                                       iconEnabledColor: Colors.white,
@@ -507,11 +687,11 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                           color: const Color(0xFF191919),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: _filteredExerciseRecords.isEmpty
+                        child: _filteredWorkoutCompletions.isEmpty
                             ? const Padding(
                                 padding: EdgeInsets.all(16.0),
                                 child: Text(
-                                  "No exercise records yet",
+                                  "No workout records yet",
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
@@ -524,13 +704,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                                 padding: const EdgeInsets.all(16.0),
                                 child: Column(
                                   children: visibleRecords
-                                      .map((record) => _buildPersonalRecordItem(
-                                            record.exerciseName,
-                                            "${record.weightUsed} kg",
-                                            record.timestamp != null
-                                                ? DateFormat('MMM dd, yyyy').format(record.timestamp!)
-                                                : 'Date unknown',
-                                          ))
+                                      .map(_buildPersonalRecordItem)
                                       .toList(),
                                 ),
                               ),
@@ -539,11 +713,11 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       if (hasMoreThanFiveRecords)
                         Padding(
                           padding: const EdgeInsets.only(top: 10),
-                          child: Center(
-                            child: Text(
-                              _showAllRecords
-                                  ? 'Showing all ${_filteredExerciseRecords.length} records'
-                                  : 'Showing 5 of ${_filteredExerciseRecords.length} records',
+                            child: Center(
+                              child: Text(
+                                _showAllRecords
+                                  ? 'Showing all ${_filteredWorkoutCompletions.length} records'
+                                  : 'Showing 5 of ${_filteredWorkoutCompletions.length} records',
                               style: const TextStyle(
                                 color: Colors.white54,
                                 fontSize: 12,
@@ -764,7 +938,24 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     );
   }
 
-  Widget _buildPersonalRecordItem(String exercise, String record, String date) {
+  Widget _buildPersonalRecordItem(_WorkoutCompletionSummary record) {
+    final goalText = record.primaryGoal.trim().isNotEmpty
+        ? goalLabel(record.primaryGoal)
+        : null;
+    final journeyText = record.journeyName.trim().isNotEmpty
+        ? record.journeyName
+        : null;
+    final subtitleParts = _uniqueTextParts([
+      record.bodyFocus,
+      if (goalText != null) goalText,
+      if (journeyText != null) journeyText,
+    ]);
+    final metricParts = <String>[
+      if (record.recordedMinutes > 0) '${record.recordedMinutes} min',
+      if (record.recordedCalories > 0) '${record.recordedCalories} cal',
+      if (record.isCheated) 'Cheated',
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -776,27 +967,58 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  exercise,
+                  record.title,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                Text(
-                  record,
-                  style: const TextStyle(color: Colors.orange, fontSize: 12),
-                ),
+                if (subtitleParts.isNotEmpty)
+                  Text(
+                    subtitleParts.join(' | '),
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11,
+                    ),
+                  ),
+                if (metricParts.isNotEmpty)
+                  Text(
+                    metricParts.join(' | '),
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 11,
+                    ),
+                  ),
               ],
             ),
           ),
           Text(
-            date,
+            DateFormat('MMM dd, yyyy').format(record.completedAt),
             style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ],
       ),
     );
+  }
+
+  List<String> _uniqueTextParts(List<String> values) {
+    final uniqueParts = <String>[];
+    final seenNormalizedValues = <String>{};
+
+    for (final value in values) {
+      final trimmedValue = value.trim();
+      if (trimmedValue.isEmpty) {
+        continue;
+      }
+
+      final normalizedValue = trimmedValue.toLowerCase();
+      if (seenNormalizedValues.add(normalizedValue)) {
+        uniqueParts.add(trimmedValue);
+      }
+    }
+
+    return uniqueParts;
   }
 }
 
@@ -850,6 +1072,65 @@ class _JourneyProgressSummary {
           0,
       progressPercent: (data['progressPercent'] as num?)?.toDouble() ?? 0.0,
       status: (data['status'] ?? 'not_started').toString(),
+    );
+  }
+}
+
+class _WorkoutCompletionSummary {
+  final DateTime completedAt;
+  final String title;
+  final String bodyFocus;
+  final String level;
+  final String journeyName;
+  final String primaryGoal;
+  final List<String> goalTags;
+  final int recordedMinutes;
+  final int recordedCalories;
+  final bool isCheated;
+
+  const _WorkoutCompletionSummary({
+    required this.completedAt,
+    required this.title,
+    required this.bodyFocus,
+    required this.level,
+    required this.journeyName,
+    required this.primaryGoal,
+    required this.goalTags,
+    required this.recordedMinutes,
+    required this.recordedCalories,
+    required this.isCheated,
+  });
+
+  factory _WorkoutCompletionSummary.fromMap(
+    Map<String, dynamic> data, {
+    Workout? fallbackWorkout,
+  }) {
+    final timestamp = data['completedAt'] as Timestamp?;
+    final fallbackPrimaryGoal = fallbackWorkout == null
+        ? generalFitnessGoal
+        : inferPrimaryGoalForWorkout(fallbackWorkout);
+    final fallbackGoalTags = fallbackWorkout == null
+        ? <String>[fallbackPrimaryGoal]
+        : inferGoalTagsForWorkout(fallbackWorkout);
+
+    return _WorkoutCompletionSummary(
+      completedAt: timestamp?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0),
+      title: (data['title'] ?? fallbackWorkout?.title ?? 'Workout').toString(),
+      bodyFocus: (data['bodyFocus'] ?? fallbackWorkout?.bodyFocus ?? '').toString(),
+      level: (data['level'] ?? fallbackWorkout?.level ?? '').toString(),
+      journeyName: (data['journeyName'] ?? fallbackWorkout?.journeyName ?? '')
+          .toString(),
+      primaryGoal: normalizeGoalType(
+        (data['primaryGoal'] ?? fallbackPrimaryGoal).toString(),
+      ),
+      goalTags: ((data['goalTags'] as List<dynamic>? ?? fallbackGoalTags)
+              .map((goal) => normalizeGoalType(goal.toString()))
+              .toSet()
+              .toList())
+          .cast<String>(),
+      recordedMinutes: (data['recordedMinutes'] as num?)?.toInt() ?? 0,
+      recordedCalories: (data['recordedCalories'] as num?)?.toInt() ?? 0,
+      isCheated: data['isCheated'] == true,
     );
   }
 }

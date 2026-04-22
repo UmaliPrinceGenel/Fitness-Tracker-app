@@ -2,10 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/workout_model.dart';
 import '../data/exercise_data2.dart'; // Import the workout data
+import '../data/fitness_journey_workouts.dart';
+import 'workout_goal_service.dart';
 
 class ProgressTrackingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final List<Workout> _knownWorkouts = [
+    ...exerciseWorkouts,
+    ...fitnessJourneyWorkoutsById.values.expand((workouts) => workouts),
+  ];
 
   // Get user's completed workout dates
   Future<List<DateTime>> getCompletedWorkoutDates() async {
@@ -49,14 +55,25 @@ class ProgressTrackingService {
       final records = <ExerciseRecord>[];
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        final record = ExerciseRecord(
+        var record = ExerciseRecord(
           exerciseName: data['exerciseName'] ?? doc.id,
           weightUsed: (data['weightUsed'] ?? 0.0).toDouble(),
           repsPerformed: (data['repsPerformed'] ?? 0).toInt(),
           setsPerformed: (data['setsPerformed'] ?? 0).toInt(),
           timestamp: (data['timestamp'] as Timestamp?)?.toDate(),
           workoutId: data['workoutId'] ?? '',
+          bodyFocus: (data['bodyFocus'] ?? '').toString(),
+          level: (data['level'] ?? '').toString(),
+          journeyId: (data['journeyId'] ?? '').toString(),
+          journeyName: (data['journeyName'] ?? '').toString(),
+          primaryGoal: (data['primaryGoal'] ?? '').toString(),
+          goalTags: ((data['goalTags'] as List<dynamic>? ?? const [])
+                  .map((goal) => normalizeGoalType(goal.toString()))
+                  .toSet()
+                  .toList())
+              .cast<String>(),
         );
+        record = _enrichRecord(record);
         records.add(record);
       }
       records.sort((a, b) {
@@ -125,6 +142,21 @@ class ProgressTrackingService {
     return highestRecord;
   }
 
+  Future<String?> getRecommendedGoalType() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return null;
+    }
+
+    try {
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      return resolvePreferredGoalFromUserData(userDoc.data());
+    } catch (e) {
+      print('Error getting recommended goal type: $e');
+      return null;
+    }
+  }
+
   // Get exercise records by category (from workout data)
   Future<List<ExerciseRecord>> getExerciseRecordsByCategory(String category) async {
     final allRecords = await getExerciseRecords();
@@ -132,27 +164,9 @@ class ProgressTrackingService {
     // If "All" is selected, return all records
     if (category == 'All') return allRecords;
     
-    // Filter records based on category by matching workout IDs
-    final filteredRecords = <ExerciseRecord>[];
-    
-    for (final record in allRecords) {
-      // Find the workout that contains this exercise
-      final workout = exerciseWorkouts.firstWhere(
-        (workout) => workout.id == record.workoutId,
-        orElse: () => exerciseWorkouts.firstWhere(
-          (workout) => workout.exerciseList.any((exercise) => exercise.name == record.exerciseName),
-          orElse: () => exerciseWorkouts.first,
-        ),
-      );
-      
-      // Check if the workout's bodyFocus matches the category
-      if (workout.bodyFocus.toLowerCase().contains(category.toLowerCase()) || 
-          category.toLowerCase().contains(workout.bodyFocus.toLowerCase())) {
-        filteredRecords.add(record);
-      }
-    }
-    
-    return filteredRecords;
+    return allRecords
+        .where((record) => _matchesCategory(record, category))
+        .toList(growable: false);
   }
 
   // Get exercise records by difficulty (from workout data)
@@ -162,27 +176,22 @@ class ProgressTrackingService {
     // If "All" is selected, return all records
     if (difficulty == 'All') return allRecords;
     
-    // Filter records based on difficulty by matching workout IDs
-    final filteredRecords = <ExerciseRecord>[];
-    
-    for (final record in allRecords) {
-      // Find the workout that contains this exercise
-      final workout = exerciseWorkouts.firstWhere(
-        (workout) => workout.id == record.workoutId,
-        orElse: () => exerciseWorkouts.firstWhere(
-          (workout) => workout.exerciseList.any((exercise) => exercise.name == record.exerciseName),
-          orElse: () => exerciseWorkouts.first,
-        ),
-      );
-      
-      // Check if the workout's level matches the difficulty
-      if (workout.level.toLowerCase().contains(difficulty.toLowerCase()) || 
-          difficulty.toLowerCase().contains(workout.level.toLowerCase())) {
-        filteredRecords.add(record);
-      }
+    return allRecords
+        .where((record) => _matchesDifficulty(record, difficulty))
+        .toList(growable: false);
+  }
+
+  Future<List<ExerciseRecord>> getExerciseRecordsByGoal(String goalType) async {
+    final allRecords = await getExerciseRecords();
+
+    if (goalType == 'All') {
+      return allRecords;
     }
-    
-    return filteredRecords;
+
+    final normalizedGoal = normalizeGoalType(goalType);
+    return allRecords
+        .where((record) => _matchesGoal(record, normalizedGoal))
+        .toList(growable: false);
   }
   
   // Get all unique exercise names that the user has completed
@@ -196,6 +205,105 @@ class ProgressTrackingService {
     
     return uniqueNames.toList();
   }
+
+  ExerciseRecord _enrichRecord(ExerciseRecord record) {
+    final workout = _findWorkoutForRecord(record);
+    if (workout == null) {
+      final normalizedPrimaryGoal = record.primaryGoal.trim().isNotEmpty
+          ? normalizeGoalType(record.primaryGoal)
+          : generalFitnessGoal;
+      final normalizedGoalTags = record.goalTags.isNotEmpty
+          ? record.goalTags.map(normalizeGoalType).toSet().toList()
+          : <String>[normalizedPrimaryGoal];
+
+      return record.copyWith(
+        primaryGoal: normalizedPrimaryGoal,
+        goalTags: normalizedGoalTags,
+      );
+    }
+
+    final resolvedBodyFocus =
+        record.bodyFocus.trim().isNotEmpty ? record.bodyFocus : workout.bodyFocus;
+    final resolvedLevel =
+        record.level.trim().isNotEmpty ? record.level : workout.level;
+    final resolvedJourneyId = record.journeyId.trim().isNotEmpty
+        ? record.journeyId
+        : (workout.journeyId ?? '');
+    final resolvedJourneyName = record.journeyName.trim().isNotEmpty
+        ? record.journeyName
+        : (workout.journeyName ?? '');
+    final resolvedGoalTags = inferGoalTagsForWorkout(workout);
+    final resolvedPrimaryGoal = inferPrimaryGoalForWorkout(workout);
+
+    return record.copyWith(
+      bodyFocus: resolvedBodyFocus,
+      level: resolvedLevel,
+      journeyId: resolvedJourneyId,
+      journeyName: resolvedJourneyName,
+      primaryGoal: resolvedPrimaryGoal,
+      goalTags: resolvedGoalTags,
+    );
+  }
+
+  Workout? _findWorkoutForRecord(ExerciseRecord record) {
+    for (final workout in _knownWorkouts) {
+      if (workout.id == record.workoutId) {
+        return workout;
+      }
+    }
+
+    for (final workout in _knownWorkouts) {
+      final hasExerciseMatch = workout.exerciseList.any(
+        (exercise) => exercise.name == record.exerciseName,
+      );
+      if (hasExerciseMatch) {
+        return workout;
+      }
+    }
+
+    return null;
+  }
+
+  bool _matchesCategory(ExerciseRecord record, String category) {
+    final normalizedCategory = category.toLowerCase().trim();
+    final normalizedFocus = record.bodyFocus.toLowerCase().trim();
+
+    if (normalizedFocus.contains(normalizedCategory) ||
+        normalizedCategory.contains(normalizedFocus)) {
+      return true;
+    }
+
+    if (normalizedCategory == 'arms') {
+      return normalizedFocus == 'arm' ||
+          normalizedFocus == 'arms' ||
+          normalizedFocus == 'triceps' ||
+          normalizedFocus == 'biceps' ||
+          normalizedFocus == 'forearms';
+    }
+
+    if (normalizedCategory == 'abs') {
+      return normalizedFocus == 'abs' || normalizedFocus == 'core';
+    }
+
+    return false;
+  }
+
+  bool _matchesDifficulty(ExerciseRecord record, String difficulty) {
+    final normalizedDifficulty = difficulty.toLowerCase().trim();
+    final normalizedLevel = record.level.toLowerCase().trim();
+
+    return normalizedLevel.contains(normalizedDifficulty) ||
+        normalizedDifficulty.contains(normalizedLevel);
+  }
+
+  bool _matchesGoal(ExerciseRecord record, String goalType) {
+    if (record.primaryGoal.trim().isNotEmpty &&
+        normalizeGoalType(record.primaryGoal) == goalType) {
+      return true;
+    }
+
+    return record.goalTags.map(normalizeGoalType).contains(goalType);
+  }
 }
 
 class ExerciseRecord {
@@ -205,6 +313,12 @@ class ExerciseRecord {
   final int setsPerformed;
   final DateTime? timestamp;
   final String workoutId;
+  final String bodyFocus;
+  final String level;
+  final String journeyId;
+  final String journeyName;
+  final String primaryGoal;
+  final List<String> goalTags;
 
   ExerciseRecord({
     required this.exerciseName,
@@ -213,5 +327,41 @@ class ExerciseRecord {
     required this.setsPerformed,
     this.timestamp,
     required this.workoutId,
+    this.bodyFocus = '',
+    this.level = '',
+    this.journeyId = '',
+    this.journeyName = '',
+    this.primaryGoal = '',
+    this.goalTags = const [],
  });
+
+  ExerciseRecord copyWith({
+    String? exerciseName,
+    double? weightUsed,
+    int? repsPerformed,
+    int? setsPerformed,
+    DateTime? timestamp,
+    String? workoutId,
+    String? bodyFocus,
+    String? level,
+    String? journeyId,
+    String? journeyName,
+    String? primaryGoal,
+    List<String>? goalTags,
+  }) {
+    return ExerciseRecord(
+      exerciseName: exerciseName ?? this.exerciseName,
+      weightUsed: weightUsed ?? this.weightUsed,
+      repsPerformed: repsPerformed ?? this.repsPerformed,
+      setsPerformed: setsPerformed ?? this.setsPerformed,
+      timestamp: timestamp ?? this.timestamp,
+      workoutId: workoutId ?? this.workoutId,
+      bodyFocus: bodyFocus ?? this.bodyFocus,
+      level: level ?? this.level,
+      journeyId: journeyId ?? this.journeyId,
+      journeyName: journeyName ?? this.journeyName,
+      primaryGoal: primaryGoal ?? this.primaryGoal,
+      goalTags: goalTags ?? this.goalTags,
+    );
+  }
 }

@@ -27,6 +27,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Map<String, dynamic>> _filteredUsers = [];
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _filteredPosts = [];
+  int _totalFeedbackCount = 0;
   bool _isLoading = true;
   bool _isRefreshing = false;
   String _searchQuery = '';
@@ -89,10 +90,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             .collection('community_posts')
             .orderBy('timePosted', descending: true)
             .get(),
+        _firestore.collection('user_feedback').get(),
       ]);
 
       final usersSnapshot = results[0] as QuerySnapshot<Map<String, dynamic>>;
       final postsSnapshot = results[1] as QuerySnapshot<Map<String, dynamic>>;
+      final feedbackSnapshot = results[2] as QuerySnapshot<Map<String, dynamic>>;
 
       final users = usersSnapshot.docs.map((doc) {
         final data = doc.data();
@@ -139,6 +142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       setState(() {
         _users = users;
         _posts = posts;
+        _totalFeedbackCount = feedbackSnapshot.size;
         _applySearchFilter(_searchQuery, notify: false);
         _isLoading = false;
         _isRefreshing = false;
@@ -905,6 +909,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 label: 'Community Posts',
                                 value: _posts.length.toString(),
                                 subtitle: 'Posts available for review',
+                              ),
+                              _buildSummaryCard(
+                                icon: Icons.rate_review_outlined,
+                                iconColor: Colors.amber,
+                                label: 'Total Feedback',
+                                value: _totalFeedbackCount.toString(),
+                                subtitle: 'User ratings and comments received',
                               ),
                             ],
                           ),

@@ -86,6 +86,8 @@ class Workout {
   final String? journeyId;
   final String? journeyName;
   final int? journeyOrder;
+  final String? primaryGoal;
+  final List<String> goalTags;
   final List<Exercise> exerciseList; // List of individual exercises with calorie info
 
   Workout({
@@ -100,6 +102,8 @@ class Workout {
     this.journeyId,
     this.journeyName,
     this.journeyOrder,
+    this.primaryGoal,
+    this.goalTags = const [],
     required this.exerciseList, // Add the exercise list parameter
   });
 }

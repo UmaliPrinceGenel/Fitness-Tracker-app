@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../data/fitness_journey_workouts.dart';
+import 'workout_goal_service.dart';
 
 class JourneyProgressSnapshot {
   final int completedWorkoutsCount;
@@ -253,6 +254,8 @@ class JourneyProgressService {
         'selectedJourney': journeyName,
         'selectedJourneyId': journeyId,
         'selectedJourneyName': journeyName,
+        'selectedGoalType': goalForJourneyId(journeyId),
+        'selectedGoalLabel': goalLabel(goalForJourneyId(journeyId)),
         'journeyStatus': status,
         'journeyProgressPercent': progressPercent,
         'journeyCompletionCount': completionCount,

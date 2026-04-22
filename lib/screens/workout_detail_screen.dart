@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../models/workout_model.dart';
 import '../services/journey_progress_service.dart';
+import '../services/workout_goal_service.dart';
 import 'exercise_detail_screen.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
@@ -1305,6 +1306,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         reps: reps,
       );
       final String caloriesString = "${totalCalories.toStringAsFixed(1)} cal";
+      final primaryGoal = inferPrimaryGoalForWorkout(widget.workout);
+      final goalTags = inferGoalTagsForWorkout(widget.workout);
 
       await _firestore
           .collection('users')
@@ -1318,6 +1321,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         'repsPerformed': reps,
         'setsPerformed': sets,
         'timestamp': FieldValue.serverTimestamp(),
+        'bodyFocus': widget.workout.bodyFocus,
+        'level': widget.workout.level,
+        'journeyId': widget.workout.journeyId,
+        'journeyName': widget.workout.journeyName,
+        'isPartOfJourney': widget.workout.journeyId != null,
+        'primaryGoal': primaryGoal,
+        'goalTags': goalTags,
         'totalDurationString': durationString,
         'totalCaloriesString': caloriesString,
         'calculatedSeconds': totalDurationSeconds,
@@ -1375,6 +1385,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ? _calculateWorkoutMinutesFromDrafts()
                 : (expectedDurationSeconds / 60).ceil();
         const int workoutCount = 1;
+        final primaryGoal = inferPrimaryGoalForWorkout(widget.workout);
+        final goalTags = inferGoalTagsForWorkout(widget.workout);
         bool isCheated = expectedDurationSeconds > 0 &&
             actualDurationSeconds < minimumLegitDurationSeconds;
 
@@ -1391,6 +1403,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           'journeyName': widget.workout.journeyName,
           'journeyOrder': widget.workout.journeyOrder,
           'isPartOfJourney': widget.workout.journeyId != null,
+          'primaryGoal': primaryGoal,
+          'goalTags': goalTags,
           'completedAt': FieldValue.serverTimestamp(),
           'actualDuration': actualDurationSeconds, // Store actual duration for reference
           'expectedDuration': expectedDurationSeconds, // Store expected duration for reference

@@ -1,4 +1,5 @@
 import '../models/workout_model.dart';
+import '../services/workout_goal_service.dart';
 
 const String weightLossJourneyId = 'weight_loss';
 const String cardioJourneyId = 'cardio';
@@ -45,6 +46,8 @@ Workout _journeyWorkout({
     journeyId: journeyId,
     journeyName: journeyName,
     journeyOrder: journeyOrder,
+    primaryGoal: goalForJourneyId(journeyId),
+    goalTags: [goalForJourneyId(journeyId)],
     exerciseList: exercises,
   );
 }

@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 import '../models/workout_model.dart';
+import '../services/workout_goal_service.dart';
 import '../services/video_mapping_service.dart';
 
 class ExerciseTrackingDraft {
@@ -164,6 +165,18 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         .replaceAll(RegExp(r'[\\/]'), '_')
         .replaceAll(RegExp(r'\s+'), ' ');
     return sanitized.isEmpty ? 'exercise_record' : sanitized;
+  }
+
+  Map<String, dynamic> _goalMetadataForWorkout() {
+    return {
+      'bodyFocus': widget.workout.bodyFocus,
+      'level': widget.workout.level,
+      'journeyId': widget.workout.journeyId,
+      'journeyName': widget.workout.journeyName,
+      'isPartOfJourney': widget.workout.journeyId != null,
+      'primaryGoal': inferPrimaryGoalForWorkout(widget.workout),
+      'goalTags': inferGoalTagsForWorkout(widget.workout),
+    };
   }
 
   Future<void> _loadUserData() async {

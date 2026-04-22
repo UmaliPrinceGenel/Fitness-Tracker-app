@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -26,6 +27,22 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       _feedback.where((item) => item['isReviewed'] != true).length;
   int get _reviewedCount =>
       _feedback.where((item) => item['isReviewed'] == true).length;
+  double get _averageRating {
+    if (_feedback.isEmpty) return 0;
+
+    final total = _feedback.fold<int>(
+      0,
+      (sum, item) => sum + ((item['rating'] as int?) ?? 0),
+    );
+    return total / _feedback.length;
+  }
+
+  List<int> get _ratingDistribution => List<int>.generate(
+        5,
+        (index) => _feedback
+            .where((item) => ((item['rating'] as int?) ?? 0) == index + 1)
+            .length,
+      );
   List<Map<String, dynamic>> get _newFeedback => _feedback
       .where((item) => item['isReviewed'] != true)
       .toList(growable: false);
@@ -250,6 +267,222 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     );
   }
 
+  Widget _buildAverageRatingRow(double rating, {double iconSize = 18}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final starNumber = index + 1;
+        IconData icon;
+        if (rating >= starNumber) {
+          icon = Icons.star_rounded;
+        } else if (rating >= starNumber - 0.5) {
+          icon = Icons.star_half_rounded;
+        } else {
+          icon = Icons.star_border_rounded;
+        }
+
+        return Padding(
+          padding: EdgeInsets.only(right: index == 4 ? 0 : 4),
+          child: Icon(
+            icon,
+            color: Colors.amber,
+            size: iconSize,
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildRatingInsightsCard() {
+    final distribution = _ratingDistribution;
+    final maxCount = distribution.isEmpty
+        ? 1.0
+        : distribution.reduce((a, b) => a > b ? a : b).toDouble();
+    final chartMaxY = maxCount == 0 ? 1.0 : maxCount + 1;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Rating Overview',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Average stars and how ratings are distributed from 1 to 5.',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 18,
+            runSpacing: 18,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                width: 140,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _averageRating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildAverageRatingRow(_averageRating, iconSize: 18),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_feedback.length} ratings',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 190,
+                height: 180,
+                child: BarChart(
+                  BarChartData(
+                    minY: 0,
+                    maxY: chartMaxY,
+                    alignment: BarChartAlignment.spaceAround,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: 1,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                        color: Colors.white.withOpacity(0.08),
+                        strokeWidth: 1,
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (_) => const Color(0xFF1E1E1E),
+                        tooltipRoundedRadius: 12,
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final count = distribution[group.x.toInt()];
+                          return BarTooltipItem(
+                            '${group.x + 1} star: $count',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 24,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            if (value % 1 != 0 || value < 0) {
+                              return const SizedBox.shrink();
+                            }
+                            return Text(
+                              value.toInt().toString(),
+                              style: const TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final label = value.toInt() + 1;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '$label',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    barGroups: List.generate(5, (index) {
+                      final count = distribution[index].toDouble();
+                      return BarChartGroupData(
+                        x: index,
+                        barRods: [
+                          BarChartRodData(
+                            toY: count,
+                            width: 20,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(8),
+                            ),
+                            gradient: const LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Color(0xFFFF8A00),
+                                Color(0xFFFFD54F),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, String subtitle) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,6 +697,8 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      _buildRatingInsightsCard(),
                       const SizedBox(height: 20),
                       if (_feedback.isEmpty)
                         Container(
