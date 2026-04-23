@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart'; // Add this import for DateFormat
 import 'dart:ui' as ui; // Add this import for ui.TextStyle
 import '../widgets/semi_circle_progress.dart';
+import '../widgets/chatbot_launcher.dart';
 import 'detail_screen.dart';
 import 'my_profile.dart';
 import 'workout_screen.dart';
@@ -854,9 +855,11 @@ class _HealthDashboardState extends State<HealthDashboard>
         ),
       ),
       body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
+        child: Stack(
           children: [
+            IndexedStack(
+              index: _selectedIndex,
+              children: [
             RefreshIndicator(
               onRefresh: _loadUserData,
               child: CustomScrollView(
@@ -1115,9 +1118,15 @@ class _HealthDashboardState extends State<HealthDashboard>
                 ],
               ),
             ),
-            const WorkoutScreen(),
-            const CommunityScreen(),
-            MyProfile(refreshVersion: _profileRefreshVersion),
+                const WorkoutScreen(showChatbot: false),
+                const CommunityScreen(showChatbot: false),
+                MyProfile(
+                  refreshVersion: _profileRefreshVersion,
+                  showChatbot: false,
+                ),
+              ],
+            ),
+            const ChatbotLauncher(title: 'Fitness Chat'),
           ],
         ),
       ),

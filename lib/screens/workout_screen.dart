@@ -10,9 +10,15 @@ import '../models/workout_model.dart'; // Import workout model
 import '../services/journey_progress_service.dart';
 import '../services/workout_goal_service.dart';
 import 'workout_detail_screen.dart'; // Import workout detail screen
+import '../widgets/chatbot_launcher.dart';
 
 class WorkoutScreen extends StatefulWidget {
-  const WorkoutScreen({super.key});
+  const WorkoutScreen({
+    super.key,
+    this.showChatbot = true,
+  });
+
+  final bool showChatbot;
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -861,16 +867,18 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         centerTitle: false,
         automaticallyImplyLeading: false, // Prevents the automatic back button
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadMonthlyCategoryData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.all(horizontalPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _loadMonthlyCategoryData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: EdgeInsets.all(horizontalPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   // Monthly Category Chart
                   Container(
                     width: double.infinity,
@@ -1133,11 +1141,15 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
                   // Workout List Section - Filtered based on selected tab
                   _buildWorkoutList(),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+          if (widget.showChatbot)
+            const ChatbotLauncher(title: 'Workout Chat'),
+        ],
       ),
     );
   }

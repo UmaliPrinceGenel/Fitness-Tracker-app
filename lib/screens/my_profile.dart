@@ -9,13 +9,16 @@ import 'dart:io';
 import 'progress_album_screen.dart';
 import 'about_app_screen.dart';
 import 'login_screen.dart';
+import '../widgets/chatbot_launcher.dart';
 
 class MyProfile extends StatefulWidget {
   final int refreshVersion;
+  final bool showChatbot;
 
   const MyProfile({
     super.key,
     this.refreshVersion = 0,
+    this.showChatbot = true,
   });
 
   @override
@@ -739,9 +742,11 @@ class _MyProfileState extends State<MyProfile> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: CustomScrollView(
+              slivers: [
             SliverAppBar(
               backgroundColor: Colors.black,
               pinned: true,
@@ -1290,8 +1295,12 @@ class _MyProfileState extends State<MyProfile> {
                       ),
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+          if (widget.showChatbot)
+            const ChatbotLauncher(title: 'Profile Chat'),
+        ],
       ),
     );
   }

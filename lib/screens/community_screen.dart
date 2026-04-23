@@ -6,9 +6,15 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'community_member_profile_screen.dart';
 import 'photo_editing_screen.dart';
+import '../widgets/chatbot_launcher.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  const CommunityScreen({
+    super.key,
+    this.showChatbot = true,
+  });
+
+  final bool showChatbot;
 
   @override
  State<CommunityScreen> createState() => _CommunityScreenState();
@@ -317,11 +323,13 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
         centerTitle: false,
         automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refreshCommunityData,
-          child: Column(
-            children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _refreshCommunityData,
+              child: Column(
+                children: [
               // Post input card
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -557,9 +565,13 @@ class _CommunityScreenState extends State<CommunityScreen> with WidgetsBindingOb
                   },
                 ),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
+          if (widget.showChatbot)
+            const ChatbotLauncher(title: 'Community Chat'),
+        ],
       ),
     );
   }
