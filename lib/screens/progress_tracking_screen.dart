@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../data/exercise_data2.dart';
@@ -301,10 +302,21 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: _allExerciseRecords.isEmpty &&
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWideLayout = kIsWeb && constraints.maxWidth >= 1120;
+            final isMediumLayout = kIsWeb && constraints.maxWidth >= 760;
+            final horizontalPadding = isWideLayout ? 24.0 : 16.0;
+            final contentMaxWidth = kIsWeb
+                ? (constraints.maxWidth >= 1440
+                      ? 1320.0
+                      : constraints.maxWidth.toDouble())
+                : constraints.maxWidth.toDouble();
+
+            if (_allExerciseRecords.isEmpty &&
                 _completedWorkoutDates.isEmpty &&
-                _startedJourneySummaries.isEmpty
-            ? const Center(
+                _startedJourneySummaries.isEmpty) {
+              return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -331,449 +343,523 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                     ),
                   ],
                 ),
-              )
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // History Section
-                      const Text(
-                        "History",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+              );
+            }
 
-                      // Personal Best Card
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
+            return SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  16,
+                  horizontalPadding,
+                  24,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isMediumLayout)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.star,
-                                color: Colors.yellow,
-                                size: 32,
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                "Personal Best",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: _buildOverviewSection(
+                                  title: "History",
+                                  child: _buildPersonalBestCard(),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              if (_highestWeightRecord != null)
-                                Text(
-                                  "${_highestWeightRecord!.weightUsed} kg",
-                                  style: const TextStyle(
-                                    color: Colors.yellow,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                              else
-                                const Text(
-                                  "0 kg",
-                                  style: TextStyle(
-                                    color: Colors.yellow,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildOverviewSection(
+                                  title: "Today",
+                                  child: _buildTodayCard(),
                                 ),
-                              if (_highestWeightRecord != null)
-                                Text(
-                                  _highestWeightRecord!.exerciseName,
-                                  style: const TextStyle(
-                                    color: Colors.yellow,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Today Section
-                      const Text(
-                        "Today",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.today,
-                                    color: Colors.orange,
-                                    size: 24,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          DateFormat(
-                                            'EEEE, MMMM dd, yyyy',
-                                          ).format(DateTime.now()),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _completedWorkoutDates.any(
-                                            (workoutDate) =>
-                                                workoutDate.day ==
-                                                    DateTime.now().day &&
-                                                workoutDate.month ==
-                                                    DateTime.now().month &&
-                                                workoutDate.year ==
-                                                    DateTime.now().year,
-                                          )
-                                              ? "You completed a clean workout today."
-                                              : "No clean workout recorded today yet.",
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
+                          )
+                        else ...[
+                          _buildOverviewSection(
+                            title: "History",
+                            child: _buildPersonalBestCard(),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      if (_startedJourneySummaries.isNotEmpty) ...[
-                        const Text(
-                          "Fitness Journeys",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 16),
+                          _buildOverviewSection(
+                            title: "Today",
+                            child: _buildTodayCard(),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF191919),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              children: _startedJourneySummaries
-                                  .map(_buildJourneyProgressItem)
-                                  .toList(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Personal Records Section
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              "Personal Records",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          if (hasMoreThanFiveRecords)
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showAllRecords = !_showAllRecords;
-                                });
-                              },
-                              child: Text(
-                                _showAllRecords ? 'Show less' : 'Show all',
-                                style: const TextStyle(
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      if (_selectedGoal != 'All' ||
-                          (_recommendedGoalType != null &&
-                              _recommendedGoalType!.trim().isNotEmpty))
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(
-                            _selectedGoal == 'All'
-                                ? 'Recommended goal: ${goalLabel(_recommendedGoalType!)}.'
-                                : 'Filtering workouts by ${goalLabel(_selectedGoal)}.',
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-
-                      if (!hasMoreThanFiveRecords &&
-                          _filteredWorkoutCompletions.isNotEmpty)
-                        Text(
-                          'Showing ${_filteredWorkoutCompletions.length} workout record${_filteredWorkoutCompletions.length == 1 ? '' : 's'}',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-
-                      // Filter Controls
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
+                        const SizedBox(height: 18),
+                        if (_startedJourneySummaries.isNotEmpty) ...[
+                          _buildSectionTitle("Fitness Journeys"),
+                          const SizedBox(height: 12),
+                          _buildJourneyProgressPanel(isWideLayout: isWideLayout),
+                          const SizedBox(height: 18),
+                        ],
+                        if (isWideLayout)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              DropdownButtonFormField<String>(
-                                value: _selectedGoal,
-                                decoration: const InputDecoration(
-                                  labelText: 'Goal',
-                                  labelStyle: TextStyle(color: Colors.orange),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.orange),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.orange),
-                                  ),
-                                ),
-                                items: _goalOptions.map((String goalType) {
-                                  return DropdownMenuItem(
-                                    value: goalType,
-                                    child: Text(
-                                      goalType == 'All'
-                                          ? 'All Goals'
-                                          : goalLabel(goalType),
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  if (newValue == null) {
-                                    return;
-                                  }
-                                  _selectedGoal = newValue;
-                                  _filterWorkoutRecords();
-                                },
-                                dropdownColor: const Color(0xFF191919),
-                                iconEnabledColor: Colors.white,
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      value: _selectedCategory,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Category',
-                                        labelStyle: TextStyle(color: Colors.orange),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderSide: BorderSide(color: Colors.orange),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderSide: BorderSide(color: Colors.orange),
-                                        ),
-                                      ),
-                                      items: _categories.map((String category) {
-                                        return DropdownMenuItem(
-                                          value: category,
-                                          child: Text(
-                                            category,
-                                            style: const TextStyle(color: Colors.white),
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (String? newValue) {
-                                        _selectedCategory = newValue!;
-                                        _filterWorkoutRecords();
-                                      },
-                                      dropdownColor: const Color(0xFF191919),
-                                      iconEnabledColor: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      value: _selectedDifficulty,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Difficulty',
-                                        labelStyle: TextStyle(color: Colors.orange),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderSide: BorderSide(color: Colors.orange),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderSide: BorderSide(color: Colors.orange),
-                                        ),
-                                      ),
-                                      items: _difficulties.map((String difficulty) {
-                                        return DropdownMenuItem(
-                                          value: difficulty,
-                                          child: Text(
-                                            difficulty,
-                                            style: const TextStyle(color: Colors.white),
-                                          ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (String? newValue) {
-                                        _selectedDifficulty = newValue!;
-                                        _filterWorkoutRecords();
-                                      },
-                                      dropdownColor: const Color(0xFF191919),
-                                      iconEnabledColor: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Personal Records List
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: _filteredWorkoutCompletions.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text(
-                                  "No workout records yet",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              )
-                            : Padding(
-                                padding: const EdgeInsets.all(16.0),
+                              Expanded(
+                                flex: 8,
                                 child: Column(
-                                  children: visibleRecords
-                                      .map(_buildPersonalRecordItem)
-                                      .toList(),
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildPersonalRecordsSection(
+                                      visibleRecords: visibleRecords,
+                                      hasMoreThanFiveRecords: hasMoreThanFiveRecords,
+                                    ),
+                                  ],
                                 ),
                               ),
-                      ),
-
-                      if (hasMoreThanFiveRecords)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                            child: Center(
-                              child: Text(
-                                _showAllRecords
-                                  ? 'Showing all ${_filteredWorkoutCompletions.length} records'
-                                  : 'Showing 5 of ${_filteredWorkoutCompletions.length} records',
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                      
-                      // Additional progress metrics
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Progress Insights",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Progress insights cards
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              // Workout frequency insight
-                              _buildInsightItem(
-                                icon: Icons.calendar_today,
-                                title: "Workout Frequency",
-                                value: "${_completedWorkoutsThisWeek()} this week",
-                                description: "Clean workouts in the last 7 days",
-                              ),
-                              const Divider(height: 20, color: Colors.grey),
-                              // Most frequent exercise
-                              _buildInsightItem(
-                                icon: Icons.repeat,
-                                title: "Most Practiced",
-                                value: _allExerciseRecords.isEmpty
-                                    ? "No data"
-                                    : _getMostPracticedExercise(),
-                                description: "Your most practiced exercise",
+                              const SizedBox(width: 20),
+                              Expanded(
+                                flex: 5,
+                                child: _buildInsightsSection(),
                               ),
                             ],
+                          )
+                        else ...[
+                          _buildPersonalRecordsSection(
+                            visibleRecords: visibleRecords,
+                            hasMoreThanFiveRecords: hasMoreThanFiveRecords,
                           ),
-                        ),
-                      ),
-                    ],
+                          const SizedBox(height: 18),
+                          _buildInsightsSection(),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _buildOverviewSection({
+    required String title,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(title),
+        const SizedBox(height: 12),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildPanel({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(16.0),
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: padding,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildPersonalBestCard() {
+    return _buildPanel(
+      child: Column(
+        children: [
+          const Icon(
+            Icons.star,
+            color: Colors.yellow,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Personal Best",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _highestWeightRecord != null
+                ? "${_highestWeightRecord!.weightUsed} kg"
+                : "0 kg",
+            style: const TextStyle(
+              color: Colors.yellow,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (_highestWeightRecord != null)
+            Text(
+              _highestWeightRecord!.exerciseName,
+              style: const TextStyle(
+                color: Colors.yellow,
+                fontSize: 12,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodayCard() {
+    final now = DateTime.now();
+    final hasCleanWorkoutToday = _completedWorkoutDates.any(
+      (workoutDate) =>
+          workoutDate.day == now.day &&
+          workoutDate.month == now.month &&
+          workoutDate.year == now.year,
+    );
+
+    return _buildPanel(
+      child: Row(
+        children: [
+          const Icon(
+            Icons.today,
+            color: Colors.orange,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat('EEEE, MMMM dd, yyyy').format(now),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasCleanWorkoutToday
+                      ? "You completed a clean workout today."
+                      : "No clean workout recorded today yet.",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJourneyProgressPanel({required bool isWideLayout}) {
+    if (!isWideLayout) {
+      return _buildPanel(
+        child: Column(
+          children: _startedJourneySummaries
+              .map(_buildJourneyProgressItem)
+              .toList(),
+        ),
+      );
+    }
+
+    return _buildPanel(
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 0,
+        children: _startedJourneySummaries
+            .map(
+              (summary) => SizedBox(
+                width: 620,
+                child: _buildJourneyProgressItem(summary),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildPersonalRecordsSection({
+    required List<_WorkoutCompletionSummary> visibleRecords,
+    required bool hasMoreThanFiveRecords,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                "Personal Records",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (hasMoreThanFiveRecords)
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showAllRecords = !_showAllRecords;
+                  });
+                },
+                child: Text(
+                  _showAllRecords ? 'Show less' : 'Show all',
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_selectedGoal != 'All' ||
+            (_recommendedGoalType != null &&
+                _recommendedGoalType!.trim().isNotEmpty))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              _selectedGoal == 'All'
+                  ? 'Recommended goal: ${goalLabel(_recommendedGoalType!)}.'
+                  : 'Filtering workouts by ${goalLabel(_selectedGoal)}.',
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        if (!hasMoreThanFiveRecords && _filteredWorkoutCompletions.isNotEmpty)
+          Text(
+            'Showing ${_filteredWorkoutCompletions.length} workout record${_filteredWorkoutCompletions.length == 1 ? '' : 's'}',
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+            ),
+          ),
+        const SizedBox(height: 12),
+        _buildFiltersCard(),
+        const SizedBox(height: 12),
+        _buildPanel(
+          child: _filteredWorkoutCompletions.isEmpty
+              ? const Text(
+                  "No workout records yet",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                )
+              : Column(
+                  children: visibleRecords
+                      .map(_buildPersonalRecordItem)
+                      .toList(),
+                ),
+        ),
+        if (hasMoreThanFiveRecords)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Center(
+              child: Text(
+                _showAllRecords
+                    ? 'Showing all ${_filteredWorkoutCompletions.length} records'
+                    : 'Showing 5 of ${_filteredWorkoutCompletions.length} records',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFiltersCard() {
+    return _buildPanel(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 760;
+          final categoryField = _buildCategoryDropdown();
+          final difficultyField = _buildDifficultyDropdown();
+
+          return Column(
+            children: [
+              _buildGoalDropdown(),
+              const SizedBox(height: 16),
+              if (isWide)
+                Row(
+                  children: [
+                    Expanded(child: categoryField),
+                    const SizedBox(width: 16),
+                    Expanded(child: difficultyField),
+                  ],
+                )
+              else ...[
+                categoryField,
+                const SizedBox(height: 16),
+                difficultyField,
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildGoalDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedGoal,
+      decoration: const InputDecoration(
+        labelText: 'Goal',
+        labelStyle: TextStyle(color: Colors.orange),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange),
+        ),
+      ),
+      items: _goalOptions.map((String goalType) {
+        return DropdownMenuItem(
+          value: goalType,
+          child: Text(
+            goalType == 'All' ? 'All Goals' : goalLabel(goalType),
+            style: const TextStyle(color: Colors.white),
+          ),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        if (newValue == null) {
+          return;
+        }
+        _selectedGoal = newValue;
+        _filterWorkoutRecords();
+      },
+      dropdownColor: const Color(0xFF191919),
+      iconEnabledColor: Colors.white,
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedCategory,
+      decoration: const InputDecoration(
+        labelText: 'Category',
+        labelStyle: TextStyle(color: Colors.orange),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange),
+        ),
+      ),
+      items: _categories.map((String category) {
+        return DropdownMenuItem(
+          value: category,
+          child: Text(
+            category,
+            style: const TextStyle(color: Colors.white),
+          ),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        if (newValue == null) {
+          return;
+        }
+        _selectedCategory = newValue;
+        _filterWorkoutRecords();
+      },
+      dropdownColor: const Color(0xFF191919),
+      iconEnabledColor: Colors.white,
+    );
+  }
+
+  Widget _buildDifficultyDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedDifficulty,
+      decoration: const InputDecoration(
+        labelText: 'Difficulty',
+        labelStyle: TextStyle(color: Colors.orange),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.orange),
+        ),
+      ),
+      items: _difficulties.map((String difficulty) {
+        return DropdownMenuItem(
+          value: difficulty,
+          child: Text(
+            difficulty,
+            style: const TextStyle(color: Colors.white),
+          ),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        if (newValue == null) {
+          return;
+        }
+        _selectedDifficulty = newValue;
+        _filterWorkoutRecords();
+      },
+      dropdownColor: const Color(0xFF191919),
+      iconEnabledColor: Colors.white,
+    );
+  }
+
+  Widget _buildInsightsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle("Progress Insights"),
+        const SizedBox(height: 12),
+        _buildPanel(
+          child: Column(
+            children: [
+              _buildInsightItem(
+                icon: Icons.calendar_today,
+                title: "Workout Frequency",
+                value: "${_completedWorkoutsThisWeek()} this week",
+                description: "Clean workouts in the last 7 days",
+              ),
+              const Divider(height: 20, color: Colors.grey),
+              _buildInsightItem(
+                icon: Icons.repeat,
+                title: "Most Practiced",
+                value: _allExerciseRecords.isEmpty
+                    ? "No data"
+                    : _getMostPracticedExercise(),
+                description: "Your most practiced exercise",
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

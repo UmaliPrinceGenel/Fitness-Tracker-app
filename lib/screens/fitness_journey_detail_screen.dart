@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui' as ui;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../data/fitness_journey_workouts.dart';
 import '../models/workout_model.dart';
@@ -465,113 +467,124 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
   }
 
   Widget _buildHeroHeader() {
-    return Container(
-      height: 260,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: widget.accentColor.withOpacity(0.7),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: widget.accentColor.withOpacity(0.14),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = kIsWeb && constraints.maxWidth >= 900;
+
+        return Container(
+          height: isDesktop ? 300 : 260,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: widget.accentColor.withOpacity(0.7),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.accentColor.withOpacity(0.14),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              widget.thumbnailAsset,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  widget.thumbnailAsset,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            widget.gradientStart,
+                            widget.gradientEnd,
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          widget.icon,
+                          size: 90,
+                          color: widget.accentColor.withOpacity(0.92),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                       colors: [
-                        widget.gradientStart,
-                        widget.gradientEnd,
+                        Colors.black.withOpacity(0.12),
+                        Colors.black.withOpacity(0.34),
+                        Colors.black.withOpacity(0.82),
                       ],
                     ),
                   ),
-                  child: Center(
-                    child: Icon(
-                      widget.icon,
-                      size: 90,
-                      color: widget.accentColor.withOpacity(0.92),
-                    ),
-                  ),
-                );
-              },
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.12),
-                    Colors.black.withOpacity(0.34),
-                    Colors.black.withOpacity(0.82),
-                  ],
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.16),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      widget.durationLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                Padding(
+                  padding: EdgeInsets.all(isDesktop ? 24 : 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.16),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          widget.durationLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      const Spacer(),
+                      Text(
+                        widget.headline.toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isDesktop ? 38 : 32,
+                          fontWeight: FontWeight.w900,
+                          height: 0.96,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: isDesktop ? 420 : constraints.maxWidth,
+                        ),
+                        child: Text(
+                          widget.description,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.92),
+                            fontSize: 14,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  Text(
-                    widget.headline.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      height: 0.96,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.description,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.92),
-                      fontSize: 14,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -817,8 +830,8 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
               const SizedBox(height: 12),
               Text(
                 compactLayout
-                    ? 'Swipe for progress details.'
-                    : 'Swipe to switch between journey progress and journey tracking.',
+                    ? 'Use the panel buttons to switch views.'
+                    : 'Use the panel buttons or drag to switch between journey progress and journey tracking.',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.56),
                   fontSize: 11,
@@ -831,8 +844,7 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
     );
   }
 
-  double _trackingPageHeight(BuildContext context, int pageIndex) {
-    final width = MediaQuery.sizeOf(context).width;
+  double _trackingPageHeightForWidth(double width, int pageIndex) {
     if (pageIndex == 0) {
       if (width < 330) {
         return 240;
@@ -861,47 +873,135 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
     return 380;
   }
 
-  double _trackingCarouselHeight(BuildContext context) {
-    final progressHeight = _trackingPageHeight(context, 0);
-    final trackingHeight = _trackingPageHeight(context, 1);
+  double _trackingCarouselHeightForWidth(double width) {
+    final progressHeight = _trackingPageHeightForWidth(width, 0);
+    final trackingHeight = _trackingPageHeightForWidth(width, 1);
     final position = _trackingPagePosition.clamp(0.0, 1.0);
 
     return ui.lerpDouble(progressHeight, trackingHeight, position) ??
-        _trackingPageHeight(context, _trackingPageIndex);
+        _trackingPageHeightForWidth(width, _trackingPageIndex);
   }
 
-  Widget _buildTrackingCarousel() {
+  Future<void> _animateToTrackingPage(int index) async {
+    await _trackingPageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _stepTrackingPage(bool forward) async {
+    final nextIndex = (_trackingPageIndex + (forward ? 1 : -1)).clamp(0, 1);
+    await _animateToTrackingPage(nextIndex);
+  }
+
+  Widget _buildTrackingCarousel({required double availableWidth}) {
+    final isDesktop = kIsWeb && availableWidth >= 700;
+    final showWebControls = kIsWeb;
+
     return Column(
       children: [
+        if (showWebControls) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildTrackingPageButton(
+                          label: 'Progress',
+                          index: 0,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildTrackingPageButton(
+                          label: 'Tracking',
+                          index: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (isDesktop) ...[
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: _trackingPageIndex == 0
+                      ? null
+                      : () => _stepTrackingPage(false),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  color: Colors.white70,
+                  tooltip: 'Previous panel',
+                ),
+                IconButton(
+                  onPressed: _trackingPageIndex == 1
+                      ? null
+                      : () => _stepTrackingPage(true),
+                  icon: const Icon(Icons.arrow_forward_ios_rounded),
+                  color: Colors.white70,
+                  tooltip: 'Next panel',
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+        ],
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeInOut,
-          height: _trackingCarouselHeight(context),
-          child: PageView(
-            controller: _trackingPageController,
-            onPageChanged: (index) {
-              setState(() {
-                _trackingPageIndex = index;
-                _trackingPagePosition = index.toDouble();
-              });
-            },
-            children: [
-              ClipRect(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: _buildProgressCard(),
+          height: _trackingCarouselHeightForWidth(availableWidth),
+          child: ScrollConfiguration(
+            behavior: const _JourneyDesktopScrollBehavior(),
+            child: PageView(
+              controller: _trackingPageController,
+              physics: const PageScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() {
+                  _trackingPageIndex = index;
+                  _trackingPagePosition = index.toDouble();
+                });
+              },
+              children: [
+                ClipRect(
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: _buildProgressCard(),
+                  ),
                 ),
-              ),
-              ClipRect(
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: _buildJourneyTrackingCard(),
+                ClipRect(
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: _buildJourneyTrackingCard(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 10),
+        Padding(
+          padding: EdgeInsets.only(bottom: isDesktop ? 8 : 0),
+          child: Text(
+            showWebControls
+                ? (isDesktop
+                    ? 'Use the buttons above, drag with your mouse, or use trackpad swipe to switch panels.'
+                    : 'Use the buttons above or swipe to switch panels.')
+                : 'Swipe to switch panels.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.56),
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(2, (index) {
@@ -924,6 +1024,37 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
     );
   }
 
+  Widget _buildTrackingPageButton({
+    required String label,
+    required int index,
+  }) {
+    final isActive = _trackingPageIndex == index;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        _animateToTrackingPage(index);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? widget.accentColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isActive ? Colors.black : Colors.white70,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -943,53 +1074,171 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshJourneyScreen,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            children: [
-              _buildHeroHeader(),
-              const SizedBox(height: 20),
-              _buildTrackingCarousel(),
-              const SizedBox(height: 20),
-              Text(
-                '${widget.title} Workouts',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = kIsWeb && constraints.maxWidth >= 1180;
+              final contentMaxWidth = kIsWeb
+                  ? (constraints.maxWidth >= 1440
+                        ? 1320.0
+                        : constraints.maxWidth.toDouble())
+                  : constraints.maxWidth.toDouble();
+              final workoutCardWidth = isDesktop
+                  ? (contentMaxWidth - 20) / 2
+                  : contentMaxWidth;
+
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 24 : 16,
+                  8,
+                  isDesktop ? 24 : 16,
+                  24,
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${_journeyWorkouts.length} workouts ready for this journey.',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (_journeyWorkouts.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF191919),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Text(
-                    'No journey workouts available for this category yet.',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isDesktop)
+                          _buildHeroHeader()
+                        else ...[
+                          _buildHeroHeader(),
+                          const SizedBox(height: 20),
+                          _buildTrackingCarousel(
+                            availableWidth: constraints.maxWidth,
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        if (isDesktop)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 7,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${widget.title} Workouts',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      '${_journeyWorkouts.length} workouts ready for this journey.',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    if (_journeyWorkouts.isEmpty)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF191919),
+                                          borderRadius: BorderRadius.circular(18),
+                                        ),
+                                        child: const Text(
+                                          'No journey workouts available for this category yet.',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 15,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      )
+                                    else
+                                      Wrap(
+                                        spacing: 20,
+                                        runSpacing: 0,
+                                        children: _journeyWorkouts
+                                            .map(
+                                              (workout) => SizedBox(
+                                                width: workoutCardWidth,
+                                                child: _buildWorkoutCard(workout),
+                                              ),
+                                            )
+                                            .toList(growable: false),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Expanded(
+                                flex: 6,
+                                child: _buildTrackingCarousel(
+                                  availableWidth:
+                                      (contentMaxWidth * 6 / 13).clamp(420.0, 620.0),
+                                ),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          Text(
+                            '${widget.title} Workouts',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${_journeyWorkouts.length} workouts ready for this journey.',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          if (_journeyWorkouts.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF191919),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: const Text(
+                                'No journey workouts available for this category yet.',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          else
+                            ..._journeyWorkouts.map(_buildWorkoutCard),
+                        ],
+                      ],
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                )
-              else
-                ..._journeyWorkouts.map(_buildWorkoutCard),
-            ],
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
+}
+
+class _JourneyDesktopScrollBehavior extends MaterialScrollBehavior {
+  const _JourneyDesktopScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
 }

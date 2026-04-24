@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -30,6 +32,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   int _selectedJourneyIndex = 0;
   int _selectedMonthlyTrackingView = 0;
   int _recommendedJourneyIndex = 4;
+  final ScrollController _journeyScrollController = ScrollController();
   String _recommendedGoalType = generalFitnessGoal;
   String _recommendationReason =
       'Begin with a balanced plan to build consistency.';
@@ -336,6 +339,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _journeyScrollController.dispose();
     super.dispose();
   }
 
@@ -872,278 +876,65 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           SafeArea(
             child: RefreshIndicator(
               onRefresh: _loadMonthlyCategoryData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Padding(
-                  padding: EdgeInsets.all(horizontalPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  // Monthly Category Chart
-                  Container(
-                    width: double.infinity,
-                    constraints: BoxConstraints(
-                      minHeight: isCompactScreen ? 320 : 350,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF191919),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(isCompactScreen ? 14 : 16),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final compactCard = constraints.maxWidth < 360;
-                          final chartHeight = compactCard ? 160.0 : 190.0;
-                          final legendWidth = compactCard
-                              ? constraints.maxWidth
-                              : (constraints.maxWidth - 10) / 2;
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWideLayout = kIsWeb && constraints.maxWidth >= 1180;
+                  final contentMaxWidth = kIsWeb
+                      ? (constraints.maxWidth >= 1440
+                            ? 1320.0
+                            : constraints.maxWidth.toDouble())
+                      : constraints.maxWidth.toDouble();
 
-                          return Column(
+                  return SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: EdgeInsets.all(horizontalPadding),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "Monthly Category Tracking",
+                              if (isWideLayout)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 7,
+                                      child: _buildMonthlyTrackingCard(),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Expanded(
+                                      flex: 8,
+                                      child: _buildJourneySection(),
+                                    ),
+                                  ],
+                                )
+                              else ...[
+                                _buildMonthlyTrackingCard(),
+                                const SizedBox(height: 20),
+                                _buildJourneySection(),
+                              ],
+                              const SizedBox(height: 24),
+                              const Text(
+                                "Body Focus",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: compactCard ? 16 : 18,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _currentMonthLabel(),
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: compactCard ? 11 : 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
                               const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.24),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedMonthlyTrackingView = 0;
-                                          });
-                                        },
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 180),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _selectedMonthlyTrackingView == 0
-                                                ? const Color(0xFFFF6B35)
-                                                : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            "Body Focus",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: _selectedMonthlyTrackingView == 0
-                                                  ? Colors.white
-                                                  : Colors.white70,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: compactCard ? 12 : 13,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedMonthlyTrackingView = 1;
-                                          });
-                                        },
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 180),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _selectedMonthlyTrackingView == 1
-                                                ? const Color(0xFFFF6B35)
-                                                : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            "Journeys",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: _selectedMonthlyTrackingView == 1
-                                                  ? Colors.white
-                                                  : Colors.white70,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: compactCard ? 12 : 13,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                height: chartHeight,
-                                child: _isLoading
-                                    ? const Center(
-                                        child: CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Colors.orange,
-                                          ),
-                                        ),
-                                      )
-                                    : _hasData()
-                                        ? PieChart(
-                                            PieChartData(
-                                              sections: _buildMonthlyChartSections(
-                                                compact: compactCard,
-                                              ),
-                                              centerSpaceRadius:
-                                                  compactCard ? 24 : 30,
-                                              sectionsSpace: 2,
-                                              pieTouchData: PieTouchData(
-                                                enabled: true,
-                                                touchCallback: (
-                                                  FlTouchEvent event,
-                                                  pieTouchResponse,
-                                                ) {
-                                                  // Handle touch events if needed
-                                                },
-                                              ),
-                                            ),
-                                          )
-                                        : const Center(
-                                            child: Text(
-                                              "Complete a workout to see your progress",
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 14,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 8,
-                                children: List.generate(_activeMonthlyTitles.length, (i) {
-                                  return SizedBox(
-                                    width: legendWidth,
-                                    child: _buildLegendItem(
-                                      i,
-                                      compact: compactCard,
-                                    ),
-                                  );
-                                }),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Solid slices = clean completions. Faded slices with ! = cheated completions.',
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: compactCard ? 10 : 11,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ProgressTrackingScreen(),
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFFF6B35),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  icon: const Icon(Icons.insights),
-                                  label: Text(
-                                    "Open Progress Tracking",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: compactCard ? 13 : 14,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              _buildBodyFocusTabs(),
+                              const SizedBox(height: 20),
+                              _buildWorkoutList(),
                             ],
-                          );
-                        },
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _buildJourneySection(),
-
-                  const SizedBox(height: 24),
-
-                  // Body Focus
-                  const Text(
-                    "Body Focus",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Category Tabs
-                  SizedBox(
-                    height: 42,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _tabTitles.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        return _buildTab(_tabTitles[index], index);
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Workout List Section - Filtered based on selected tab
-                  _buildWorkoutList(),
-                    ],
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -1187,314 +978,837 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     );
   }
 
+  Widget _buildMonthlyTrackingCard() {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompactScreen = screenWidth < 360;
+
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(
+        minHeight: isCompactScreen ? 320 : 350,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isCompactScreen ? 14 : 16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compactCard = constraints.maxWidth < 360;
+            final desktopCard = kIsWeb && constraints.maxWidth >= 760;
+            final chartHeight = desktopCard
+                ? 220.0
+                : compactCard
+                    ? 160.0
+                    : 190.0;
+            final legendWidth = compactCard
+                ? constraints.maxWidth
+                : desktopCard
+                    ? (constraints.maxWidth - 20) / 2
+                    : (constraints.maxWidth - 10) / 2;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Monthly Category Tracking",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compactCard ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _currentMonthLabel(),
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: compactCard ? 11 : 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.24),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedMonthlyTrackingView = 0;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _selectedMonthlyTrackingView == 0
+                                  ? const Color(0xFFFF6B35)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              "Body Focus",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _selectedMonthlyTrackingView == 0
+                                    ? Colors.white
+                                    : Colors.white70,
+                                fontWeight: FontWeight.bold,
+                                fontSize: compactCard ? 12 : 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedMonthlyTrackingView = 1;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _selectedMonthlyTrackingView == 1
+                                  ? const Color(0xFFFF6B35)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              "Journeys",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _selectedMonthlyTrackingView == 1
+                                    ? Colors.white
+                                    : Colors.white70,
+                                fontWeight: FontWeight.bold,
+                                fontSize: compactCard ? 12 : 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: chartHeight,
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.orange,
+                            ),
+                          ),
+                        )
+                      : _hasData()
+                          ? PieChart(
+                              PieChartData(
+                                sections: _buildMonthlyChartSections(
+                                  compact: compactCard,
+                                ),
+                                centerSpaceRadius: compactCard ? 24 : 30,
+                                sectionsSpace: 2,
+                                pieTouchData: PieTouchData(enabled: true),
+                              ),
+                            )
+                          : const Center(
+                              child: Text(
+                                "Complete a workout to see your progress",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: List.generate(_activeMonthlyTitles.length, (i) {
+                    return SizedBox(
+                      width: legendWidth,
+                      child: _buildLegendItem(i, compact: compactCard),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Solid slices = clean completions. Faded slices with ! = cheated completions.',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: compactCard ? 10 : 11,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const ProgressTrackingScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B35),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.insights),
+                    label: Text(
+                      "Open Progress Tracking",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: compactCard ? 13 : 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBodyFocusTabs() {
+    return SizedBox(
+      height: 42,
+      child: ScrollConfiguration(
+        behavior: const _WorkoutDesktopScrollBehavior(),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(_tabTitles.length, (index) {
+              return Padding(
+                padding: EdgeInsets.only(right: index == _tabTitles.length - 1 ? 0 : 8),
+                child: _buildTab(_tabTitles[index], index),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildJourneySection() {
     final recommendedJourney = _recommendedJourney;
     final recommendedJourneyCompleted =
         _isJourneyCompleted(recommendedJourney.journeyId);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Fitness Journey",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Recommended Journey",
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = kIsWeb && constraints.maxWidth >= 900;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Fitness Journey",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 6),
-              Text(
-                _allJourneysCompleted
-                    ? "All journeys are complete. You can still replay any journey anytime."
-                    : "The app automatically highlights the journey that fits your current progress best.",
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.72),
-                  fontSize: 12,
-                  height: 1.4,
-                ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF191919),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white10),
               ),
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: recommendedJourney.accentColor.withOpacity(0.35)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      goalLabel(_recommendedGoalType),
-                      style: TextStyle(
-                        color: recommendedJourney.accentColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Recommended Journey",
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      recommendedJourney.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _allJourneysCompleted
-                          ? '${recommendedJourney.description} Replay any journey whenever you want.'
-                          : recommendedJourneyCompleted
-                              ? '${recommendedJourney.description} This journey is already complete, but you can start it again anytime.'
-                              : recommendedJourney.description,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _recommendationReason,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.58),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 250,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _journeys.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final journey = _journeys[index];
-              final isSelected = index == _selectedJourneyIndex;
-              final isRecommended = index == _recommendedJourneyIndex;
-              final isCompletedJourney = _isJourneyCompleted(journey.journeyId);
-
-              return GestureDetector(
-                onTap: () async {
-                  setState(() {
-                    _selectedJourneyIndex = index;
-                  });
-                  await _saveSelectedJourney(journey);
-
-                  if (!mounted) {
-                    return;
-                  }
-
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FitnessJourneyDetailScreen(
-                        journeyId: journey.journeyId,
-                        title: journey.title,
-                        durationLabel: journey.durationLabel,
-                        headline: journey.headline,
-                        description: journey.description,
-                        thumbnailAsset: journey.thumbnailAsset,
-                        icon: journey.icon,
-                        accentColor: journey.accentColor,
-                        buttonTextColor: journey.buttonTextColor,
-                        gradientStart: journey.gradientStart,
-                        gradientEnd: journey.gradientEnd,
-                      ),
-                    ),
-                  );
-
-                  await _loadSelectedJourney();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  width: 292,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: isSelected
-                          ? journey.accentColor
-                          : Colors.white.withOpacity(0.08),
-                      width: isSelected ? 2 : 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: journey.accentColor.withOpacity(
-                          isSelected ? 0.18 : 0.08,
-                        ),
-                        blurRadius: isSelected ? 18 : 10,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: Stack(
-                      fit: StackFit.expand,
+                  const SizedBox(height: 6),
+                  Text(
+                    _allJourneysCompleted
+                        ? "All journeys are complete. You can still replay any journey anytime."
+                        : "The app automatically highlights the journey that fits your current progress best.",
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.72),
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: recommendedJourney.accentColor.withOpacity(0.35),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset(
-                          journey.thumbnailAsset,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildJourneyFallback(journey);
-                          },
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.08),
-                                Colors.black.withOpacity(0.18),
-                                Colors.black.withOpacity(0.76),
-                              ],
-                            ),
+                        Text(
+                          goalLabel(_recommendedGoalType),
+                          style: TextStyle(
+                            color: recommendedJourney.accentColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              stops: const [0.0, 0.48, 1.0],
-                              colors: [
-                                Colors.black.withOpacity(0.62),
-                                Colors.black.withOpacity(0.34),
-                                Colors.black.withOpacity(0.08),
-                              ],
-                            ),
+                        const SizedBox(height: 4),
+                        Text(
+                          recommendedJourney.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.18),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  isRecommended
-                                      ? 'RECOMMENDED'
-                                      : isCompletedJourney
-                                          ? 'COMPLETED'
-                                      : journey.durationLabel,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black54,
-                                        blurRadius: 12,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                journey.headline.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w900,
-                                  height: 0.98,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black87,
-                                      blurRadius: 18,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                journey.description,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.92),
-                                  fontSize: 13,
-                                  height: 1.25,
-                                  shadows: const [
-                                    Shadow(
-                                      color: Colors.black87,
-                                      blurRadius: 12,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 13,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(26),
-                                ),
-                                child: Text(
-                                  journey.buttonLabel,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: journey.buttonTextColor,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _allJourneysCompleted
+                              ? '${recommendedJourney.description} Replay any journey whenever you want.'
+                              : recommendedJourneyCompleted
+                                  ? '${recommendedJourney.description} This journey is already complete, but you can start it again anytime.'
+                                  : recommendedJourney.description,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _recommendationReason,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.58),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (kIsWeb)
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      isDesktop
+                          ? "Use the arrow buttons or drag with your mouse to browse journeys."
+                          : "Swipe or drag to browse journeys.",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.56),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _scrollJourneyCards(forward: false),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    color: Colors.white70,
+                    tooltip: 'Previous journeys',
+                  ),
+                  IconButton(
+                    onPressed: () => _scrollJourneyCards(forward: true),
+                    icon: const Icon(Icons.arrow_forward_ios_rounded),
+                    color: Colors.white70,
+                    tooltip: 'Next journeys',
+                  ),
+                ],
+              )
+            else
+              Text(
+                "Swipe to browse journeys.",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.56),
+                  fontSize: 11,
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 250,
+              child: ScrollConfiguration(
+                behavior: const _WorkoutDesktopScrollBehavior(),
+                child: kIsWeb
+                    ? Scrollbar(
+                        controller: _journeyScrollController,
+                        thumbVisibility: isDesktop,
+                        interactive: true,
+                        scrollbarOrientation: ScrollbarOrientation.bottom,
+                        child: ListView.separated(
+                          controller: _journeyScrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.only(bottom: isDesktop ? 14 : 0),
+                          itemCount: _journeys.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final journey = _journeys[index];
+                            final isSelected = index == _selectedJourneyIndex;
+                            final isRecommended = index == _recommendedJourneyIndex;
+                            final isCompletedJourney = _isJourneyCompleted(
+                              journey.journeyId,
+                            );
+
+                            return GestureDetector(
+                              onTap: () async {
+                                setState(() {
+                                  _selectedJourneyIndex = index;
+                                });
+                                await _saveSelectedJourney(journey);
+
+                                if (!mounted) {
+                                  return;
+                                }
+
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FitnessJourneyDetailScreen(
+                                      journeyId: journey.journeyId,
+                                      title: journey.title,
+                                      durationLabel: journey.durationLabel,
+                                      headline: journey.headline,
+                                      description: journey.description,
+                                      thumbnailAsset: journey.thumbnailAsset,
+                                      icon: journey.icon,
+                                      accentColor: journey.accentColor,
+                                      buttonTextColor: journey.buttonTextColor,
+                                      gradientStart: journey.gradientStart,
+                                      gradientEnd: journey.gradientEnd,
+                                    ),
+                                  ),
+                                );
+
+                                await _loadSelectedJourney();
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                width: isDesktop ? 320 : 292,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? journey.accentColor
+                                        : Colors.white.withOpacity(0.08),
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: journey.accentColor.withOpacity(
+                                        isSelected ? 0.18 : 0.08,
+                                      ),
+                                      blurRadius: isSelected ? 18 : 10,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.asset(
+                                        journey.thumbnailAsset,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildJourneyFallback(journey);
+                                        },
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.black.withOpacity(0.08),
+                                              Colors.black.withOpacity(0.18),
+                                              Colors.black.withOpacity(0.76),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                            stops: const [0.0, 0.48, 1.0],
+                                            colors: [
+                                              Colors.black.withOpacity(0.62),
+                                              Colors.black.withOpacity(0.34),
+                                              Colors.black.withOpacity(0.08),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(18),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 8,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.18),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              child: Text(
+                                                isRecommended
+                                                    ? 'RECOMMENDED'
+                                                    : isCompletedJourney
+                                                        ? 'COMPLETED'
+                                                        : journey.durationLabel,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  shadows: [
+                                                    Shadow(
+                                                      color: Colors.black54,
+                                                      blurRadius: 12,
+                                                      offset: Offset(0, 2),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Text(
+                                              journey.headline.toUpperCase(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 26,
+                                                fontWeight: FontWeight.w900,
+                                                height: 0.98,
+                                                shadows: [
+                                                  Shadow(
+                                                    color: Colors.black87,
+                                                    blurRadius: 18,
+                                                    offset: Offset(0, 3),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Text(
+                                              journey.description,
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.92),
+                                                fontSize: 13,
+                                                height: 1.25,
+                                                shadows: const [
+                                                  Shadow(
+                                                    color: Colors.black87,
+                                                    blurRadius: 12,
+                                                    offset: Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 13,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(26),
+                                              ),
+                                              child: Text(
+                                                journey.buttonLabel,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: journey.buttonTextColor,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: _journeyScrollController,
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _journeys.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final journey = _journeys[index];
+                          final isSelected = index == _selectedJourneyIndex;
+                          final isRecommended = index == _recommendedJourneyIndex;
+                      final isCompletedJourney = _isJourneyCompleted(
+                        journey.journeyId,
+                      );
+
+                      return GestureDetector(
+                        onTap: () async {
+                          setState(() {
+                            _selectedJourneyIndex = index;
+                          });
+                          await _saveSelectedJourney(journey);
+
+                          if (!mounted) {
+                            return;
+                          }
+
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FitnessJourneyDetailScreen(
+                                journeyId: journey.journeyId,
+                                title: journey.title,
+                                durationLabel: journey.durationLabel,
+                                headline: journey.headline,
+                                description: journey.description,
+                                thumbnailAsset: journey.thumbnailAsset,
+                                icon: journey.icon,
+                                accentColor: journey.accentColor,
+                                buttonTextColor: journey.buttonTextColor,
+                                gradientStart: journey.gradientStart,
+                                gradientEnd: journey.gradientEnd,
+                              ),
+                            ),
+                          );
+
+                          await _loadSelectedJourney();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          width: isDesktop ? 320 : 292,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: isSelected
+                                  ? journey.accentColor
+                                  : Colors.white.withOpacity(0.08),
+                              width: isSelected ? 2 : 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: journey.accentColor.withOpacity(
+                                  isSelected ? 0.18 : 0.08,
+                                ),
+                                blurRadius: isSelected ? 18 : 10,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.asset(
+                                  journey.thumbnailAsset,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return _buildJourneyFallback(journey);
+                                  },
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.black.withOpacity(0.08),
+                                        Colors.black.withOpacity(0.18),
+                                        Colors.black.withOpacity(0.76),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      stops: const [0.0, 0.48, 1.0],
+                                      colors: [
+                                        Colors.black.withOpacity(0.62),
+                                        Colors.black.withOpacity(0.34),
+                                        Colors.black.withOpacity(0.08),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(18),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.18),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                        child: Text(
+                                          isRecommended
+                                              ? 'RECOMMENDED'
+                                              : isCompletedJourney
+                                                  ? 'COMPLETED'
+                                                  : journey.durationLabel,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            shadows: [
+                                              Shadow(
+                                                color: Colors.black54,
+                                                blurRadius: 12,
+                                                offset: Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        journey.headline.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w900,
+                                          height: 0.98,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black87,
+                                              blurRadius: 18,
+                                              offset: Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        journey.description,
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.92),
+                                          fontSize: 13,
+                                          height: 1.25,
+                                          shadows: const [
+                                            Shadow(
+                                              color: Colors.black87,
+                                              blurRadius: 12,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 13,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(26),
+                                        ),
+                                        child: Text(
+                                          journey.buttonLabel,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: journey.buttonTextColor,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                        },
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _scrollJourneyCards({required bool forward}) async {
+    if (!_journeyScrollController.hasClients) {
+      return;
+    }
+
+    const offsetStep = 332.0;
+    final currentOffset = _journeyScrollController.offset;
+    final targetOffset = (currentOffset + (forward ? offsetStep : -offsetStep))
+        .clamp(0.0, _journeyScrollController.position.maxScrollExtent);
+
+    await _journeyScrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -1602,13 +1916,33 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             ),
           )
         else
-          ListView.builder(
-            shrinkWrap: true,
-            physics:
-                const NeverScrollableScrollPhysics(), // Disable scrolling for the list view since the parent is already scrollable
-            itemCount: workouts.length,
-            itemBuilder: (context, index) {
-              return _buildWorkoutCard(workouts[index]);
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final useTwoColumns = constraints.maxWidth >= 1080;
+              if (!useTwoColumns) {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: workouts.length,
+                  itemBuilder: (context, index) {
+                    return _buildWorkoutCard(workouts[index]);
+                  },
+                );
+              }
+
+              final cardWidth = (constraints.maxWidth - 16) / 2;
+              return Wrap(
+                spacing: 16,
+                runSpacing: 0,
+                children: workouts
+                    .map(
+                      (workout) => SizedBox(
+                        width: cardWidth,
+                        child: _buildWorkoutCard(workout),
+                      ),
+                    )
+                    .toList(growable: false),
+              );
             },
           ),
       ],
@@ -1796,6 +2130,19 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
     return totalMinutes > 1 ? "${totalMinutes} mins" : "${totalMinutes} min";
   }
+}
+
+class _WorkoutDesktopScrollBehavior extends MaterialScrollBehavior {
+  const _WorkoutDesktopScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
 }
 
 class FitnessJourneyPreview {

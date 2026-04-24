@@ -1019,7 +1019,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Data resets daily at midnight  |  ${_dailyActivityHistory.length} days of history',
+                  'Data resets daily at midnight',
                   style: TextStyle(
                     color: Colors.grey[500],
                     fontSize: 11,
@@ -2234,19 +2234,37 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
-        final isSmallScreen = screenWidth < 350;
+        final isVerySmallScreen = screenWidth < 430;
+        final isWideScreen = screenWidth >= 1100;
+        final isMediumScreen = screenWidth >= 700;
+        final crossAxisCount = isWideScreen
+            ? 4
+            : isMediumScreen
+                ? 2
+                : isVerySmallScreen
+                    ? 1
+                    : 2;
+        final spacing = isWideScreen ? 14.0 : isMediumScreen ? 12.0 : 8.0;
         final double cardWidth =
-            constraints.maxWidth / 2 - (isSmallScreen ? 6 : 8);
-        final double cardHeight = cardWidth * (isSmallScreen ? 1.2 : 1.1);
+            (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
+            crossAxisCount;
+        final childAspectRatio = isWideScreen
+            ? 1.15
+            : isMediumScreen
+                ? 0.95
+                : isVerySmallScreen
+                    ? 1.7
+                    : 0.85;
+        final double cardHeight = cardWidth / childAspectRatio;
 
         return GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: isSmallScreen ? 6 : 8,
-            mainAxisSpacing: isSmallScreen ? 6 : 8,
-            childAspectRatio: isSmallScreen ? 0.75 : 0.85,
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: childAspectRatio,
           ),
           itemCount: cards.length,
           itemBuilder: (BuildContext context, int index) {
