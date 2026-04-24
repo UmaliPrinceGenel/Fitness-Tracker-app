@@ -245,7 +245,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            child: Padding(
+                child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,8 +447,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ),
                   ),
                 ],
-              ),
-            ),
+          ),
+        ),
           ),
         ),
         bottomNavigationBar: Container(
