@@ -76,3 +76,6 @@ app.*.map.json
 
 
 .gradle-cache/
+
+models/
+*.gguf

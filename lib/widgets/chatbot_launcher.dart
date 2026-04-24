@@ -1,8 +1,19 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/fitness_chat_service.dart';
 
 const double _chatbotButtonSize = 56;
 const double _chatbotEdgeInset = 12;
 const double _chatbotSideSwitchThreshold = 36;
+const String _chatHistoryPreferenceKey = 'fitness_chat_history_v1';
+const String _chatbotIntroText =
+    'Hi! I am your fitness assistant. Ask about workouts, calories, sleep, goals, or progress.';
+const Duration _chatSendCooldown = Duration(milliseconds: 1200);
 
 class ChatbotLauncher extends StatefulWidget {
   const ChatbotLauncher({
@@ -216,22 +227,102 @@ class _ChatbotSheet extends StatefulWidget {
 }
 
 class _ChatbotSheetState extends State<_ChatbotSheet> {
+  final FitnessChatService _chatService = FitnessChatService();
   final TextEditingController _messageController = TextEditingController();
-  final List<_ChatMessage> _messages = const [
-    _ChatMessage(
-      text:
-          'Hi! I am your fitness assistant. Ask about workouts, calories, or progress.',
+  final List<_ChatMessage> _messages = [
+    const _ChatMessage(
+      text: _chatbotIntroText,
       isUser: false,
+      includeInHistory: false,
     ),
-  ].toList();
+  ];
 
   bool _isReplying = false;
+  bool _isSendCoolingDown = false;
   ScrollController? _activeScrollController;
+  StreamSubscription<String>? _replySubscription;
+  Timer? _sendCooldownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPersistedMessages());
+    unawaited(_prepareModel());
+  }
 
   @override
   void dispose() {
+    _replySubscription?.cancel();
+    _sendCooldownTimer?.cancel();
+    _chatService.stopGeneration();
     _messageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _prepareModel() async {
+    await _chatService.prepareModel();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {});
+  }
+
+  Future<void> _loadPersistedMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawHistory = prefs.getString(_chatHistoryPreferenceKey);
+    if (rawHistory == null || rawHistory.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final decoded = jsonDecode(rawHistory);
+      if (decoded is! List) {
+        return;
+      }
+
+      final restoredMessages = decoded
+          .whereType<Map>()
+          .map(
+            (entry) => _ChatMessage.fromJson(
+              Map<String, dynamic>.from(entry),
+            ),
+          )
+          .where((message) => !message.isStreaming)
+          .toList(growable: false);
+
+      if (restoredMessages.isEmpty) {
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(restoredMessages);
+      });
+      _scrollToBottom();
+    } catch (_) {
+      await prefs.remove(_chatHistoryPreferenceKey);
+    }
+  }
+
+  Future<void> _persistMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final serializableMessages = _messages
+        .where(
+          (message) => !message.isStreaming && message.text.trim().isNotEmpty,
+        )
+        .map((message) => message.toJson())
+        .toList(growable: false);
+
+    await prefs.setString(
+      _chatHistoryPreferenceKey,
+      jsonEncode(serializableMessages),
+    );
   }
 
   void _scrollToBottom() {
@@ -249,58 +340,146 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
     });
   }
 
-  void _sendMessage() {
+  List<FitnessChatTurn> _buildConversationHistory() {
+    return _messages
+        .where(
+          (message) =>
+              message.includeInHistory &&
+              !message.isStreaming &&
+              message.text.trim().isNotEmpty,
+        )
+        .map(
+          (message) => FitnessChatTurn(
+            role: message.isUser
+                ? FitnessChatRole.user
+                : FitnessChatRole.assistant,
+            content: message.text,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) {
+    if (text.isEmpty || _isReplying || _isSendCoolingDown) {
       return;
     }
 
+    final history = _buildConversationHistory();
+
     setState(() {
       _messages.add(_ChatMessage(text: text, isUser: true));
+      _messages.add(
+        const _ChatMessage(
+          text: '',
+          isUser: false,
+          isStreaming: true,
+        ),
+      );
       _messageController.clear();
       _isReplying = true;
+      _isSendCoolingDown = true;
     });
-    _scrollToBottom();
-
-    Future.delayed(const Duration(milliseconds: 500), () {
+    _sendCooldownTimer?.cancel();
+    _sendCooldownTimer = Timer(_chatSendCooldown, () {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _messages.add(
-          _ChatMessage(
-            text: _buildPlaceholderReply(text),
-            isUser: false,
-          ),
-        );
+        _isSendCoolingDown = false;
+      });
+    });
+    unawaited(_persistMessages());
+    _scrollToBottom();
+
+    try {
+      final assistantIndex = _messages.length - 1;
+      final responseBuffer = StringBuffer();
+
+      _replySubscription = _chatService
+          .streamMessage(
+            userMessage: text,
+            history: history,
+          )
+          .listen(
+            (chunk) {
+              if (!mounted || assistantIndex >= _messages.length) {
+                return;
+              }
+
+              responseBuffer.write(chunk);
+              setState(() {
+                _messages[assistantIndex] = _messages[assistantIndex].copyWith(
+                  text: responseBuffer.toString(),
+                  isStreaming: true,
+                );
+              });
+              _scrollToBottom();
+            },
+            onError: (Object error) {
+              if (!mounted || assistantIndex >= _messages.length) {
+                return;
+              }
+
+              setState(() {
+                _messages[assistantIndex] = _messages[assistantIndex].copyWith(
+                  text: _chatService.genericChatFailureReply,
+                  isStreaming: false,
+                );
+                _isReplying = false;
+              });
+              unawaited(_persistMessages());
+            },
+            onDone: () {
+              if (!mounted || assistantIndex >= _messages.length) {
+                return;
+              }
+
+              setState(() {
+                final completedText = responseBuffer.toString().trim();
+                _messages[assistantIndex] = _messages[assistantIndex].copyWith(
+                  text: completedText.isEmpty
+                      ? kIsWeb
+                          ? 'The browser model returned an empty reply.'
+                          : 'The local model returned an empty reply.'
+                  : completedText,
+                  isStreaming: false,
+                );
+                _isReplying = false;
+              });
+              unawaited(_persistMessages());
+              _scrollToBottom();
+            },
+            cancelOnError: true,
+          );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        if (_messages.isNotEmpty && _messages.last.isStreaming) {
+          _messages[_messages.length - 1] = _messages.last.copyWith(
+            text: _chatService.genericChatFailureReply,
+            isStreaming: false,
+          );
+        }
         _isReplying = false;
       });
+      unawaited(_persistMessages());
       _scrollToBottom();
-    });
-  }
-
-  String _buildPlaceholderReply(String text) {
-    final message = text.toLowerCase();
-
-    if (message.contains('workout')) {
-      return 'This chat UI is ready. Connect it to your workout chatbot logic to return real plans and guidance.';
     }
-
-    if (message.contains('calorie') || message.contains('nutrition')) {
-      return 'You can hook this message panel to your nutrition assistant and return calorie or meal suggestions here.';
-    }
-
-    if (message.contains('progress')) {
-      return 'This is a placeholder response. Connect your chatbot service to answer using user progress data.';
-    }
-
-    return 'The messaging UI is working. Replace this placeholder reply with your chatbot backend response.';
   }
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final subtitle = _chatService.isHostedChatEnabled
+        ? ''
+        : kIsWeb
+            ? 'Web uses hosted chat with browser-model fallback'
+            : 'Mobile uses your imported local GGUF model';
 
     return SafeArea(
       top: false,
@@ -358,14 +537,16 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Ask anything about your fitness journey',
-                                style: TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12,
+                              if (subtitle.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  subtitle,
+                                  style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -384,12 +565,8 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                     child: ListView.builder(
                       controller: sheetController,
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                      itemCount: _messages.length + (_isReplying ? 1 : 0),
+                      itemCount: _messages.length,
                       itemBuilder: (context, index) {
-                        if (_isReplying && index == _messages.length) {
-                          return const _TypingBubble();
-                        }
-
                         final message = _messages[index];
                         return _MessageBubble(message: message);
                       },
@@ -411,6 +588,7 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                             controller: _messageController,
                             minLines: 1,
                             maxLines: 4,
+                            enabled: !_isReplying,
                             style: const TextStyle(color: Colors.white),
                             textInputAction: TextInputAction.send,
                             onSubmitted: (_) => _sendMessage(),
@@ -432,13 +610,17 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                         ),
                         const SizedBox(width: 10),
                         InkWell(
-                          onTap: _sendMessage,
+                          onTap: _isReplying || _isSendCoolingDown
+                              ? null
+                              : _sendMessage,
                           borderRadius: BorderRadius.circular(18),
                           child: Container(
                             width: 52,
                             height: 52,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF7A00),
+                              color: _isSendCoolingDown && !_isReplying
+                                  ? const Color(0xFF8A5B2B)
+                                  : const Color(0xFFFF7A00),
                               borderRadius: BorderRadius.circular(18),
                             ),
                             child: const Icon(
@@ -474,6 +656,9 @@ class _MessageBubble extends StatelessWidget {
     final bubbleColor =
         message.isUser ? const Color(0xFFFF7A00) : const Color(0xFF1F1F1F);
     final textColor = message.isUser ? Colors.black : Colors.white;
+    final displayText = message.isStreaming && message.text.isEmpty
+        ? 'Typing...'
+        : message.text;
 
     return Align(
       alignment: alignment,
@@ -492,39 +677,14 @@ class _MessageBubble extends StatelessWidget {
                 : Border.all(color: Colors.white10),
           ),
           child: Text(
-            message.text,
+            displayText,
             style: TextStyle(
-              color: textColor,
+              color: message.isStreaming && message.text.isEmpty
+                  ? Colors.white70
+                  : textColor,
               fontSize: 14,
               height: 1.4,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TypingBubble extends StatelessWidget {
-  const _TypingBubble();
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F1F1F),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: const Text(
-          'Typing...',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
           ),
         ),
       ),
@@ -536,8 +696,44 @@ class _ChatMessage {
   const _ChatMessage({
     required this.text,
     required this.isUser,
+    this.includeInHistory = true,
+    this.isStreaming = false,
   });
 
   final String text;
   final bool isUser;
+  final bool includeInHistory;
+  final bool isStreaming;
+
+  factory _ChatMessage.fromJson(Map<String, dynamic> json) {
+    return _ChatMessage(
+      text: (json['text'] as String? ?? '').trim(),
+      isUser: json['isUser'] as bool? ?? false,
+      includeInHistory: json['includeInHistory'] as bool? ?? true,
+      isStreaming: json['isStreaming'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'isUser': isUser,
+      'includeInHistory': includeInHistory,
+      'isStreaming': isStreaming,
+    };
+  }
+
+  _ChatMessage copyWith({
+    String? text,
+    bool? isUser,
+    bool? includeInHistory,
+    bool? isStreaming,
+  }) {
+    return _ChatMessage(
+      text: text ?? this.text,
+      isUser: isUser ?? this.isUser,
+      includeInHistory: includeInHistory ?? this.includeInHistory,
+      isStreaming: isStreaming ?? this.isStreaming,
+    );
+  }
 }
