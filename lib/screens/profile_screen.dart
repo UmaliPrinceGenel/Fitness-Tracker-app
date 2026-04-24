@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'health_dashboard.dart';
 import 'admin_login_screen.dart';
 import 'permissions_screen.dart';
+import '../widgets/web_auth_shell.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -176,8 +178,324 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
     }
   }
 
+  InputDecoration _buildWebFieldDecoration(String hintText) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: const TextStyle(
+        color: Color(0xFF8B8B8B),
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFD9D3CE)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFFF7317), width: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildWebProfileScreen(BuildContext context) {
+    return WebAuthShell(
+      leftTitle: 'Welcome',
+      leftSubtitle: 'Rockies Fitness Gym Tracker',
+      rightChild: Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool narrow = constraints.maxWidth < 390;
+            final double fieldWidth = narrow ? double.infinity : 160;
+
+            Widget buildFieldRow({
+              required String label,
+              required Widget field,
+            }) {
+              if (narrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Color(0xFF141414),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    field,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Color(0xFF141414),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: fieldWidth, child: field),
+                ],
+              );
+            }
+
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'My Profile',
+                      style: TextStyle(
+                        color: const Color(0xFF141414),
+                        fontSize: narrow ? 24 : 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Before you get started, fill out the following information to get more accurate body composition and calorie information.',
+                      style: TextStyle(
+                        color: const Color(0xFF666666),
+                        fontSize: narrow ? 11.5 : 12,
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Gender',
+                      style: TextStyle(
+                        color: Color(0xFF141414),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    narrow
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ChoiceChip(
+                                label: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.male, size: 16),
+                                    SizedBox(width: 6),
+                                    Text('Male'),
+                                  ],
+                                ),
+                                selected: gender == 'Male',
+                                selectedColor: const Color(0xFF36A8FF),
+                                backgroundColor: const Color(0xFFF2EFEC),
+                                labelStyle: TextStyle(
+                                  color: gender == 'Male'
+                                      ? Colors.white
+                                      : const Color(0xFF555555),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                side: BorderSide.none,
+                                onSelected: _isLoading
+                                    ? null
+                                    : (selected) {
+                                        setState(() => gender = 'Male');
+                                      },
+                              ),
+                              const SizedBox(height: 10),
+                              ChoiceChip(
+                                label: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.female, size: 16),
+                                    SizedBox(width: 6),
+                                    Text('Female'),
+                                  ],
+                                ),
+                                selected: gender == 'Female',
+                                selectedColor: const Color(0xFF36A8FF),
+                                backgroundColor: const Color(0xFFF2EFEC),
+                                labelStyle: TextStyle(
+                                  color: gender == 'Female'
+                                      ? Colors.white
+                                      : const Color(0xFF555555),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                side: BorderSide.none,
+                                onSelected: _isLoading
+                                    ? null
+                                    : (selected) {
+                                        setState(() => gender = 'Female');
+                                      },
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: ChoiceChip(
+                                  label: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.male, size: 16),
+                                      SizedBox(width: 6),
+                                      Text('Male'),
+                                    ],
+                                  ),
+                                  selected: gender == 'Male',
+                                  selectedColor: const Color(0xFF36A8FF),
+                                  backgroundColor: const Color(0xFFF2EFEC),
+                                  labelStyle: TextStyle(
+                                    color: gender == 'Male'
+                                        ? Colors.white
+                                        : const Color(0xFF555555),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  side: BorderSide.none,
+                                  onSelected: _isLoading
+                                      ? null
+                                      : (selected) {
+                                          setState(() => gender = 'Male');
+                                        },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ChoiceChip(
+                                  label: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.female, size: 16),
+                                      SizedBox(width: 6),
+                                      Text('Female'),
+                                    ],
+                                  ),
+                                  selected: gender == 'Female',
+                                  selectedColor: const Color(0xFF36A8FF),
+                                  backgroundColor: const Color(0xFFF2EFEC),
+                                  labelStyle: TextStyle(
+                                    color: gender == 'Female'
+                                        ? Colors.white
+                                        : const Color(0xFF555555),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  side: BorderSide.none,
+                                  onSelected: _isLoading
+                                      ? null
+                                      : (selected) {
+                                          setState(() => gender = 'Female');
+                                        },
+                                ),
+                              ),
+                            ],
+                          ),
+                    const SizedBox(height: 20),
+                    buildFieldRow(
+                      label: 'Height',
+                      field: TextField(
+                        enabled: !_isLoading,
+                        controller: heightController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(
+                          color: Color(0xFF141414),
+                          fontWeight: FontWeight.w700,
+                        ),
+                        decoration: _buildWebFieldDecoration('170 cm'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    buildFieldRow(
+                      label: 'Weight',
+                      field: TextField(
+                        enabled: !_isLoading,
+                        controller: weightController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(
+                          color: Color(0xFF141414),
+                          fontWeight: FontWeight.w700,
+                        ),
+                        decoration: _buildWebFieldDecoration('60 kg'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    buildFieldRow(
+                      label: 'Date of Birth',
+                      field: InkWell(
+                        onTap: _isLoading ? null : () => _selectDate(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: InputDecorator(
+                          decoration: _buildWebFieldDecoration('YYYY-MM-DD'),
+                          child: Text(
+                            "${dob.year}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}",
+                            style: const TextStyle(
+                              color: Color(0xFF141414),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _saveProfileData,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF7317),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'Next',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return _buildWebProfileScreen(context);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       resizeToAvoidBottomInset: true,

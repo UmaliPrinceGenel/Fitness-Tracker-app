@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String _modelPathPreferenceKey = 'local_llm_model_path';
-const String _defaultModelFileName = 'qwen2.5-0.5b-instruct-q4_k_m.gguf';
+const String _defaultModelFileName = 'SmolLM-135M-Instruct.Q2_K.gguf';
 const String _defaultBundledModelAssetPath = 'models/$_defaultModelFileName';
 
 enum ModelPathSource {

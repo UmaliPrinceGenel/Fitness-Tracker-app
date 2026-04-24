@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart'; // Add this import
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,6 +11,7 @@ import 'dart:ui' as ui; // Add this import for ui.TextStyle
 import '../widgets/semi_circle_progress.dart';
 import '../widgets/chatbot_launcher.dart';
 import 'detail_screen.dart';
+import 'login_screen.dart';
 import 'my_profile.dart';
 import 'workout_screen.dart';
 import 'community_screen.dart';
@@ -792,6 +794,264 @@ class _HealthDashboardState extends State<HealthDashboard>
     });
   }
 
+  Future<void> _logoutFromDashboard() async {
+    await _auth.signOut();
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Widget _buildWebDashboard() {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _WebDashboardSidebar(
+                    selectedIndex: _selectedIndex,
+                    onItemSelected: _onItemTapped,
+                    onLogout: _logoutFromDashboard,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: _buildWebMainPanel(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const ChatbotLauncher(title: 'Fitness Chat'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebMainPanel() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildWebHealthPanel();
+      case 1:
+        return const WorkoutScreen(showChatbot: false);
+      case 2:
+        return const CommunityScreen(showChatbot: false);
+      case 3:
+        return MyProfile(
+          refreshVersion: _profileRefreshVersion,
+          showChatbot: false,
+        );
+      default:
+        return _buildWebHealthPanel();
+    }
+  }
+
+  Widget _buildWebHealthPanel() {
+    return Container(
+      color: Colors.black,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool stacked = constraints.maxWidth < 1080;
+            final Widget leftColumn = _buildWebHealthLeftColumn(constraints);
+            final Widget rightColumn = _buildWebHealthRightColumn();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Health',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: stacked
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              leftColumn,
+                              const SizedBox(height: 20),
+                              rightColumn,
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 8, child: leftColumn),
+                              const SizedBox(width: 18),
+                              Expanded(flex: 9, child: rightColumn),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebHealthLeftColumn(BoxConstraints constraints) {
+    final double availableWidth = constraints.maxWidth < 1080
+        ? constraints.maxWidth
+        : constraints.maxWidth * 0.46;
+    final double chartWidth = availableWidth.clamp(500.0, 720.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: chartWidth),
+            child: SemiCircleProgress(
+              caloriesPercent: (_weeklyCalories / _weeklyCaloriesGoal * 100)
+                  .clamp(0.0, 100.0),
+              stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 100)
+                  .clamp(0.0, 100.0),
+              movingPercent: (_weeklyWorkoutsCount / _weeklyWorkoutsGoal * 100)
+                  .clamp(0.0, 100.0),
+              caloriesValue: _weeklyCalories.toStringAsFixed(0),
+              caloriesGoal: "/${_weeklyCaloriesGoal.toInt()} kcal",
+              stepsValue: _weeklyMinutes.toString(),
+              stepsGoal: "/$_weeklyMinutesGoal mins",
+              movingValue: _weeklyWorkoutsCount.toStringAsFixed(0),
+              movingGoal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: chartWidth),
+            child: Column(
+              children: [
+                _WebSummaryMetricCard(
+                  icon: Icons.local_fire_department,
+                  iconColor: const Color(0xFFFF7A1A),
+                  backgroundColor: const Color(0xFF5A3324),
+                  title: 'Calories',
+                  value: _weeklyCalories.toStringAsFixed(0),
+                  subtitle: '/${_weeklyCaloriesGoal.toInt()} kcal',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailScreen(
+                          title: "kcal",
+                          currentValue: _weeklyCalories.toDouble(),
+                          goalValue: _weeklyCaloriesGoal.toDouble(),
+                          onDataSaved: _loadUserData,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _WebSummaryMetricCard(
+                  icon: Icons.timer,
+                  iconColor: const Color(0xFFFFC233),
+                  backgroundColor: const Color(0xFF5A4720),
+                  title: 'Minutes',
+                  value: _weeklyMinutes.toString(),
+                  subtitle: '/$_weeklyMinutesGoal mins',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailScreen(
+                          title: "Minutes",
+                          currentValue: _weeklyMinutes.toDouble(),
+                          goalValue: _weeklyMinutesGoal.toDouble(),
+                          onDataSaved: _loadUserData,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _WebSummaryMetricCard(
+                  icon: Icons.fitness_center,
+                  iconColor: const Color(0xFF39AAFF),
+                  backgroundColor: const Color(0xFF1F3B53),
+                  title: 'Workouts',
+                  value: _weeklyWorkoutsCount.toStringAsFixed(0),
+                  subtitle: '/${_weeklyWorkoutsGoal.toInt()} workouts',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailScreen(
+                          title: "Workouts",
+                          currentValue: _weeklyWorkoutsCount.toDouble(),
+                          goalValue: _weeklyWorkoutsGoal.toDouble(),
+                          onDataSaved: _loadUserData,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 280,
+                  child: _BMICard(
+                    bmi: _bmi,
+                    onDataSaved: _handleHealthDataChanged,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Data resets daily at midnight  |  ${_dailyActivityHistory.length} days of history',
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 11,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebHealthRightColumn() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DraggableCardGrid(
+          waistMeasurement: _waistMeasurement,
+          weight: _weight,
+          height: _height,
+          sleepHours: _sleepHours,
+          waistHistory: _waistHistory,
+          weightHistory: _weightHistory,
+          sleepHistory: _sleepHistory,
+          onDataSaved: _handleHealthDataChanged,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -821,6 +1081,10 @@ class _HealthDashboardState extends State<HealthDashboard>
           ),
         ),
       );
+    }
+
+    if (kIsWeb) {
+      return _buildWebDashboard();
     }
 
     return Scaffold(
@@ -1382,6 +1646,234 @@ class DailyActivity {
       weeklyWorkoutsCount:
           (map['dailyWorkoutsCount'] ?? map['weeklyWorkoutsCount'] ?? 0)
               .toInt(),
+    );
+  }
+}
+
+class _WebDashboardSidebar extends StatelessWidget {
+  const _WebDashboardSidebar({
+    required this.selectedIndex,
+    required this.onItemSelected,
+    required this.onLogout,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onItemSelected;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 280,
+      decoration: BoxDecoration(
+        color: const Color(0xFF050505),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
+        child: Column(
+          children: [
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white12),
+              ),
+              child: ClipOval(
+                child: Image.asset('assets/logo.jpg', fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Rockies\nFitness',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(height: 26),
+            Container(height: 1, color: Colors.white12),
+            const SizedBox(height: 18),
+            _WebSidebarItem(
+              icon: Icons.favorite_border,
+              label: 'Health',
+              selected: selectedIndex == 0,
+              onTap: () => onItemSelected(0),
+            ),
+            _WebSidebarItem(
+              icon: Icons.directions_run,
+              label: 'Workout',
+              selected: selectedIndex == 1,
+              onTap: () => onItemSelected(1),
+            ),
+            _WebSidebarItem(
+              icon: Icons.groups_outlined,
+              label: 'Community',
+              selected: selectedIndex == 2,
+              onTap: () => onItemSelected(2),
+            ),
+            _WebSidebarItem(
+              icon: Icons.person_outline,
+              label: 'Profile',
+              selected: selectedIndex == 3,
+              onTap: () => onItemSelected(3),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onLogout,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.white12),
+                  backgroundColor: const Color(0xFF111111),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'Log out',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WebSidebarItem extends StatelessWidget {
+  const _WebSidebarItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+            child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: selected ? Colors.white10 : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: selected ? Colors.white : Colors.white70,
+                  size: 24,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? Colors.white : Colors.white70,
+                      fontSize: 18,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WebSummaryMetricCard extends StatelessWidget {
+  const _WebSummaryMetricCard({
+    required this.icon,
+    required this.iconColor,
+    required this.backgroundColor,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color backgroundColor;
+  final String title;
+  final String value;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: iconColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +8,7 @@ import '../screens/admin_dashboard_screen.dart';
 import '../screens/health_dashboard.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/signup_screen.dart';
+import '../widgets/web_auth_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? prefilledEmail;
@@ -376,8 +378,332 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  InputDecoration _buildWebInputDecoration({
+    required String label,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(
+        color: Color(0xFF7B7B7B),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFF202020), width: 1.2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Color(0xFFFF7317), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      suffixIcon: suffixIcon,
+    );
+  }
+
+  Widget _buildWebLoginScreen(BuildContext context) {
+    return WebAuthShell(
+      leftTitle: 'Welcome',
+      leftSubtitle: 'Rockies Fitness Gym Tracker',
+      rightChild: Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool narrow = constraints.maxWidth < 380;
+
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Welcome Back',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFF141414),
+                        fontSize: narrow ? 24 : 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Ready to begin your fitness journey? Re-enter your email and password now!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFF6E6E6E),
+                        fontSize: narrow ? 12 : 13,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: narrow ? 22 : 28),
+                    TextFormField(
+                      controller: _emailController,
+                      enabled: !_isLoading,
+                      style: const TextStyle(
+                        color: Color(0xFF141414),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: _buildWebInputDecoration(label: 'Email'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+
+                        final trimmedValue = value.trim().toLowerCase();
+                        if (!RegExp(
+                          r'^[^@]+@[^@]+\.[^@]+',
+                        ).hasMatch(trimmedValue)) {
+                          return 'Please enter a valid email';
+                        }
+
+                        if (!trimmedValue.endsWith('@gmail.com')) {
+                          return 'Only @gmail.com addresses are allowed';
+                        }
+
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    TextFormField(
+                      controller: _passwordController,
+                      enabled: !_isLoading,
+                      obscureText: _obscurePassword,
+                      style: const TextStyle(
+                        color: Color(0xFF141414),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: _buildWebInputDecoration(
+                        label: 'Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: const Color(0xFF696969),
+                          ),
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        if (value.length < 6) {
+                          return 'Password must be at least 6 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    narrow
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Transform.scale(
+                                    scale: 0.92,
+                                    child: Checkbox(
+                                      value: _rememberMe,
+                                      onChanged: _isLoading
+                                          ? null
+                                          : (value) {
+                                              setState(() {
+                                                _rememberMe = value ?? false;
+                                              });
+                                            },
+                                      activeColor: const Color(0xFFFF7317),
+                                      checkColor: Colors.white,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Remember me',
+                                    style: TextStyle(
+                                      color: Color(0xFF1B1B1B),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              TextButton(
+                                onPressed: _isLoading ? null : _forgotPassword,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFFFF7317),
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Forgot password?',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Transform.scale(
+                                scale: 0.92,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: _isLoading
+                                      ? null
+                                      : (value) {
+                                          setState(() {
+                                            _rememberMe = value ?? false;
+                                          });
+                                        },
+                                  activeColor: const Color(0xFFFF7317),
+                                  checkColor: Colors.white,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                              const Expanded(
+                                child: Text(
+                                  'Remember me',
+                                  style: TextStyle(
+                                    color: Color(0xFF1B1B1B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _isLoading ? null : _forgotPassword,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFFFF7317),
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Forgot password?',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _loginWithEmail,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF7317),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'Log In',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text(
+                          'Don\'t have an account yet? ',
+                          style: TextStyle(
+                            color: Color(0xFF727272),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SignupScreen(),
+                                    ),
+                                  );
+                                },
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFFF7317),
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Sign Up',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return _buildWebLoginScreen(context);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       resizeToAvoidBottomInset: false,

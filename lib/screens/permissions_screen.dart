@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
+import '../widgets/web_auth_shell.dart';
 
 class PermissionsScreen extends StatefulWidget {
   const PermissionsScreen({super.key});
@@ -88,8 +90,168 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     }
   }
 
+  Widget _buildWebPermissionScreen(BuildContext context) {
+    return WebAuthShell(
+      leftTitle: 'Welcome',
+      leftSubtitle: 'Rockies Fitness Gym Tracker',
+      rightChild: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Terms and Conditions',
+                  style: TextStyle(
+                    color: Color(0xFF141414),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "Welcome to Rockies Fitness Gym Tracker. You can use this app to manage and track your workouts and view your progress data. We shall protect your information in accordance with relevant laws, regulations, and privacy policies. To be able to work normally, the app needs to connect to the internet.\n\nTo provide you with additional services while you're using the app, we might need the following permissions:",
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 12,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const _WebPermissionItem(
+                  icon: Icons.location_on,
+                  title: 'Access Location',
+                  description: 'For tracking your workout distance and routes',
+                ),
+                const SizedBox(height: 14),
+                const _WebPermissionItem(
+                  icon: Icons.directions_run,
+                  title: 'Access Activity Info',
+                  description:
+                      'For recording your workouts and health information',
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'You can always adjust your permissions preferences in the Settings',
+                  style: TextStyle(
+                    color: Color(0xFF9A9A9A),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  value: agreePolicy,
+                  onChanged: _isLoading
+                      ? null
+                      : (value) {
+                          setState(() => agreePolicy = value ?? false);
+                        },
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: const Color(0xFFFF7317),
+                  title: const Text(
+                    'Read and Agree to our User Agreement and Privacy Policy',
+                    style: TextStyle(
+                      color: Color(0xFF444444),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                CheckboxListTile(
+                  value: joinProgram,
+                  onChanged: _isLoading
+                      ? null
+                      : (value) {
+                          setState(() => joinProgram = value ?? false);
+                        },
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: const Color(0xFFFF7317),
+                  title: const Text(
+                    'Enroll in User Experience Program to help us improve our products and services by sharing your stats with us',
+                    style: TextStyle(
+                      color: Color(0xFF444444),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _savePermissionData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF7317),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'Agree',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed: _isLoading ? null : _exitOnboarding,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF141414),
+                      side: const BorderSide(color: Color(0xFFD8D2CE)),
+                      backgroundColor: Colors.white.withOpacity(0.8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    child: const Text(
+                      'Exit',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return _buildWebPermissionScreen(context);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -273,6 +435,62 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _WebPermissionItem extends StatelessWidget {
+  const _WebPermissionItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFF7317),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.white, size: 14),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF141414),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: const TextStyle(
+                  color: Color(0xFF666666),
+                  fontSize: 11,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -271,7 +271,7 @@ class FitnessChatService {
         debugPrintStack(stackTrace: stackTrace);
 
         if (!_remoteWebChatService.isConfigured) {
-          yield 'The local Qwen2.5 model could not respond. Check the GGUF file and try again.';
+          yield 'The local mobile model could not respond. Restart the app and try again.';
           return;
         }
       }
