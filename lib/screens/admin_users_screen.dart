@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 
 import 'admin_community_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_feedback_screen.dart';
 import 'admin_route_utils.dart';
 import 'community_member_profile_screen.dart';
+import 'login_screen.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -17,6 +20,7 @@ class AdminUsersScreen extends StatefulWidget {
 
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
 
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
@@ -25,6 +29,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String _query = '';
 
   int get _bannedCount => _users.where((user) => user['isBanned'] == true).length;
+  
   void _onNavTapped(int index) {
     if (index == 1) return;
 
@@ -41,6 +46,46 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       context,
       buildAdminRoute(page),
     );
+  }
+
+  Future<void> _logoutAdmin() async {
+    final shouldLogout = await _showConfirmationDialog(
+      'Logout Admin',
+      'Are you sure you want to log out of the admin panel?',
+    );
+    if (!shouldLogout) return;
+
+    await _firebaseAuth.signOut();
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<bool> _showConfirmationDialog(String title, String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: Text(title, style: const TextStyle(color: Colors.white)),
+            content:
+                Text(message, style: const TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Confirm', style: TextStyle(color: Colors.orange)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
@@ -124,29 +169,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
-  Future<bool> _confirm(String title, String message) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: Text(title, style: const TextStyle(color: Colors.white)),
-            content:
-                Text(message, style: const TextStyle(color: Colors.white70)),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Confirm', style: TextStyle(color: Colors.orange)),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
   String _formatTimestamp(dynamic value) {
     if (value is Timestamp) {
       return DateFormat('MMM d, yyyy - hh:mm a').format(value.toDate());
@@ -171,7 +193,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Future<void> _banAccount(String userId, String userEmail) async {
-    if (!await _confirm('Ban Account', 'Ban "$userEmail"?')) return;
+    if (!await _showConfirmationDialog('Ban Account', 'Ban "$userEmail"?')) return;
 
     try {
       await _firestore.collection('users').doc(userId).update({
@@ -198,7 +220,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Future<void> _unbanAccount(String userId, String userEmail) async {
-    if (!await _confirm('Unban Account', 'Unban "$userEmail"?')) return;
+    if (!await _showConfirmationDialog('Unban Account', 'Unban "$userEmail"?')) return;
 
     try {
       await _firestore.collection('users').doc(userId).update({
@@ -224,33 +246,159 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
-  Widget _buildStatChip(String label, String value, Color color) {
-    return Container(
-      height: 92,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withOpacity(0.28)),
+  // ============== WEB UI METHODS WITH SIDEBAR NAVIGATION ==============
+
+  Widget _buildSidebarNavItem(String label, int index, IconData icon) {
+    final isSelected = index == 1;
+    
+    return InkWell(
+      onTap: () => _onNavTapped(index),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.orange.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected 
+              ? Border.all(color: Colors.orange.withOpacity(0.3))
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.orange : Colors.white54,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.orange : Colors.white70,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 15,
+              ),
+            ),
+            if (isSelected)
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(left: 12),
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildWebSidebarNavigation() {
+    return Container(
+      width: 280,
+      color: const Color(0xFF0A0A0A),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.admin_panel_settings, size: 48, color: Colors.orange),
+                SizedBox(height: 16),
+                Text(
+                  'Admin Users',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'User Management',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          const Divider(color: Colors.white10, height: 1),
+          
+          const SizedBox(height: 20),
+          _buildSidebarNavItem('Overview', 0, Icons.dashboard_outlined),
+          _buildSidebarNavItem('Users', 1, Icons.people_outline),
+          _buildSidebarNavItem('Community', 2, Icons.forum_outlined),
+          _buildSidebarNavItem('Feedback', 3, Icons.rate_review_outlined),
+          
+          const Spacer(),
+          
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: InkWell(
+              onTap: _logoutAdmin,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red, size: 20),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, color: Colors.red, size: 14),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebStatsRow() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildWebStatCard(
+              icon: Icons.people_alt_outlined,
+              iconColor: Colors.blue,
+              label: 'Total Users',
+              value: _users.length.toString(),
+              subtitle: 'All registered users',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildWebStatCard(
+              icon: Icons.block,
+              iconColor: Colors.orange,
+              label: 'Banned Users',
+              value: _bannedCount.toString(),
+              subtitle: 'Users currently blocked',
             ),
           ),
         ],
@@ -258,44 +406,116 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
-  Widget _buildStatsGrid(List<Widget> cards) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final columns = width >= 560 ? 3 : width >= 320 ? 2 : 1;
-        const spacing = 10.0;
-        final cardWidth = (width - (spacing * (columns - 1))) / columns;
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: cards
-              .map((card) => SizedBox(width: cardWidth, child: card))
-              .toList(),
-        );
-      },
+  Widget _buildWebStatCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildUserCardsGrid(List<Map<String, dynamic>> users) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final columns = width >= 900 ? 2 : 1;
-        const spacing = 12.0;
-        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+  Widget _buildWebSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      color: const Color(0xFF0F0F0F),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: TextField(
+          onChanged: _applyFilter,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Search users by name or email...',
+            hintStyle: TextStyle(color: Colors.white38),
+            prefixIcon: Icon(Icons.search, color: Colors.orange),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.all(16),
+          ),
+        ),
+      ),
+    );
+  }
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: users
-              .map(
-                (user) => SizedBox(
-                  width: cardWidth,
-                  child: _buildUserCard(user),
-                ),
-              )
-              .toList(),
+  Widget _buildWebUsersGrid() {
+    if (_filteredUsers.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.person_off_outlined, size: 64, color: Colors.white38),
+              SizedBox(height: 16),
+              Text(
+                'No users found',
+                style: TextStyle(color: Colors.white54, fontSize: 16),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Try adjusting your search query',
+                style: TextStyle(color: Colors.white38, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: _filteredUsers.length,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: _buildUserCard(_filteredUsers[index]),
         );
       },
     );
@@ -363,6 +583,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         : 'No email';
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF191919),
@@ -448,8 +669,128 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildWebLayout() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F0F),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildWebSidebarNavigation(),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildWebSearchBar(),
+                      _buildWebStatsRow(),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () => _loadUsers(showLoader: false),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Column(
+                              children: _filteredUsers.map((user) => 
+                                Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: _buildUserCard(user),
+                                )
+                              ).toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  // ============== MOBILE UI (UNCHANGED) ==============
+
+  Widget _buildStatChip(String label, String value, Color color) {
+    return Container(
+      height: 92,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withOpacity(0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid(List<Widget> cards) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 560 ? 3 : width >= 320 ? 2 : 1;
+        const spacing = 10.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: cards
+              .map((card) => SizedBox(width: cardWidth, child: card))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserCardsGrid(List<Map<String, dynamic>> users) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 900 ? 2 : 1;
+        const spacing = 12.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: users
+              .map(
+                (user) => SizedBox(
+                  width: cardWidth,
+                  child: _buildUserCard(user),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileLayout() {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -592,5 +933,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWeb = kIsWeb;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth >= 800;
+    
+    if (isWeb && isLargeScreen) {
+      return _buildWebLayout();
+    }
+    
+    return _buildMobileLayout();
   }
 }

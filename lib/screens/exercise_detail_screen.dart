@@ -1455,7 +1455,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isWebLayout = false;
+    final bool isWebLayout = _shouldUseWebLayout(context);
 
     return WillPopScope(
       onWillPop: _handleBackNavigation,
@@ -2317,6 +2317,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                 ),
                 child: isWebLayout
                     ? Center(
+                        heightFactor: 1.0,
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 1000),
                           child: _buildBottomActionRow(),

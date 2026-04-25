@@ -1,13 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
+import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'admin_community_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
 import 'community_member_profile_screen.dart';
+import 'login_screen.dart';
 
 class AdminFeedbackScreen extends StatefulWidget {
   const AdminFeedbackScreen({super.key});
@@ -22,6 +24,8 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
   List<Map<String, dynamic>> _feedback = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
+  String _searchQuery = '';
+  List<Map<String, dynamic>> _filteredFeedback = [];
 
   int get _unreviewedCount =>
       _feedback.where((item) => item['isReviewed'] != true).length;
@@ -43,10 +47,10 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
             .where((item) => ((item['rating'] as int?) ?? 0) == index + 1)
             .length,
       );
-  List<Map<String, dynamic>> get _newFeedback => _feedback
+  List<Map<String, dynamic>> get _newFeedback => _filteredFeedback
       .where((item) => item['isReviewed'] != true)
       .toList(growable: false);
-  List<Map<String, dynamic>> get _reviewedFeedback => _feedback
+  List<Map<String, dynamic>> get _reviewedFeedback => _filteredFeedback
       .where((item) => item['isReviewed'] == true)
       .toList(growable: false);
 
@@ -66,6 +70,51 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       context,
       buildAdminRoute(page),
     );
+  }
+
+  Future<void> _logoutAdmin() async {
+    final shouldLogout = await _showConfirmationDialog(
+      'Logout Admin',
+      'Are you sure you want to log out of the admin panel?',
+    );
+    if (!shouldLogout) return;
+
+    final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
+    await _firebaseAuth.signOut();
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<bool> _showConfirmationDialog(String title, String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF191919),
+            title: Text(title, style: const TextStyle(color: Colors.white)),
+            content:
+                Text(message, style: const TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child:
+                    const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(
+                  'Confirm',
+                  style: TextStyle(color: Colors.orange),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
@@ -104,6 +153,7 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
 
       setState(() {
         _feedback = feedback;
+        _applySearchFilter(_searchQuery);
         _isLoading = false;
         _isRefreshing = false;
       });
@@ -120,6 +170,21 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
         ),
       );
     }
+  }
+
+  void _applySearchFilter(String query) {
+    final normalized = query.trim().toLowerCase();
+    final filtered = _feedback.where((item) {
+      return normalized.isEmpty ||
+          item['displayName'].toString().toLowerCase().contains(normalized) ||
+          item['email'].toString().toLowerCase().contains(normalized) ||
+          item['comment'].toString().toLowerCase().contains(normalized);
+    }).toList();
+    
+    setState(() {
+      _searchQuery = query;
+      _filteredFeedback = filtered;
+    });
   }
 
   String _formatTimestamp(dynamic value) {
@@ -329,156 +394,172 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Wrap(
-            spacing: 18,
-            runSpacing: 18,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Container(
-                width: 140,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.03),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = constraints.maxWidth < 500;
+              return Wrap(
+                spacing: 18,
+                runSpacing: 18,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    width: isSmallScreen ? double.infinity : 140,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _averageRating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildAverageRatingRow(_averageRating, iconSize: 18),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_feedback.length} ratings',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isSmallScreen)
+                    SizedBox(
+                      width: 190,
+                      height: 180,
+                      child: _buildBarChart(distribution, chartMaxY),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      height: 200,
+                      child: _buildBarChart(distribution, chartMaxY),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart(List<int> distribution, double chartMaxY) {
+    return BarChart(
+      BarChartData(
+        minY: 0,
+        maxY: chartMaxY,
+        alignment: BarChartAlignment.spaceAround,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: 1,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.white.withOpacity(0.08),
+            strokeWidth: 1,
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => const Color(0xFF1E1E1E),
+            tooltipRoundedRadius: 12,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final count = distribution[group.x.toInt()];
+              return BarTooltipItem(
+                '${group.x + 1} star: $count',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _averageRating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                      ),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 24,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                if (value % 1 != 0 || value < 0) {
+                  return const SizedBox.shrink();
+                }
+                return Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final label = value.toInt() + 1;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '$label',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 6),
-                    _buildAverageRatingRow(_averageRating, iconSize: 18),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_feedback.length} ratings',
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        barGroups: List.generate(5, (index) {
+          final count = distribution[index].toDouble();
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: count,
+                width: 20,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(8),
+                ),
+                gradient: const LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Color(0xFFFF8A00),
+                    Color(0xFFFFD54F),
                   ],
                 ),
               ),
-              SizedBox(
-                width: 190,
-                height: 180,
-                child: BarChart(
-                  BarChartData(
-                    minY: 0,
-                    maxY: chartMaxY,
-                    alignment: BarChartAlignment.spaceAround,
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: 1,
-                      getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.white.withOpacity(0.08),
-                        strokeWidth: 1,
-                      ),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    barTouchData: BarTouchData(
-                      enabled: true,
-                      touchTooltipData: BarTouchTooltipData(
-                        getTooltipColor: (_) => const Color(0xFF1E1E1E),
-                        tooltipRoundedRadius: 12,
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          final count = distribution[group.x.toInt()];
-                          return BarTooltipItem(
-                            '${group.x + 1} star: $count',
-                            const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 24,
-                          interval: 1,
-                          getTitlesWidget: (value, meta) {
-                            if (value % 1 != 0 || value < 0) {
-                              return const SizedBox.shrink();
-                            }
-                            return Text(
-                              value.toInt().toString(),
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            final label = value.toInt() + 1;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                '$label',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    barGroups: List.generate(5, (index) {
-                      final count = distribution[index].toDouble();
-                      return BarChartGroupData(
-                        x: index,
-                        barRods: [
-                          BarChartRodData(
-                            toY: count,
-                            width: 20,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(8),
-                            ),
-                            gradient: const LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Color(0xFFFF8A00),
-                                Color(0xFFFFD54F),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ),
-                ),
-              ),
             ],
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
@@ -617,8 +698,382 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     );
   }
 
+  // ============== WEB UI METHODS WITH SIDEBAR NAVIGATION ==============
+
+  Widget _buildSidebarNavItem(String label, int index, IconData icon) {
+    final isSelected = index == 3;
+    
+    return InkWell(
+      onTap: () => _onNavTapped(index),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.orange.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected 
+              ? Border.all(color: Colors.orange.withOpacity(0.3))
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.orange : Colors.white54,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.orange : Colors.white70,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebSidebarNavigation() {
+    return Container(
+      width: 280,
+      color: const Color(0xFF0A0A0A),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.admin_panel_settings, size: 48, color: Colors.orange),
+                SizedBox(height: 16),
+                Text(
+                  'Admin Dashboard',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Feedback Management',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          const SizedBox(height: 20),
+          _buildSidebarNavItem('Overview', 0, Icons.dashboard_outlined),
+          _buildSidebarNavItem('Users', 1, Icons.people_outline),
+          _buildSidebarNavItem('Community', 2, Icons.forum_outlined),
+          _buildSidebarNavItem('Feedback', 3, Icons.rate_review_outlined),
+          const Spacer(),
+          InkWell(
+            onTap: _logoutAdmin,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.logout, color: Colors.red, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Logout',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.red, size: 14),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      color: const Color(0xFF0F0F0F),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: TextField(
+          onChanged: (value) => _applySearchFilter(value),
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Search feedback by user, email, or comment...',
+            hintStyle: TextStyle(color: Colors.white38),
+            prefixIcon: Icon(Icons.search, color: Colors.orange),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.all(16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebStatsRow() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildWebSummaryCard(
+              icon: Icons.rate_review_outlined,
+              iconColor: Colors.amber,
+              label: 'Total Feedback',
+              value: _feedback.length.toString(),
+              subtitle: 'All user submissions',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildWebSummaryCard(
+              icon: Icons.pending_actions,
+              iconColor: Colors.orange,
+              label: 'Pending Review',
+              value: _unreviewedCount.toString(),
+              subtitle: 'Need attention',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildWebSummaryCard(
+              icon: Icons.check_circle_outline,
+              iconColor: Colors.green,
+              label: 'Reviewed',
+              value: _reviewedCount.toString(),
+              subtitle: 'Already processed',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildWebSummaryCard(
+              icon: Icons.star_rate_rounded,
+              iconColor: Colors.amber,
+              label: 'Average Rating',
+              value: _averageRating.toStringAsFixed(1),
+              subtitle: 'Out of 5.0 stars',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebSummaryCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebFeedbackSection() {
+    if (_filteredFeedback.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No feedback found',
+            style: TextStyle(color: Colors.white54),
+          ),
+        ),
+      );
+    }
+
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TabBar(
+              indicatorColor: Colors.orange,
+              labelColor: Colors.orange,
+              unselectedLabelColor: Colors.white54,
+              tabs: const [
+                Tab(text: 'Pending Review', icon: Icon(Icons.pending_actions)),
+                Tab(text: 'Reviewed', icon: Icon(Icons.check_circle_outline)),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 500,
+            child: TabBarView(
+              children: [
+                _newFeedback.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'No pending feedback to review',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _newFeedback.length,
+                        itemBuilder: (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildFeedbackCard(_newFeedback[index]),
+                        ),
+                      ),
+                _reviewedFeedback.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'No reviewed feedback yet',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _reviewedFeedback.length,
+                        itemBuilder: (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildFeedbackCard(_reviewedFeedback[index]),
+                        ),
+                      ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildRatingInsightsCard(),
+          const SizedBox(height: 20),
+          _buildWebFeedbackSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebLayout() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F0F),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: () => _loadFeedback(showLoader: false),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWebSidebarNavigation(),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildWebSearchBar(),
+                        _buildWebStatsRow(),
+                        Expanded(
+                          child: _buildWebContent(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  // ============== MOBILE UI (UNCHANGED) ==============
+
   @override
   Widget build(BuildContext context) {
+    final isWeb = kIsWeb;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth >= 800;
+    
+    if (isWeb && isLargeScreen) {
+      return _buildWebLayout();
+    }
+    
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
