@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -787,11 +788,30 @@ class _DetailScreenState extends State<DetailScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final useWebDesktopLayout = kIsWeb && constraints.maxWidth >= 980;
+            final horizontalPadding = useWebDesktopLayout
+                ? (constraints.maxWidth >= 1200 ? 24.0 : 16.0)
+                : 16.0;
+            final contentMaxWidth = useWebDesktopLayout
+                ? (constraints.maxWidth >= 1280
+                      ? 1180.0
+                      : constraints.maxWidth.toDouble())
+                : constraints.maxWidth.toDouble();
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(child: _buildContent()),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                16,
+                horizontalPadding,
+                24,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                    maxWidth: contentMaxWidth,
+                  ),
+                  child: _buildContent(),
+                ),
               ),
             );
           },
@@ -1257,69 +1277,89 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _buildHeightContent() {
     final currentBmi = _computeSafeBmi(_weight, _currentData);
-
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Text(
-                  _currentData.toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Color(0xFF4FC3F7),
-                    fontSize: 52,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Height (cm)",
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4FC3F7).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color(0xFF4FC3F7).withOpacity(0.28),
-                    ),
-                  ),
-                  child: Text(
-                    "Current saved height for your profile",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
+        final hero = Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isWideLayout ? 28 : 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-          _buildHeightProfileCard(currentBmi),
-          const SizedBox(height: 20),
-          _buildHeightInfoCard(),
-        ],
-      ),
+          child: Column(
+            children: [
+              Text(
+                _currentData.toStringAsFixed(1),
+                style: TextStyle(
+                  color: const Color(0xFF4FC3F7),
+                  fontSize: isWideLayout ? 64 : 52,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Height (cm)",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isWideLayout ? 18 : 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4FC3F7).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF4FC3F7).withOpacity(0.28),
+                  ),
+                ),
+                child: const Text(
+                  "Current saved height for your profile",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        );
+        final profileCard = _buildHeightProfileCard(currentBmi);
+        final infoCard = _buildHeightInfoCard();
+
+        return Column(
+          children: [
+            hero,
+            const SizedBox(height: 20),
+            if (isWideLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 6, child: profileCard),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 5, child: infoCard),
+                ],
+              )
+            else ...[
+              profileCard,
+              const SizedBox(height: 20),
+              infoCard,
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -1447,170 +1487,205 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Widget _buildWeightContent() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
+        final summaryCard = Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isWideLayout ? 28 : 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                _currentData.toStringAsFixed(1),
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: isWideLayout ? 64 : 52,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Text(
-                  _currentData.toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Colors.green,
-                    fontSize: 52,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Weight (kg)",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isWideLayout ? 18 : 16,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Weight (kg)",
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.14),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: Colors.green.withOpacity(0.35)),
-                      ),
-                      child: Text(
-                        "Goal: ${_goalData.toStringAsFixed(1)} kg",
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.35),
                       ),
                     ),
-                    OutlinedButton(
-                      onPressed: _showWeightGoalDialog,
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.green.withOpacity(0.35)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
+                    child: Text(
+                      "Goal: ${_goalData.toStringAsFixed(1)} kg",
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
-                      child: const Text(
-                        "Set Goal",
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: _showWeightGoalDialog,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.green.withOpacity(0.35)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
+                    child: const Text(
+                      "Set Goal",
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _isWeightGoalReached()
+                      ? Colors.green.withOpacity(0.16)
+                      : Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _isWeightGoalReached()
+                        ? Colors.green.withOpacity(0.35)
+                        : Colors.white10,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isWeightGoalReached()
+                          ? Icons.check_circle
+                          : Icons.track_changes,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _isWeightGoalReached()
+                            ? "Goal reached"
+                            : "Difference: ${(_currentData - _goalData).abs().toStringAsFixed(1)} kg",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: _isWeightGoalReached()
-                        ? Colors.green.withOpacity(0.16)
-                        : Colors.white.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: _isWeightGoalReached()
-                          ? Colors.green.withOpacity(0.35)
-                          : Colors.white10,
+              ),
+            ],
+          ),
+        );
+
+        final chartCard = Container(
+          height: isWideLayout ? 260 : 220,
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _historicalData.isNotEmpty
+                ? CustomPaint(
+                    painter: RealDataChartPainter(
+                      data: _historicalData,
+                      dates: _historicalDates,
+                      color: Colors.green,
+                      goal: _goalData,
+                      timeTab: 2,
+                    ),
+                    size: const Size(double.infinity, 180),
+                  )
+                : const Center(
+                    child: Text(
+                      "No historical data available",
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isWeightGoalReached()
-                            ? Icons.check_circle
-                            : Icons.track_changes,
-                        color: Colors.green,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _isWeightGoalReached()
-                              ? "Goal reached"
-                              : "Difference: ${(_currentData - _goalData).abs().toStringAsFixed(1)} kg",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
-          const SizedBox(height: 20),
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: _historicalData.isNotEmpty
-                  ? CustomPaint(
-                      painter: RealDataChartPainter(
-                        data: _historicalData,
-                        dates: _historicalDates,
-                        color: Colors.green,
-                        goal: _goalData,
-                        timeTab: 2,
-                      ),
-                      size: const Size(double.infinity, 180),
-                    )
-                  : const Center(
-                      child: Text(
-                        "No historical data available",
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
+        );
+
+        final historyCard = _buildWeightHistorySection();
+        final compositionCard = _buildBodyCompositionCard();
+
+        return Column(
+          children: [
+            summaryCard,
+            const SizedBox(height: 20),
+            if (isWideLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      children: [
+                        chartCard,
+                        const SizedBox(height: 20),
+                        historyCard,
+                      ],
                     ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildWeightHistorySection(),
-          const SizedBox(height: 20),
-          _buildBodyCompositionCard(),
-          const SizedBox(height: 20),
-        ],
-      ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 5, child: compositionCard),
+                ],
+              )
+            else ...[
+              chartCard,
+              const SizedBox(height: 20),
+              historyCard,
+              const SizedBox(height: 20),
+              compositionCard,
+            ],
+            const SizedBox(height: 20),
+          ],
+        );
+      },
     );
   }
 
@@ -1868,44 +1943,44 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Widget _buildBMIContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.monitor_heart,
-                          color: Colors.orange,
-                          size: 24,
-                        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
+        final summaryCard = Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(isWideLayout ? 28.0 : 20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      const Text(
+                      child: const Icon(
+                        Icons.monitor_heart,
+                        color: Colors.orange,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
                         "BMI Index",
                         style: TextStyle(
                           color: Colors.white,
@@ -1913,255 +1988,258 @@ class _DetailScreenState extends State<DetailScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getBMIColor(_currentData),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          _getBMICategory(_currentData),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Text(
-                      _currentData.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
+                      decoration: BoxDecoration(
+                        color: _getBMIColor(_currentData),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _getBMICategory(_currentData),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Center(
-                    child: Text(
-                      "Body Mass Index",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: Text(
+                    _currentData.toStringAsFixed(1),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isWideLayout ? 56 : 48,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 32),
-
-                  // FIXED BMI Scale with Proper Arrow Positioning
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Stack(
-                      children: [
-                        // BMI Scale Bar
-                        Container(
-                          height: 16,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          gradient: const LinearGradient(
-                            colors: [
-                              Colors.blue,
-                              Colors.green,
-                              Colors.orange,
-                              Colors.deepOrange,
-                            ],
-                            stops: [0.14, 0.40, 0.60, 1.0],
-                          ),
-                        ),
-                      ),
-
-                        // BMI Indicator Arrow
-                        Positioned(
-                          left: _calculateBMIPosition(),
-                          bottom: 12, // Position above the scale
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.arrow_drop_up,
-                                color: _getBMIColor(_currentData),
-                                size: 32,
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Text(
+                    "Body Mass Index",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isWideLayout ? 15 : 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  child: LayoutBuilder(
+                    builder: (context, scaleConstraints) {
+                      return Stack(
+                        children: [
+                          Container(
+                            height: 18,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Colors.blue,
+                                  Colors.green,
+                                  Colors.orange,
+                                  Colors.deepOrange,
+                                ],
+                                stops: [0.14, 0.40, 0.60, 1.0],
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
+                            ),
+                          ),
+                          Positioned(
+                            left: _calculateBMIPosition(scaleConstraints.maxWidth),
+                            bottom: 14,
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.arrow_drop_up,
                                   color: _getBMIColor(_currentData),
-                                  borderRadius: BorderRadius.circular(8),
+                                  size: 32,
                                 ),
-                                child: Text(
-                                  _currentData.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getBMIColor(_currentData),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    _currentData.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // BMI Scale Labels
-                  const SizedBox(height: 40), // More space for the arrow
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "15",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      Text(
-                        "18.5",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      Text(
-                        "25",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      Text(
-                        "30",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                      Text(
-                        "40+",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // BMI Categories
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF252525),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "BMI Categories:",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildBMICategoryRow(
-                          "Underweight",
-                          "Below 18.5",
-                          Colors.blue,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildBMICategoryRow(
-                          "Normal",
-                          "18.5 - 24.9",
-                          Colors.green,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildBMICategoryRow(
-                          "Overweight",
-                          "25.0 - 29.9",
-                          Colors.orange,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildBMICategoryRow(
-                          "Obese",
-                          "30.0 and above",
-                          Colors.deepOrange,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Health Recommendation
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF252525),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: _getBMIColor(_currentData),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                "Health Recommendation",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _getBMIRecommendation(),
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              height: 1.5,
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 40),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "15",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      "18.5",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      "25",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      "30",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      "40+",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+
+        final categoriesCard = Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "BMI Categories:",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildBMICategoryRow("Underweight", "Below 18.5", Colors.blue),
+              const SizedBox(height: 12),
+              _buildBMICategoryRow("Normal", "18.5 - 24.9", Colors.green),
+              const SizedBox(height: 12),
+              _buildBMICategoryRow("Overweight", "25.0 - 29.9", Colors.orange),
+              const SizedBox(height: 12),
+              _buildBMICategoryRow(
+                "Obese",
+                "30.0 and above",
+                Colors.deepOrange,
+              ),
+            ],
+          ),
+        );
+
+        final recommendationCard = Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: _getBMIColor(_currentData),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        "Health Recommendation",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _getBMIRecommendation(),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        return Column(
+          children: [
+            summaryCard,
+            const SizedBox(height: 20),
+            if (isWideLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: categoriesCard),
+                  const SizedBox(width: 20),
+                  Expanded(child: recommendationCard),
+                ],
+              )
+            else ...[
+              categoriesCard,
+              const SizedBox(height: 20),
+              recommendationCard,
+            ],
+          ],
+        );
+      },
     );
   }
 
   // FIXED BMI position calculation
-  double _calculateBMIPosition() {
-    // Get the available width for the scale (container width minus margins)
-    double availableWidth =
-        MediaQuery.of(context).size.width -
-        56; // 16*2 (padding) + 8*2 (margin) + 8*2 (extra)
+  double _calculateBMIPosition([double? availableWidth]) {
+    final scaleWidth =
+        availableWidth ??
+        (MediaQuery.of(context).size.width - 56); // Fallback for older callers
 
     // BMI ranges from 15 to 40 for the scale
     double clampedValue = _currentData.clamp(15.0, 40.0);
     double percentage = (clampedValue - 15.0) / (40.0 - 15.0);
 
     // Calculate position, but ensure it stays within bounds
-    double position = percentage * availableWidth;
+    double position = percentage * scaleWidth;
 
     // Ensure the arrow doesn't go off the edges
     return position.clamp(
       0.0,
-      availableWidth - 30,
+      scaleWidth - 30,
     ); // 30 is approx half the arrow width
   }
 
@@ -2196,95 +2274,128 @@ class _DetailScreenState extends State<DetailScreen> {
   // UPDATED: Changed from _buildVitalityContent to _buildSleepContent
   // UPDATED: Changed from _buildVitalityContent to _buildSleepContent
   Widget _buildSleepContent() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _currentData.toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Colors.purple,
-                    fontSize: 52,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Sleep Hours",
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.purple.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    _getSleepCoachingMessage(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CustomPaint(
-                painter: RealDataChartPainter(
-                  data: _historicalData,
-                  dates: _historicalDates,
-                  color: Colors.purple,
-                  goal: _goalData,
-                  timeTab: 2, // Always show full history for sleep
-                ),
-                size: const Size(double.infinity, 180),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
+        final summaryCard = Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isWideLayout ? 28 : 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _currentData.toStringAsFixed(1),
+                style: TextStyle(
+                  color: Colors.purple,
+                  fontSize: isWideLayout ? 64 : 52,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Sleep Hours",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isWideLayout ? 18 : 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                ),
+                child: Text(
+                  _getSleepCoachingMessage(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        );
+
+        final chartCard = Container(
+          height: isWideLayout ? 260 : 220,
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: CustomPaint(
+              painter: RealDataChartPainter(
+                data: _historicalData,
+                dates: _historicalDates,
+                color: Colors.purple,
+                goal: _goalData,
+                timeTab: 2,
+              ),
+              size: const Size(double.infinity, 180),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildSleepHistorySection(), // New method for sleep history
-          const SizedBox(height: 20),
-          _buildAboutSleepCard(),
-        ],
-      ),
+        );
+
+        final historyCard = _buildSleepHistorySection();
+        final aboutCard = _buildAboutSleepCard();
+
+        return Column(
+          children: [
+            summaryCard,
+            const SizedBox(height: 20),
+            if (isWideLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      children: [
+                        chartCard,
+                        const SizedBox(height: 20),
+                        aboutCard,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 6, child: historyCard),
+                ],
+              )
+            else ...[
+              chartCard,
+              const SizedBox(height: 20),
+              historyCard,
+              const SizedBox(height: 20),
+              aboutCard,
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -2399,12 +2510,12 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Widget _buildMetricContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
+        final heroCard = Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: isWideLayout ? 24 : 16),
           decoration: BoxDecoration(
             color: const Color(0xFF191919),
             borderRadius: BorderRadius.circular(20),
@@ -2423,20 +2534,23 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(0),
                 style: TextStyle(
                   color: _getThemeColor(),
-                  fontSize: 56,
+                  fontSize: isWideLayout ? 64 : 56,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 _getUnitWithGoal(),
-                style: const TextStyle(color: Colors.white70, fontSize: 18),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isWideLayout ? 20 : 18,
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 20),
-        Container(
+        );
+
+        final todayCard = Container(
           width: double.infinity,
           decoration: BoxDecoration(
             color: const Color(0xFF191919),
@@ -2470,9 +2584,9 @@ class _DetailScreenState extends State<DetailScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
+                    const Text(
                       "Today",
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -2483,39 +2597,28 @@ class _DetailScreenState extends State<DetailScreen> {
                 const SizedBox(height: 16),
                 const Divider(color: Colors.white38, height: 1, thickness: 0.5),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "${_currentData.toStringAsFixed(0)} ${_getUnit()}",
-                            style: TextStyle(
-                              color: _getThemeColor(),
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            "Total",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  "${_currentData.toStringAsFixed(0)} ${_getUnit()}",
+                  style: TextStyle(
+                    color: _getThemeColor(),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Total",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Container(
+        );
+
+        final aboutCard = Container(
           width: double.infinity,
           decoration: BoxDecoration(
             color: const Color(0xFF191919),
@@ -2563,10 +2666,43 @@ class _DetailScreenState extends State<DetailScreen> {
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 20),
-        _buildMetricTipsCard(),
-      ],
+        );
+
+        final tipsCard = _buildMetricTipsCard();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            heroCard,
+            const SizedBox(height: 20),
+            if (isWideLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 5, child: todayCard),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      children: [
+                        aboutCard,
+                        const SizedBox(height: 20),
+                        tipsCard,
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else ...[
+              todayCard,
+              const SizedBox(height: 20),
+              aboutCard,
+              const SizedBox(height: 20),
+              tipsCard,
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -2705,95 +2841,128 @@ class _DetailScreenState extends State<DetailScreen> {
 
   // UPDATED: Changed from _buildBodyFatContent to _buildWaistContent
   Widget _buildWaistContent() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _currentData.toStringAsFixed(1),
-                  style: const TextStyle(
-                    color: Colors.blue, // UPDATED: Changed color
-                    fontSize: 52,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Waist Measurement", // UPDATED: Changed text
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    _getRecordedEntriesText("waist"),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CustomPaint(
-                painter: RealDataChartPainter(
-                  data: _historicalData,
-                  dates: _historicalDates,
-                  color: Colors.blue, // UPDATED: Changed color
-                  goal: _goalData,
-                  timeTab: 2, // Always show full history for waist measurement
-                ),
-                size: const Size(double.infinity, 180),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
+        final summaryCard = Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isWideLayout ? 28 : 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _currentData.toStringAsFixed(1),
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontSize: isWideLayout ? 64 : 52,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Waist Measurement",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isWideLayout ? 18 : 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Text(
+                  _getRecordedEntriesText("waist"),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        );
+
+        final chartCard = Container(
+          height: isWideLayout ? 260 : 220,
+          decoration: BoxDecoration(
+            color: const Color(0xFF191919),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: CustomPaint(
+              painter: RealDataChartPainter(
+                data: _historicalData,
+                dates: _historicalDates,
+                color: Colors.blue,
+                goal: _goalData,
+                timeTab: 2,
+              ),
+              size: const Size(double.infinity, 180),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildWaistHistorySection(), // UPDATED: Changed method name
-          const SizedBox(height: 20),
-          _buildAboutWaistCard(),
-        ],
-      ),
+        );
+
+        final historyCard = _buildWaistHistorySection();
+        final aboutCard = _buildAboutWaistCard();
+
+        return Column(
+          children: [
+            summaryCard,
+            const SizedBox(height: 20),
+            if (isWideLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      children: [
+                        chartCard,
+                        const SizedBox(height: 20),
+                        aboutCard,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 6, child: historyCard),
+                ],
+              )
+            else ...[
+              chartCard,
+              const SizedBox(height: 20),
+              historyCard,
+              const SizedBox(height: 20),
+              aboutCard,
+            ],
+          ],
+        );
+      },
     );
   }
 

@@ -8,6 +8,7 @@ import 'screens/health_dashboard.dart';
 import 'screens/permissions_screen.dart';
 import 'screens/my_profile.dart';
 import 'widgets/icon_sequence_animation.dart';
+import 'widgets/web_auth_shell.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
@@ -17,6 +18,7 @@ import 'screens/admin_dashboard_screen.dart';
 // Remove the duplicate main function - keeping only one
 
 void main() async {
+  
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Supabase.initialize(
@@ -184,7 +186,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-// Your existing WelcomeScreen remains exactly the same...
+
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -224,6 +226,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return _buildWebWelcomeScreen(context);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -263,6 +269,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
+                  
                     context,
                     MaterialPageRoute(
                       builder: (context) => const SignupScreen(),
@@ -320,6 +327,86 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebWelcomeScreen(BuildContext context) {
+    return WebAuthShell(
+      leftTitle: 'Welcome',
+      leftSubtitle: 'Rockies Fitness Gym Tracker',
+      rightChild: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              const Text(
+                'Train smarter with a desktop-ready account hub.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF585858),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SignupScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF7317),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  child: const Text(
+                    'Create Account',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF1B1B1B),
+                    side: const BorderSide(color: Color(0xFFD4CFCB)),
+                    backgroundColor: Colors.white.withOpacity(0.78),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  child: const Text(
+                    'Log In',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

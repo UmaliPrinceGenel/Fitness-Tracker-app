@@ -1,0 +1,9 @@
+﻿flutter : Could not find an option named "--stacktrace".
+At line:1 char:1
++ flutter run --stacktrace 2>&1 | Out-File -FilePath "run_log.txt" -Enc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Could not find ..."--stacktrace".:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Run 'flutter -h' (or 'flutter <command> -h') for available flutter commands and options.

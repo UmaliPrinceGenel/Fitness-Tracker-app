@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_community_screen.dart';
+import 'admin_feedback_screen.dart';
 import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
 import 'community_member_profile_screen.dart';
@@ -26,6 +28,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Map<String, dynamic>> _filteredUsers = [];
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _filteredPosts = [];
+  int _totalFeedbackCount = 0;
   bool _isLoading = true;
   bool _isRefreshing = false;
   String _searchQuery = '';
@@ -36,11 +39,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _onNavTapped(int index) {
     if (index == 0) return;
 
+    final Widget page;
+    if (index == 1) {
+      page = const AdminUsersScreen();
+    } else if (index == 2) {
+      page = const AdminCommunityScreen();
+    } else {
+      page = const AdminFeedbackScreen();
+    }
+
     Navigator.pushReplacement(
       context,
-      buildAdminRoute(
-        index == 1 ? const AdminUsersScreen() : const AdminCommunityScreen(),
-      ),
+      buildAdminRoute(page),
     );
   }
 
@@ -75,11 +85,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     try {
-      final usersSnapshot = await _firestore.collection('users').get();
-      final postsSnapshot = await _firestore
-          .collection('community_posts')
-          .orderBy('timePosted', descending: true)
-          .get();
+      final results = await Future.wait([
+        _firestore.collection('users').get(),
+        _firestore
+            .collection('community_posts')
+            .orderBy('timePosted', descending: true)
+            .get(),
+        _firestore.collection('user_feedback').get(),
+      ]);
+
+      final usersSnapshot = results[0] as QuerySnapshot<Map<String, dynamic>>;
+      final postsSnapshot = results[1] as QuerySnapshot<Map<String, dynamic>>;
+      final feedbackSnapshot = results[2] as QuerySnapshot<Map<String, dynamic>>;
 
       final users = usersSnapshot.docs.map((doc) {
         final data = doc.data();
@@ -126,6 +143,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       setState(() {
         _users = users;
         _posts = posts;
+        _totalFeedbackCount = feedbackSnapshot.size;
         _applySearchFilter(_searchQuery, notify: false);
         _isLoading = false;
         _isRefreshing = false;
@@ -284,37 +302,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error unbanning user: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _deleteAccount(String userId, String userEmail) async {
-    final confirmed = await _showConfirmationDialog(
-      'Delete Account',
-      'Soft-delete "$userEmail"? This marks the account as deleted in Firestore.',
-    );
-    if (!confirmed) return;
-
-    try {
-      await _firestore.collection('users').doc(userId).update({
-        'isDeleted': true,
-        'deletedAt': FieldValue.serverTimestamp(),
-      });
-      await _loadDashboardData(showLoader: false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User marked as deleted'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting account: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -505,65 +492,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildQuickLinkCard({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: const Color(0xFF191919),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.16),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildUserCard(Map<String, dynamic> user) {
     final isBanned = user['isBanned'] == true;
     final isDeleted = user['isDeleted'] == true;
@@ -650,12 +578,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ? _unbanAccount(user['id'], email)
                     : _banAccount(user['id'], email),
               ),
-              _buildActionChip(
-                label: 'Delete',
-                icon: Icons.delete_outline,
-                color: Colors.red,
-                onTap: () => _deleteAccount(user['id'], email),
-              ),
             ],
           ),
         ],
@@ -666,9 +588,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildPostCard(Map<String, dynamic> post) {
     final imageUrls = (post['postImages'] as List<String>);
     final videoUrls = (post['postVideos'] as List<String>);
-    final previewUrl = imageUrls.isNotEmpty
-        ? imageUrls.first
-        : (videoUrls.isNotEmpty ? videoUrls.first : null);
+    final allMediaCount = imageUrls.length + videoUrls.length;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -732,22 +652,84 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ),
           ],
-          if (previewUrl != null) ...[
+          if (allMediaCount > 0) ...[
             const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.network(
-                  previewUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.black26,
-                    child: const Center(
-                      child: Icon(Icons.perm_media, color: Colors.white38, size: 40),
+            SizedBox(
+              height: 168,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (int index = 0; index < imageUrls.length; index++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          width: 210,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.network(
+                                imageUrls[index],
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  color: Colors.black26,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.image_not_supported_outlined,
+                                      color: Colors.white38,
+                                      size: 34,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    'Image ${index + 1}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  for (int index = 0; index < videoUrls.length; index++)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        right: index == videoUrls.length - 1 ? 0 : 10,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          width: 210,
+                          child: Container(
+                            color: Colors.black26,
+                            child: const Center(
+                              child: Icon(Icons.videocam, color: Colors.white38, size: 34),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -775,7 +757,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: Colors.blue,
                 onTap: () => _openUserProfile({
                   'userId': post['userId'],
-                  'username': post['username'],
+                  'displayName': post['username'],
                   'profileImage': post['profileImage'],
                 }),
               ),
@@ -792,8 +774,327 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // ============== WEB UI METHODS WITH SIDEBAR NAVIGATION ==============
+
+  Widget _buildSidebarNavItem(String label, int index, IconData icon) {
+    final isSelected = index == 0; // Dashboard is selected (index 0)
+    
+    return InkWell(
+      onTap: () => _onNavTapped(index),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.orange.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected 
+              ? Border.all(color: Colors.orange.withOpacity(0.3))
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.orange : Colors.white54,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.orange : Colors.white70,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 15,
+              ),
+            ),
+            if (isSelected)
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(left: 12),
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebSidebarNavigation() {
+    return Container(
+      width: 280,
+      color: const Color(0xFF0A0A0A),
+      child: Column(
+        children: [
+          // Logo and header
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.admin_panel_settings, size: 48, color: Colors.orange),
+                SizedBox(height: 16),
+                Text(
+                  'Admin Dashboard',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Rockies Fitness Admin',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          
+          // Navigation items
+          const SizedBox(height: 20),
+          _buildSidebarNavItem('Overview', 0, Icons.dashboard_outlined),
+          _buildSidebarNavItem('Users', 1, Icons.people_outline),
+          _buildSidebarNavItem('Community', 2, Icons.forum_outlined),
+          _buildSidebarNavItem('Feedback', 3, Icons.rate_review_outlined),
+          
+          const Spacer(),
+          
+          // Admin logout section with exit icon
+          InkWell(
+            onTap: _logoutAdmin,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.logout, color: Colors.red, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Logout',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.red, size: 14),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      color: const Color(0xFF0F0F0F),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: TextField(
+          onChanged: (value) {
+            _searchQuery = value;
+            _applySearchFilter(_searchQuery);
+          },
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Search users or posts...',
+            hintStyle: TextStyle(color: Colors.white38),
+            prefixIcon: Icon(Icons.search, color: Colors.orange),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.all(16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebStatsRow() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSummaryCard(
+              icon: Icons.people_alt_outlined,
+              iconColor: Colors.blue,
+              label: 'Total Users',
+              value: _users.length.toString(),
+              subtitle: 'All user documents',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryCard(
+              icon: Icons.block,
+              iconColor: Colors.orange,
+              label: 'Banned Users',
+              value: _bannedUsersCount.toString(),
+              subtitle: 'Users currently blocked',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryCard(
+              icon: Icons.forum_outlined,
+              iconColor: Colors.green,
+              label: 'Community Posts',
+              value: _posts.length.toString(),
+              subtitle: 'Posts available for review',
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryCard(
+              icon: Icons.rate_review_outlined,
+              iconColor: Colors.amber,
+              label: 'Total Feedback',
+              value: _totalFeedbackCount.toString(),
+              subtitle: 'User ratings and comments received',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebUsersSection() {
+    if (_filteredUsers.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No users found',
+            style: TextStyle(color: Colors.white54),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredUsers.length,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _buildUserCard(_filteredUsers[index]),
+      ),
+    );
+  }
+
+  Widget _buildWebPostsSection() {
+    if (_filteredPosts.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No posts found',
+            style: TextStyle(color: Colors.white54),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredPosts.length,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _buildPostCard(_filteredPosts[index]),
+      ),
+    );
+  }
+
+  Widget _buildWebContent() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TabBar(
+              indicatorColor: Colors.orange,
+              labelColor: Colors.orange,
+              unselectedLabelColor: Colors.white54,
+              tabs: const [
+                Tab(text: 'Users'),
+                Tab(text: 'Posts'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildWebUsersSection(),
+                _buildWebPostsSection(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebLayout() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F0F0F),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+            )
+          : Row(
+              children: [
+                // Sidebar navigation
+                _buildWebSidebarNavigation(),
+                
+                // Main content area
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildWebSearchBar(),
+                      _buildWebStatsRow(),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: () => _loadDashboardData(showLoader: false),
+                          child: _buildWebContent(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  // ============== MOBILE UI ==============
+
+  Widget _buildMobileLayout() {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -853,40 +1154,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  'Overview only. Use the admin bottom navigation to open the Users and Community panels.',
+                                  'Use the admin bottom navigation to open the Users, Community, and Feedback panels.',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
                                     height: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.white10),
-                                  ),
-                                  child: const Row(
-                                    children: [
-                                      Icon(
-                                        Icons.admin_panel_settings_outlined,
-                                        color: Colors.orange,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          'This dashboard stays focused on totals so the layout remains clean on any screen size.',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 13,
-                                            height: 1.45,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ],
@@ -921,6 +1193,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 label: 'Community Posts',
                                 value: _posts.length.toString(),
                                 subtitle: 'Posts available for review',
+                              ),
+                              _buildSummaryCard(
+                                icon: Icons.rate_review_outlined,
+                                iconColor: Colors.amber,
+                                label: 'Total Feedback',
+                                value: _totalFeedbackCount.toString(),
+                                subtitle: 'User ratings and comments received',
                               ),
                             ],
                           ),
@@ -1006,8 +1285,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             activeIcon: Icon(Icons.forum),
             label: 'Community',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.rate_review_outlined),
+            activeIcon: Icon(Icons.rate_review),
+            label: 'Feedback',
+          ),
         ],
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWeb = kIsWeb;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth >= 800;
+    
+    // Use web layout for web platform with large screens
+    if (isWeb && isLargeScreen) {
+      return _buildWebLayout();
+    }
+    
+    // Use mobile layout for mobile devices or small screens
+    return _buildMobileLayout();
   }
 }

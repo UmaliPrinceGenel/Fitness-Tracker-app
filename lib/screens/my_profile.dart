@@ -1,21 +1,24 @@
 import 'dart:typed_data';
-
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'progress_album_screen.dart';
 import 'about_app_screen.dart';
 import 'login_screen.dart';
+import '../widgets/chatbot_launcher.dart';
 
 class MyProfile extends StatefulWidget {
   final int refreshVersion;
+  final bool showChatbot;
 
   const MyProfile({
     super.key,
     this.refreshVersion = 0,
+    this.showChatbot = true,
   });
 
   @override
@@ -40,6 +43,10 @@ class _MyProfileState extends State<MyProfile> {
   bool _isUpdatingProfile = false;
   String? _profileImageUrl;
   String? _recentProgressImage; // Store the most recent progress image URL
+  final TextEditingController _feedbackController = TextEditingController();
+  int _selectedFeedbackRating = 0;
+  bool _isSubmittingFeedback = false;
+  bool _isFeedbackExpanded = false;
 
   @override
   void initState() {
@@ -59,7 +66,7 @@ class _MyProfileState extends State<MyProfile> {
 
   @override
   void dispose() {
-    // Clean up any resources here if needed
+    _feedbackController.dispose();
     super.dispose();
   }
 
@@ -645,13 +652,101 @@ class _MyProfileState extends State<MyProfile> {
     );
   }
 
+  Future<void> _submitFeedback() async {
+    final user = _firebaseAuth.currentUser;
+    final comment = _feedbackController.text.trim();
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in again to send feedback.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedFeedbackRating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose a star rating first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (comment.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a comment for your feedback.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isSubmittingFeedback = true;
+      });
+    }
+
+    try {
+      final displayName =
+          (_userData?['displayName'] ?? user.displayName ?? 'User').toString();
+      final email = (_userData?['email'] ?? user.email ?? '').toString();
+
+      await _firestore.collection('user_feedback').add({
+        'userId': user.uid,
+        'displayName': displayName,
+        'email': email,
+        'photoURL': _profileImageUrl ?? '',
+        'rating': _selectedFeedbackRating,
+        'comment': comment,
+        'isReviewed': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _feedbackController.clear();
+        _selectedFeedbackRating = 0;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Feedback sent successfully.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send feedback: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingFeedback = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: CustomScrollView(
+              slivers: [
             SliverAppBar(
               backgroundColor: Colors.black,
               pinned: true,
@@ -1081,82 +1176,101 @@ class _MyProfileState extends State<MyProfile> {
                                     color: Colors.lightBlue,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Logout Button at the very bottom
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Account",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                // Logout Button
-                                Container(
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Colors.red, Colors.orange],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: TextButton(
-                                    onPressed: _logout,
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
+                                const SizedBox(height: 12),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _isFeedbackExpanded = !_isFeedbackExpanded;
+                                    });
+                                  },
+                                  child: _buildSettingsItem(
+                                    icon: Icons.rate_review_outlined,
+                                    title: "User Feedback",
+                                    color: Colors.amber,
+                                    trailing: AnimatedRotation(
+                                      turns: _isFeedbackExpanded ? 0.5 : 0,
+                                      duration: const Duration(milliseconds: 280),
+                                      curve: Curves.easeInOut,
+                                      child: Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: Colors.grey[500],
+                                        size: 22,
                                       ),
                                     ),
-                                    child: const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.logout, color: Colors.white),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          "Logout",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
+                                  ),
+                                ),
+                                ClipRect(
+                                  child: AnimatedSize(
+                                    duration: const Duration(milliseconds: 320),
+                                    curve: Curves.easeInOutCubic,
+                                    alignment: Alignment.topCenter,
+                                    child: AnimatedSlide(
+                                      duration: const Duration(milliseconds: 320),
+                                      curve: Curves.easeInOutCubic,
+                                      offset: _isFeedbackExpanded
+                                          ? Offset.zero
+                                          : const Offset(0, -0.08),
+                                      child: _isFeedbackExpanded
+                                          ? Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 12,
+                                              ),
+                                              child: _buildFeedbackCard(),
+                                            )
+                                          : const SizedBox.shrink(),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          
+                          // ✅ LOGOUT BUTTON - Mobile only
+                          if (!kIsWeb) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 20),
+                              child: ElevatedButton(
+                                onPressed: _logout,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.withOpacity(0.85),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 4,
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.logout, size: 22),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      "Logout",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          
+                          const SizedBox(height: 10),
                         ],
                       ),
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+          if (widget.showChatbot)
+            const ChatbotLauncher(title: 'Profile Chat'),
+        ],
       ),
     );
   }
@@ -1201,6 +1315,170 @@ class _MyProfileState extends State<MyProfile> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFeedbackCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131313),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.withOpacity(0.22)),
+                ),
+                child: const Icon(
+                  Icons.rate_review_outlined,
+                  color: Colors.amber,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Send Feedback',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Rate your experience and send comments directly to admin.',
+                      style: TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Star Rating',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: List.generate(5, (index) {
+              final ratingValue = index + 1;
+              final isSelected = ratingValue <= _selectedFeedbackRating;
+
+              return InkWell(
+                onTap: _isSubmittingFeedback
+                    ? null
+                    : () {
+                        setState(() {
+                          _selectedFeedbackRating = ratingValue;
+                        });
+                      },
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.amber.withOpacity(0.16)
+                        : Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: isSelected ? Colors.amber : Colors.white12,
+                    ),
+                  ),
+                  child: Icon(
+                    isSelected ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 24,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: _feedbackController,
+            enabled: !_isSubmittingFeedback,
+            maxLines: 4,
+            maxLength: 400,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Share your experience, suggestions, or any issue.',
+              hintStyle: const TextStyle(color: Colors.white38),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.04),
+              counterStyle: const TextStyle(color: Colors.white38),
+              contentPadding: const EdgeInsets.all(14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.orange),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isSubmittingFeedback ? null : _submitFeedback,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: Colors.orange.withOpacity(0.45),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: _isSubmittingFeedback
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.black),
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded),
+              label: Text(
+                _isSubmittingFeedback ? 'Submitting...' : 'Submit',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

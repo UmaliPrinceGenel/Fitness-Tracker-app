@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../models/workout_model.dart';
+import '../services/journey_progress_service.dart';
+import '../services/workout_goal_service.dart';
 import 'exercise_detail_screen.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
@@ -22,8 +24,11 @@ class WorkoutDetailScreen extends StatefulWidget {
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   bool _isWorkoutCompleted = false;
+  bool _isSavingWorkoutCompletion = false;
   String _currentButtonState = 'start'; // 'start', 'done', 'again'
   DateTime? _workoutStartTime;
+  bool _isJourneyAccessLoading = false;
+  bool _isJourneyStarted = true;
   Set<int> _viewedExercises = {}; // Track which exercises have been viewed
   Set<int> _exercisesWithWeightInput = {}; // Track which exercises have had weight input
   final Map<int, ExerciseTrackingDraft> _exerciseDrafts = {};
@@ -86,7 +91,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _isJourneyStarted = widget.workout.journeyId == null;
     _checkWorkoutCompletionStatus();
+    _loadJourneyAccessStatus();
   }
 
   // Check if the workout has already been completed by the user today
@@ -128,23 +135,90 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
+  Future<void> _loadJourneyAccessStatus() async {
+    if (widget.workout.journeyId == null) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isJourneyStarted = true;
+        _isJourneyAccessLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _isJourneyStarted = false;
+          _isJourneyAccessLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _isJourneyAccessLoading = true;
+      });
+
+      final journeyDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('journey_progress')
+          .doc(widget.workout.journeyId)
+          .get();
+
+      final data = journeyDoc.data();
+      final status = data?['status'] as String?;
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isJourneyStarted = status == 'in_progress' || status == 'completed';
+        _isJourneyAccessLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isJourneyStarted = widget.workout.journeyId == null;
+        _isJourneyAccessLoading = false;
+      });
+    }
+  }
+
   @override
  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final bool isTabletLayout = screenWidth >= 700;
+    final bool isWideLayout = screenWidth >= 1100;
+    final double contentMaxWidth = isWideLayout
+        ? 1280
+        : (isTabletLayout ? 920 : double.infinity);
+
     return WillPopScope(
       onWillPop: _onBackPressed,
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          backgroundColor: Colors.black,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () async {
-              bool shouldPop = await _onBackPressed();
-              if (shouldPop) {
-                Navigator.pop(context);
-              }
-            },
-          ),
+        backgroundColor: Colors.black,
+          leading: _isSavingWorkoutCompletion
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () async {
+                    bool shouldPop = await _onBackPressed();
+                    if (shouldPop) {
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
           title: Text(
             widget.workout.title,
             style: const TextStyle(
@@ -177,8 +251,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ],
         ),
         body: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: contentMaxWidth),
+              child: isWideLayout
+                  ? _buildDesktopContent()
+                  : SingleChildScrollView(
+                child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +428,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   Text(
                     _isWorkoutSessionActive()
                         ? "Tap any exercise to continue the active workout."
-                        : "Tap any exercise to preview it. Workout tracking only starts after pressing Start Workout.",
+                        : _isWorkoutCompleted
+                            ? "Tap any exercise to review this completed workout. Inputs are locked after finishing."
+                            : (!_isJourneyStarted && widget.workout.journeyId != null)
+                                ? "Preview only. Start this journey first to unlock workout tracking."
+                                : "Tap any exercise to preview it. Workout tracking only starts after pressing Start Workout.",
                     style: const TextStyle(
                       color: Colors.white54,
                       fontSize: 13,
@@ -380,7 +464,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
           ),
         ),
-        bottomNavigationBar: Container(
+          ),
+        ),
+        bottomNavigationBar: isWideLayout ? null : Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
             color: Colors.black,
@@ -392,24 +478,382 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
             ],
           ),
-          child: ElevatedButton(
-            onPressed: _getButtonAction(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _getButtonColor(),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          child: (!_isJourneyStarted && widget.workout.journeyId != null)
+              ? Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF191919),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.08),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      if (_isJourneyAccessLoading)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.orange,
+                            ),
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.visibility_outlined,
+                          color: Colors.orange,
+                          size: 18,
+                        ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Preview mode only. Tap Start Journey on the previous screen to unlock Start Workout.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ElevatedButton(
+                  onPressed: _getButtonAction(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _getButtonColor(),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    _getButtonText(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopContent() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        widget.workout.thumbnailAsset,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.fitness_center,
+                            color: Colors.white,
+                            size: 60,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.workout.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 14,
+                            runSpacing: 8,
+                            children: [
+                              _buildInfoItem(
+                                icon: Icons.fitness_center,
+                                label:
+                                    "${widget.workout.exerciseList.length} exercises",
+                              ),
+                              _buildInfoItem(
+                                icon: Icons.timer_outlined,
+                                label: _getTotalExerciseDuration(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getLevelColor(widget.workout.level)
+                                      .withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _getLevelColor(widget.workout.level)
+                                        .withOpacity(0.4),
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.workout.level,
+                                  style: TextStyle(
+                                    color: _getLevelColor(widget.workout.level),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.orange.withOpacity(0.4),
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.workout.bodyFocus,
+                                  style: const TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "About this workout",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exerciseList.length} exercises that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Text(
-              _getButtonText(),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Exercises",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _isWorkoutSessionActive()
+                        ? "Tap any exercise to continue the active workout."
+                        : _isWorkoutCompleted
+                            ? "Tap any exercise to review this completed workout. Inputs are locked after finishing."
+                            : (!_isJourneyStarted && widget.workout.journeyId != null)
+                                ? "Preview only. Start this journey first to unlock workout tracking."
+                                : "Tap any exercise to preview it. Workout tracking only starts after pressing Start Workout.",
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: _buildExerciseList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF191919),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: (!_isJourneyStarted && widget.workout.journeyId != null)
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.08),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_isJourneyAccessLoading)
+                                  const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.orange,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.visibility_outlined,
+                                    color: Colors.orange,
+                                    size: 18,
+                                  ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Preview mode only. Tap Start Journey on the previous screen to unlock Start Workout.',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _getButtonAction(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _getButtonColor(),
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                _getButtonText(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -417,6 +861,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   // Handle back button press to properly manage workout state
   Future<bool> _onBackPressed() async {
+    if (_isSavingWorkoutCompletion) {
+      return false;
+    }
+
     // Keep the cancel confirmation active until the workout is actually saved.
     if (_isWorkoutSessionActive() && !_isWorkoutCompleted) {
       return await showDialog(
@@ -483,7 +931,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return _workoutStartTime != null;
   }
 
-  Future<void> _openWorkoutExercise(int exerciseIndex) async {
+  Future<void> _openWorkoutExercise(
+    int exerciseIndex, {
+    bool isReadOnlyMode = false,
+  }) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -491,6 +942,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           exerciseNumber: exerciseIndex + 1,
           workout: widget.workout,
           isPreviewMode: false,
+          isReadOnlyMode: isReadOnlyMode,
           initialDraft: _getExerciseDraft(exerciseIndex),
           draftForExercise: _getExerciseDraft,
           onExerciseViewed: markExerciseAsViewed,
@@ -513,6 +965,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           onTap: () async {
             if (_isWorkoutSessionActive()) {
               await _openWorkoutExercise(i);
+              return;
+            }
+
+            if (_isWorkoutCompleted) {
+              await _openWorkoutExercise(i, isReadOnlyMode: true);
               return;
             }
 
@@ -611,19 +1068,25 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   // Helper methods to determine button text, color, and action based on state
  String _getButtonText() {
+    if (_isSavingWorkoutCompletion) {
+      return 'Saving...';
+    }
     switch (_currentButtonState) {
       case 'start':
         return 'Start Workout';
       case 'done':
         return 'Done';
       case 'again':
-        return 'Again';
+        return 'Start Workout Again';
       default:
         return 'Start Workout';
     }
  }
 
   Color _getButtonColor() {
+    if (_isSavingWorkoutCompletion) {
+      return Colors.grey;
+    }
     // Always show orange color for active buttons, grey when disabled
     if (_currentButtonState == 'start') {
       return Colors.orange;
@@ -637,6 +1100,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   VoidCallback? _getButtonAction() {
+    if (_isSavingWorkoutCompletion) {
+      return null;
+    }
     if (_currentButtonState == 'start') {
       return _onStartWorkoutPressed;
     } else if (_currentButtonState == 'done') {
@@ -787,6 +1253,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   void _onDoneWorkoutPressed() async {
+    if (_isSavingWorkoutCompletion) {
+      return;
+    }
+
     // Check if all exercises have weight input before allowing completion
     if (!areAllExercisesWithWeightInput()) {
       // Show notification that not all exercises have weight input
@@ -867,11 +1337,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () async {
+                onPressed: _isSavingWorkoutCompletion
+                    ? null
+                    : () async {
+                        if (mounted) {
+                          setState(() {
+                            _isSavingWorkoutCompletion = true;
+                          });
+                        }
                   // User confirms they're not cheating, save workout completion
-                  Navigator.of(context).pop(); // Close dialog
-                  await _saveWorkoutCompletion();
-                },
+                        Navigator.of(context).pop(); // Close dialog
+                        await _saveWorkoutCompletion();
+                      },
                 child: const Text(
                   "Yes, I'm sure",
                   style: TextStyle(color: Colors.orange),
@@ -898,10 +1375,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () async {
+                onPressed: _isSavingWorkoutCompletion
+                    ? null
+                    : () async {
+                        if (mounted) {
+                          setState(() {
+                            _isSavingWorkoutCompletion = true;
+                          });
+                        }
                   Navigator.of(context).pop(); // Close dialog
-                  await _saveWorkoutCompletion();
-                },
+                        await _saveWorkoutCompletion();
+                      },
                 child: const Text(
                   "OK",
                   style: TextStyle(color: Colors.orange),
@@ -922,11 +1406,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF191919),
           title: const Text(
-            "Do Again?",
+            "Start Workout Again?",
             style: TextStyle(color: Colors.white),
           ),
           content: const Text(
-            "Are you sure you want to do this again?",
+            "Are you sure you want to start this workout again?",
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
@@ -1149,6 +1633,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         reps: reps,
       );
       final String caloriesString = "${totalCalories.toStringAsFixed(1)} cal";
+      final primaryGoal = inferPrimaryGoalForWorkout(widget.workout);
+      final goalTags = inferGoalTagsForWorkout(widget.workout);
 
       await _firestore
           .collection('users')
@@ -1162,6 +1648,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         'repsPerformed': reps,
         'setsPerformed': sets,
         'timestamp': FieldValue.serverTimestamp(),
+        'bodyFocus': widget.workout.bodyFocus,
+        'level': widget.workout.level,
+        'journeyId': widget.workout.journeyId,
+        'journeyName': widget.workout.journeyName,
+        'isPartOfJourney': widget.workout.journeyId != null,
+        'primaryGoal': primaryGoal,
+        'goalTags': goalTags,
         'totalDurationString': durationString,
         'totalCaloriesString': caloriesString,
         'calculatedSeconds': totalDurationSeconds,
@@ -1219,6 +1712,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ? _calculateWorkoutMinutesFromDrafts()
                 : (expectedDurationSeconds / 60).ceil();
         const int workoutCount = 1;
+        final primaryGoal = inferPrimaryGoalForWorkout(widget.workout);
+        final goalTags = inferGoalTagsForWorkout(widget.workout);
         bool isCheated = expectedDurationSeconds > 0 &&
             actualDurationSeconds < minimumLegitDurationSeconds;
 
@@ -1226,10 +1721,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
         final completionEntry = {
           'title': widget.workout.title,
+          'workoutId': widget.workout.id,
           'duration': widget.workout.duration,
           'exercises': widget.workout.exercises,
           'level': widget.workout.level,
           'bodyFocus': widget.workout.bodyFocus,
+          'journeyId': widget.workout.journeyId,
+          'journeyName': widget.workout.journeyName,
+          'journeyOrder': widget.workout.journeyOrder,
+          'isPartOfJourney': widget.workout.journeyId != null,
+          'primaryGoal': primaryGoal,
+          'goalTags': goalTags,
           'completedAt': FieldValue.serverTimestamp(),
           'actualDuration': actualDurationSeconds, // Store actual duration for reference
           'expectedDuration': expectedDurationSeconds, // Store expected duration for reference
@@ -1253,6 +1755,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           latestEntryData: completionEntry,
         );
 
+        if (widget.workout.journeyId != null && widget.workout.journeyName != null) {
+          await JourneyProgressService.syncJourneyProgressForUser(
+            firestore: _firestore,
+            uid: user.uid,
+            journeyId: widget.workout.journeyId!,
+            journeyName: widget.workout.journeyName!,
+            isSelected: true,
+            markStarted: true,
+          );
+        }
+
         await _updateHealthDashboardMetrics(
           user: user,
           workoutCalories: workoutCalories,
@@ -1274,9 +1787,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         if (mounted) {
           Navigator.pop(context, true);
         }
+      } else if (mounted) {
+        setState(() {
+          _isSavingWorkoutCompletion = false;
+        });
       }
     } catch (e) {
       print('Error saving workout completion: $e');
+      if (mounted) {
+        setState(() {
+          _isSavingWorkoutCompletion = false;
+        });
+      }
       
       // Show error dialog
       showDialog(
@@ -1375,6 +1897,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           user: user,
           latestEntryData: replacementData,
         );
+
+        if (widget.workout.journeyId != null && widget.workout.journeyName != null) {
+          await JourneyProgressService.syncJourneyProgressForUser(
+            firestore: _firestore,
+            uid: user.uid,
+            journeyId: widget.workout.journeyId!,
+            journeyName: widget.workout.journeyName!,
+            isSelected: true,
+          );
+        }
 
         bool hasCompletionToday = false;
         if (replacementData != null && replacementData['completedAt'] != null) {

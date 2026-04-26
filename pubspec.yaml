@@ -55,6 +55,9 @@ dependencies:
   shared_preferences: ^2.5.3
   http: ^1.5.0
   url_launcher: ^6.3.2
+  file_picker: ^11.0.2
+  path_provider: ^2.1.5
+  llama_flutter_android: ^0.2.3
 
 dev_dependencies:
   flutter_test:
@@ -81,8 +84,37 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - models/SmolLM-135M-Instruct.Q2_K.gguf
+    - assets/Fitness_Journey/
+    - assets/Fitness_Journey/Weight_Loss/
+    - assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/
+    - assets/Fitness_Journey/Weight_Loss/Workout_2_Dumbbell_Fat_Burner/
+    - assets/Fitness_Journey/Weight_Loss/Workout_3_Metabolic_Conditioning/
+    - assets/Fitness_Journey/Weight_Loss/Workout_4_Bodyweight_Calorie_Crusher/
+    - assets/Fitness_Journey/Cardio/
+    - assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/
+    - assets/Fitness_Journey/Cardio/Workout_2_Steady-State_Cardio/
+    - assets/Fitness_Journey/Cardio/Workout_3_Bodyweight_Cardio_Blast/
+    - assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/
+    - assets/Fitness_Journey/Strength_&_Power/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_1_The_Big_Three/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_3_Upper_Body_Pull_Strength/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_5_Posterior_Chain_Strength/
+    - assets/Fitness_Journey/Muscular_Endurance/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_2_Upper_Body_Endurance/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_3_High-Rep_Full_Body_Challenge/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/
+    - assets/Fitness_Journey/General_Health_&_Wellness/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_1_Beginner_Machine_Circuit/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_3_Active_Recovery/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_4_Light_Free_Weights_Introduction/
     - assets/default_picture.jpg
     - assets/thumbnails/
+    - assets/thumbnails/Journeys/
     - assets/thumbnails/Abs/
     - assets/thumbnails/Biceps/
     - assets/thumbnails/Calves/
@@ -147,4 +179,6 @@ flutter_launcher_icons:
   min_sdk_android: 21 # android min sdk min:16, default 21
   adaptive_icon_background: "#FFFFFF" # only available for android 8.0 devices and above
   adaptive_icon_foreground: "assets/logo.jpg"
+
+
 

@@ -34,7 +34,7 @@ android {
         applicationId = "com.example.rockies_fitness_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -63,6 +63,8 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig =
                 if (hasKeyProperties || hasBundledKeystore) {
                     signingConfigs.getByName("release")
@@ -71,6 +73,16 @@ android {
                     signingConfigs.getByName("debug")
                 }
         }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
+    lint {
+        checkReleaseBuilds = false
     }
 }
 

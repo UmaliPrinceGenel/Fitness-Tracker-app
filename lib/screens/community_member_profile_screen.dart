@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../data/fitness_journey_workouts.dart';
+
 class CommunityMemberProfileScreen extends StatefulWidget {
   final String userId;
   final String? initialDisplayName;
@@ -67,6 +69,11 @@ class _CommunityMemberProfileScreenState
         .doc(widget.userId)
         .collection('exercise_records')
         .get();
+    final journeyProgressSnapshot = await _firestore
+        .collection('users')
+        .doc(widget.userId)
+        .collection('journey_progress')
+        .get();
 
     final userData = userDoc.data() ?? <String, dynamic>{};
     final healthData = healthDoc.data() ?? <String, dynamic>{};
@@ -126,6 +133,24 @@ class _CommunityMemberProfileScreenState
       (sum, run) => sum + run.effectiveMinutes,
     );
     final cleanWorkouts = workoutRuns.where((run) => !run.isCheated).length;
+    final journeyProgress = journeyProgressSnapshot.docs
+        .map((doc) => _CommunityJourneyProgress.fromMap(doc.id, doc.data()))
+        .where((journey) => journey.hasStarted)
+        .toList()
+      ..sort((a, b) {
+        final aIndex = _journeyOrder.indexOf(a.journeyId);
+        final bIndex = _journeyOrder.indexOf(b.journeyId);
+        final resolvedAIndex = aIndex == -1 ? 999 : aIndex;
+        final resolvedBIndex = bIndex == -1 ? 999 : bIndex;
+        return resolvedAIndex.compareTo(resolvedBIndex);
+      });
+    final completedJourneys = journeyProgress
+        .where((journey) => journey.completionCount > 0 || journey.isCompleted)
+        .length;
+    final repeatedJourneyFinishes = journeyProgress.fold<int>(
+      0,
+      (sum, journey) => sum + journey.repeatCompletionCount,
+    );
 
     return _CommunityMemberProfileData(
       userId: widget.userId,
@@ -148,6 +173,9 @@ class _CommunityMemberProfileScreenState
       totalCalories: totalCalories,
       totalMinutes: totalMinutes,
       cleanWorkouts: cleanWorkouts,
+      journeyProgress: journeyProgress,
+      completedJourneys: completedJourneys,
+      repeatedJourneyFinishes: repeatedJourneyFinishes,
     );
   }
 
@@ -386,6 +414,14 @@ class _CommunityMemberProfileScreenState
                           ),
                           const SizedBox(height: 14),
                           _buildWorkoutSummaryGrid(data),
+                          const SizedBox(height: 28),
+                          _buildSectionTitle(
+                            title: 'Fitness Journeys',
+                            subtitle:
+                                'Journey status, current progress, and how many full journey runs this member has finished.',
+                          ),
+                          const SizedBox(height: 14),
+                          _buildFitnessJourneySection(data),
                           const SizedBox(height: 28),
                           _buildSectionTitle(
                             title: 'Best Personal Records',
@@ -914,6 +950,224 @@ class _CommunityMemberProfileScreenState
     );
   }
 
+  Widget _buildFitnessJourneySection(_CommunityMemberProfileData data) {
+    if (data.journeyProgress.isEmpty) {
+      return _buildEmptyCard(
+        icon: Icons.route_outlined,
+        title: 'No fitness journeys started yet',
+        subtitle:
+            'Journey progress will appear here once this member starts a fitness journey.',
+      );
+    }
+
+    final overviewItems = [
+      _SummaryCardData(
+        label: 'Started',
+        value: '${data.journeyProgress.length}',
+        icon: Icons.flag_outlined,
+        accent: const Color(0xFF4FC3F7),
+      ),
+      _SummaryCardData(
+        label: 'Finished',
+        value: '${data.completedJourneys}',
+        icon: Icons.emoji_events_outlined,
+        accent: const Color(0xFF63D471),
+      ),
+      _SummaryCardData(
+        label: 'Finished Again',
+        value: '${data.repeatedJourneyFinishes}',
+        icon: Icons.replay_circle_filled_outlined,
+        accent: const Color(0xFFFFB020),
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final columns = width > 780 ? 3 : width > 520 ? 2 : 1;
+            const spacing = 12.0;
+            final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: overviewItems
+                  .map(
+                    (item) => SizedBox(
+                      width: cardWidth,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _surface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: item.accent.withOpacity(0.14),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                item.icon,
+                                color: item.accent,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.label,
+                                    style: const TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    item.value,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        ...data.journeyProgress.map(
+          (journey) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildJourneyProgressCard(journey),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJourneyProgressCard(_CommunityJourneyProgress journey) {
+    final statusColor = journey.isCompleted
+        ? const Color(0xFF63D471)
+        : const Color(0xFFFFB020);
+    final statusLabel = journey.isCompleted ? 'Completed' : 'In Progress';
+    final repeatLabel = journey.repeatCompletionCount > 0
+        ? 'Finished again ${journey.repeatCompletionCount} time${journey.repeatCompletionCount == 1 ? '' : 's'}'
+        : (journey.completionCount > 0
+              ? 'Finished once'
+              : 'First run in progress');
+    final lastUpdatedLabel = journey.lastUpdatedAt != null
+        ? DateFormat('MMM d, yyyy').format(journey.lastUpdatedAt!)
+        : null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      journey.journeyName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${journey.completedWorkoutsCount} of ${journey.totalWorkoutsCount} workouts completed',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: statusColor.withOpacity(0.25)),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: (journey.progressPercent / 100).clamp(0.0, 1.0),
+              minHeight: 10,
+              backgroundColor: Colors.white.withOpacity(0.08),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                journey.isCompleted
+                    ? const Color(0xFF63D471)
+                    : Colors.orange,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildMiniChip('${journey.progressPercent.toStringAsFixed(0)}% progress'),
+              _buildMiniChip('$repeatLabel'),
+              if (journey.cleanWorkoutsCount > 0)
+                _buildMiniChip('${journey.cleanWorkoutsCount} clean'),
+              if (journey.cheatedWorkoutsCount > 0)
+                _buildMiniChip('${journey.cheatedWorkoutsCount} cheated'),
+              if (lastUpdatedLabel != null)
+                _buildMiniChip('Updated $lastUpdatedLabel'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPersonalBestSection(_CommunityMemberProfileData data) {
     if (data.bestRecords.isEmpty) {
       return _buildEmptyCard(
@@ -1288,6 +1542,9 @@ class _CommunityMemberProfileData {
   final int totalCalories;
   final int totalMinutes;
   final int cleanWorkouts;
+  final List<_CommunityJourneyProgress> journeyProgress;
+  final int completedJourneys;
+  final int repeatedJourneyFinishes;
 
   const _CommunityMemberProfileData({
     required this.userId,
@@ -1305,7 +1562,109 @@ class _CommunityMemberProfileData {
     required this.totalCalories,
     required this.totalMinutes,
     required this.cleanWorkouts,
+    required this.journeyProgress,
+    required this.completedJourneys,
+    required this.repeatedJourneyFinishes,
   });
+}
+
+const List<String> _journeyOrder = [
+  weightLossJourneyId,
+  cardioJourneyId,
+  strengthPowerJourneyId,
+  muscularEnduranceJourneyId,
+  healthWellnessJourneyId,
+];
+
+const Map<String, String> _journeyNameById = {
+  weightLossJourneyId: 'Weight Loss',
+  cardioJourneyId: 'Cardio',
+  strengthPowerJourneyId: 'Strength & Power',
+  muscularEnduranceJourneyId: 'Muscular Endurance',
+  healthWellnessJourneyId: 'Health & Wellness',
+};
+
+class _CommunityJourneyProgress {
+  final String journeyId;
+  final String journeyName;
+  final int completedWorkoutsCount;
+  final int totalWorkoutsCount;
+  final int cheatedWorkoutsCount;
+  final int cleanWorkoutsCount;
+  final int completionCount;
+  final int repeatCompletionCount;
+  final double progressPercent;
+  final String status;
+  final bool hasStarted;
+  final bool isCompleted;
+  final DateTime? lastUpdatedAt;
+
+  const _CommunityJourneyProgress({
+    required this.journeyId,
+    required this.journeyName,
+    required this.completedWorkoutsCount,
+    required this.totalWorkoutsCount,
+    required this.cheatedWorkoutsCount,
+    required this.cleanWorkoutsCount,
+    required this.completionCount,
+    required this.repeatCompletionCount,
+    required this.progressPercent,
+    required this.status,
+    required this.hasStarted,
+    required this.isCompleted,
+    required this.lastUpdatedAt,
+  });
+
+  factory _CommunityJourneyProgress.fromMap(
+    String journeyId,
+    Map<String, dynamic> data,
+  ) {
+    final lastUpdatedValue = data['lastUpdatedAt'];
+    DateTime? lastUpdatedAt;
+    if (lastUpdatedValue is Timestamp) {
+      lastUpdatedAt = lastUpdatedValue.toDate();
+    } else if (lastUpdatedValue is DateTime) {
+      lastUpdatedAt = lastUpdatedValue;
+    } else if (lastUpdatedValue is String) {
+      lastUpdatedAt = DateTime.tryParse(lastUpdatedValue);
+    }
+
+    final completionCount =
+        (data['completionCount'] as num?)?.toInt() ??
+        ((data['status'] == 'completed') ? 1 : 0);
+    final repeatCompletionCount =
+        (data['repeatCompletionCount'] as num?)?.toInt() ??
+        (completionCount > 0 ? completionCount - 1 : 0);
+    final completedWorkoutsCount =
+        (data['completedWorkoutsCount'] as num?)?.toInt() ?? 0;
+    final totalWorkoutsCount = (data['totalWorkoutsCount'] as num?)?.toInt() ?? 0;
+    final status = (data['status'] ?? 'not_started').toString();
+    final isCompleted = data['isCompleted'] == true || status == 'completed';
+    final hasStarted = data['hasStarted'] == true ||
+        completedWorkoutsCount > 0 ||
+        completionCount > 0 ||
+        status == 'in_progress' ||
+        status == 'completed';
+
+    return _CommunityJourneyProgress(
+      journeyId: journeyId,
+      journeyName:
+          (data['journeyName'] as String?)?.trim().isNotEmpty == true
+              ? (data['journeyName'] as String).trim()
+              : (_journeyNameById[journeyId] ?? 'Fitness Journey'),
+      completedWorkoutsCount: completedWorkoutsCount,
+      totalWorkoutsCount: totalWorkoutsCount,
+      cheatedWorkoutsCount: (data['cheatedWorkoutsCount'] as num?)?.toInt() ?? 0,
+      cleanWorkoutsCount: (data['cleanWorkoutsCount'] as num?)?.toInt() ?? 0,
+      completionCount: completionCount,
+      repeatCompletionCount: repeatCompletionCount,
+      progressPercent: (data['progressPercent'] as num?)?.toDouble() ?? 0.0,
+      status: status,
+      hasStarted: hasStarted,
+      isCompleted: isCompleted,
+      lastUpdatedAt: lastUpdatedAt,
+    );
+  }
 }
 
 class _CommunityWorkoutRun {

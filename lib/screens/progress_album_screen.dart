@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,8 +6,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http; // Add this import
-import 'photo_editing_screen.dart'; // Add this import
+import 'package:http/http.dart' as http;
+import 'photo_editing_screen.dart';
 
 class ProgressAlbumScreen extends StatefulWidget {
   const ProgressAlbumScreen({super.key});
@@ -610,131 +611,160 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 16.0),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141414),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Track your body changes",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isWideWeb = kIsWeb && constraints.maxWidth >= 980;
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isWideWeb ? 980 : double.infinity,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isWideWeb ? 20.0 : 0.0,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "Recent keeps only today's uploads. Older progress photos automatically move to Old tomorrow.",
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Tab bar with Recent and Old tabs
-            Container(
-              height: 52,
-              margin: const EdgeInsets.symmetric(horizontal: 16.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141414),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTabIndex = 0;
-                        });
-                        _tabController.animateTo(0);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          gradient: _selectedTabIndex == 0
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
-                                )
-                              : null,
-                          color: _selectedTabIndex == 0 ? null : Colors.transparent,
-                          borderRadius: BorderRadius.circular(22),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.symmetric(
+                          horizontal: isWideWeb ? 0 : 16.0,
                         ),
-                        child: const Center(
-                          child: Text(
-                            'Recent',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF141414),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Track your body changes",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Recent keeps only today's uploads. Older progress photos automatically move to Old tomorrow.",
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedTabIndex = 1;
-                        });
-                        _tabController.animateTo(1);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          gradient: _selectedTabIndex == 1
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
-                                )
-                              : null,
-                          color: _selectedTabIndex == 1 ? null : Colors.transparent,
-                          borderRadius: BorderRadius.circular(22),
+                      const SizedBox(height: 14),
+                      Container(
+                        height: 52,
+                        margin: EdgeInsets.symmetric(
+                          horizontal: isWideWeb ? 0 : 16.0,
                         ),
-                        child: const Center(
-                          child: Text(
-                            'Old',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF141414),
+                          borderRadius: BorderRadius.circular(26),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedTabIndex = 0;
+                                  });
+                                  _tabController.animateTo(0);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  margin: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    gradient: _selectedTabIndex == 0
+                                        ? const LinearGradient(
+                                            colors: [
+                                              Color(0xFF3EA6FF),
+                                              Color(0xFF67C3FF),
+                                            ],
+                                          )
+                                        : null,
+                                    color: _selectedTabIndex == 0
+                                        ? null
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'Recent',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedTabIndex = 1;
+                                  });
+                                  _tabController.animateTo(1);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  margin: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    gradient: _selectedTabIndex == 1
+                                        ? const LinearGradient(
+                                            colors: [
+                                              Color(0xFF3EA6FF),
+                                              Color(0xFF67C3FF),
+                                            ],
+                                          )
+                                        : null,
+                                    color: _selectedTabIndex == 1
+                                        ? null
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'Old',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [_buildRecentContent(), _buildOldContent()],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Tab content with scrollable date cards
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [_buildRecentContent(), _buildOldContent()],
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -749,10 +779,9 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       );
     }
 
-    final dates = _progressImages.keys
-        .where((date) => _isTodayDateKey(date))
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
+    final dates =
+        _progressImages.keys.where((date) => _isTodayDateKey(date)).toList()
+          ..sort((a, b) => b.compareTo(a));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -768,7 +797,8 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
               dates.every((date) => (_progressImages[date] ?? []).isEmpty))
             _buildEmptyState(
               title: "No recent progress images",
-              subtitle: "Only today's photos appear here. Tomorrow they move to Old.",
+              subtitle:
+                  "Only today's photos appear here. Tomorrow they move to Old.",
             ),
         ],
       ),
@@ -784,10 +814,9 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       );
     }
 
-    final dates = _progressImages.keys
-        .where((date) => !_isTodayDateKey(date))
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
+    final dates =
+        _progressImages.keys.where((date) => !_isTodayDateKey(date)).toList()
+          ..sort((a, b) => b.compareTo(a));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -803,7 +832,8 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
               dates.every((date) => (_progressImages[date] ?? []).isEmpty))
             _buildEmptyState(
               title: "No old progress images",
-              subtitle: "Photos from previous days will appear here automatically.",
+              subtitle:
+                  "Photos from previous days will appear here automatically.",
             ),
         ],
       ),
@@ -860,7 +890,9 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
             decoration: BoxDecoration(
               color: const Color(0xFF3EA6FF).withOpacity(0.12),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFF3EA6FF).withOpacity(0.22)),
+              border: Border.all(
+                color: const Color(0xFF3EA6FF).withOpacity(0.22),
+              ),
             ),
             child: const Text(
               "Tap + to add a new progress photo",
@@ -984,19 +1016,26 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
               right: 16.0,
               bottom: 16.0,
             ),
-            child: _buildImagesGrid(images, date),
+            child: _buildImagesGrid(context, images, date),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildImagesGrid(List<String> imageUrls, String date) {
+  Widget _buildImagesGrid(
+    BuildContext context,
+    List<String> imageUrls,
+    String date,
+  ) {
+    final bool isWideWeb = kIsWeb && MediaQuery.of(context).size.width >= 980;
+    final int crossAxisCount = isWideWeb ? 4 : 3;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
         childAspectRatio: 1,
@@ -1035,7 +1074,11 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                       );
                     },
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.error, color: Colors.red, size: 32);
+                      return const Icon(
+                        Icons.error,
+                        color: Colors.red,
+                        size: 32,
+                      );
                     },
                   ),
                 ),
