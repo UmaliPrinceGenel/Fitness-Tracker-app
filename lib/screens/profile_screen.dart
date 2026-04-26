@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'health_dashboard.dart';
@@ -17,7 +18,7 @@ class MyProfileScreen extends StatefulWidget {
 class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingObserver {
   String gender = "Male";
   double height = 170;
-  int weight = 60;
+  double weight = 60; // Changed to double to support decimal values
   DateTime dob = DateTime(2005, 1, 1);
   bool _isLoading = false;
   late TextEditingController heightController;
@@ -27,6 +28,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
 
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Regular expression to validate decimal numbers with up to 2 decimal places
+  final RegExp _decimalValidator = RegExp(r'^\d*\.?\d{0,2}$');
 
   void _handleBackNavigation() {
     if (Navigator.canPop(context)) {
@@ -43,14 +47,14 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
   @override
   void initState() {
     super.initState();
-    heightController = TextEditingController(text: height.toStringAsFixed(0));
-    weightController = TextEditingController(text: weight.toString());
+    heightController = TextEditingController(text: height.toStringAsFixed(1));
+    weightController = TextEditingController(text: weight.toStringAsFixed(1));
     
     // Add listeners to handle text changes without causing excessive rebuilds
     heightController.addListener(_handleHeightChange);
     weightController.addListener(_handleWeightChange);
     WidgetsBinding.instance.addObserver(this);
- }
+  }
 
   @override
   void dispose() {
@@ -83,54 +87,147 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
     }
   }
 
-  // Handle height changes without causing excessive rebuilds
+  // Validate and format height input
   void _handleHeightChange() {
     String value = heightController.text;
-    if (value.isNotEmpty) {
+    
+    // Allow empty string temporarily
+    if (value.isEmpty) {
+      return;
+    }
+    
+    // Check if the input matches the decimal pattern
+    if (_decimalValidator.hasMatch(value)) {
+      // Check if it's a valid number
       double? parsedValue = double.tryParse(value);
       if (parsedValue != null) {
-        height = parsedValue;
-        // Format the value to remove decimals if needed
-        String formattedValue = height.toStringAsFixed(0);
-        if (heightController.text != formattedValue) {
-          int selectionIndex = heightController.selection.base.offset;
-          heightController.text = formattedValue;
-          // Keep cursor at the same relative position
-          int newSelectionIndex = selectionIndex <= formattedValue.length 
-              ? selectionIndex 
-              : formattedValue.length;
+        // Limit to 3 digits for height (reasonable max 999 cm)
+        if (value.length <= 6) { // Allow up to 6 characters (e.g., 999.99)
+          setState(() {
+            height = parsedValue;
+          });
+        } else {
+          // If too long, revert to previous valid value
+          heightController.text = height.toStringAsFixed(1);
           heightController.selection = TextSelection.fromPosition(
-            TextPosition(offset: newSelectionIndex)
-          );
-        }
-      }
-    }
-  }
-
-  // Handle weight changes without causing excessive rebuilds
-  void _handleWeightChange() {
-    String value = weightController.text;
-    if (value.isNotEmpty) {
-      int? parsedValue = int.tryParse(value);
-      if (parsedValue != null) {
-        weight = parsedValue;
-        // Make sure the displayed value matches the stored value
-        String formattedValue = weight.toString();
-        if (weightController.text != formattedValue) {
-          int selectionIndex = weightController.selection.base.offset;
-          weightController.text = formattedValue;
-          // Keep cursor at the same relative position
-          int newSelectionIndex = selectionIndex <= formattedValue.length 
-              ? selectionIndex 
-              : formattedValue.length;
-          weightController.selection = TextSelection.fromPosition(
-            TextPosition(offset: newSelectionIndex)
+            TextPosition(offset: heightController.text.length)
           );
         }
       }
     } else {
-      // If the field is empty, set weight to 0
-      weight = 0;
+      // If invalid characters are entered, revert to last valid value
+      String oldText = heightController.text;
+      String cleanedText = oldText.replaceAll(RegExp(r'[^0-9.]'), '');
+      
+      // Ensure only one decimal point
+      List<String> parts = cleanedText.split('.');
+      if (parts.length > 2) {
+        cleanedText = parts[0] + '.' + parts.sublist(1).join();
+      }
+      
+      // Limit to 2 decimal places
+      if (cleanedText.contains('.')) {
+        parts = cleanedText.split('.');
+        if (parts[1].length > 2) {
+          cleanedText = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+      }
+      
+      if (cleanedText.isNotEmpty) {
+        double? parsedValue = double.tryParse(cleanedText);
+        if (parsedValue != null) {
+          setState(() {
+            height = parsedValue;
+          });
+          heightController.text = cleanedText;
+          heightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: cleanedText.length)
+          );
+        } else if (cleanedText == '.') {
+          heightController.text = '0.';
+          heightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: 2)
+          );
+        }
+      } else if (cleanedText.isEmpty && value.isNotEmpty) {
+        // If all characters were invalid, revert
+        heightController.text = height.toStringAsFixed(1);
+        heightController.selection = TextSelection.fromPosition(
+          TextPosition(offset: heightController.text.length)
+        );
+      }
+    }
+  }
+
+  // Validate and format weight input
+  void _handleWeightChange() {
+    String value = weightController.text;
+    
+    // Allow empty string temporarily
+    if (value.isEmpty) {
+      return;
+    }
+    
+    // Check if the input matches the decimal pattern
+    if (_decimalValidator.hasMatch(value)) {
+      // Check if it's a valid number
+      double? parsedValue = double.tryParse(value);
+      if (parsedValue != null) {
+        // Limit to 3 digits for weight (reasonable max 999 kg)
+        if (value.length <= 6) { // Allow up to 6 characters (e.g., 999.99)
+          setState(() {
+            weight = parsedValue;
+          });
+        } else {
+          // If too long, revert to previous valid value
+          weightController.text = weight.toStringAsFixed(1);
+          weightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: weightController.text.length)
+          );
+        }
+      }
+    } else {
+      // If invalid characters are entered, revert to last valid value
+      String oldText = weightController.text;
+      String cleanedText = oldText.replaceAll(RegExp(r'[^0-9.]'), '');
+      
+      // Ensure only one decimal point
+      List<String> parts = cleanedText.split('.');
+      if (parts.length > 2) {
+        cleanedText = parts[0] + '.' + parts.sublist(1).join();
+      }
+      
+      // Limit to 2 decimal places
+      if (cleanedText.contains('.')) {
+        parts = cleanedText.split('.');
+        if (parts[1].length > 2) {
+          cleanedText = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+      }
+      
+      if (cleanedText.isNotEmpty) {
+        double? parsedValue = double.tryParse(cleanedText);
+        if (parsedValue != null) {
+          setState(() {
+            weight = parsedValue;
+          });
+          weightController.text = cleanedText;
+          weightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: cleanedText.length)
+          );
+        } else if (cleanedText == '.') {
+          weightController.text = '0.';
+          weightController.selection = TextSelection.fromPosition(
+            TextPosition(offset: 2)
+          );
+        }
+      } else if (cleanedText.isEmpty && value.isNotEmpty) {
+        // If all characters were invalid, revert
+        weightController.text = weight.toStringAsFixed(1);
+        weightController.selection = TextSelection.fromPosition(
+          TextPosition(offset: weightController.text.length)
+        );
+      }
     }
   }
 
@@ -324,7 +421,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                   ],
                                 ),
                                 selected: gender == 'Female',
-                                selectedColor: const Color(0xFF36A8FF),
+                                selectedColor: const Color(0xFFFF69B4),
                                 backgroundColor: const Color(0xFFF2EFEC),
                                 labelStyle: TextStyle(
                                   color: gender == 'Female'
@@ -382,7 +479,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                     ],
                                   ),
                                   selected: gender == 'Female',
-                                  selectedColor: const Color(0xFF36A8FF),
+                                  selectedColor: const Color(0xFFFF69B4),
                                   backgroundColor: const Color(0xFFF2EFEC),
                                   labelStyle: TextStyle(
                                     color: gender == 'Female'
@@ -406,12 +503,16 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                       field: TextField(
                         enabled: !_isLoading,
                         controller: heightController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         style: const TextStyle(
                           color: Color(0xFF141414),
                           fontWeight: FontWeight.w700,
                         ),
                         decoration: _buildWebFieldDecoration('170 cm'),
+                        inputFormatters: [
+                          // Using TextInputFormatter to prevent invalid input
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -420,12 +521,15 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                       field: TextField(
                         enabled: !_isLoading,
                         controller: weightController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         style: const TextStyle(
                           color: Color(0xFF141414),
                           fontWeight: FontWeight.w700,
                         ),
                         decoration: _buildWebFieldDecoration('60 kg'),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -638,7 +742,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                               width: 100,
                               child: TextField(
                                 enabled: !_isLoading,
-                                keyboardType: TextInputType.number,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 style: const TextStyle(color: Colors.white),
                                 decoration: InputDecoration(
                                   filled: true,
@@ -657,9 +761,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                   ),
                                 ),
                                 controller: heightController,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                                ],
                                 onChanged: (value) {
                                   // Changes are now handled by the controller listener
-                                  // This callback is kept for compatibility but doesn't trigger setState
                                 },
                               ),
                             ),
@@ -684,7 +790,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                               width: 100,
                               child: TextField(
                                 enabled: !_isLoading,
-                                keyboardType: TextInputType.number,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 style: const TextStyle(color: Colors.white),
                                 decoration: InputDecoration(
                                   filled: true,
@@ -703,9 +809,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                   ),
                                 ),
                                 controller: weightController,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                                ],
                                 onChanged: (value) {
                                   // Changes are now handled by the controller listener
-                                  // This callback is kept for compatibility but doesn't trigger setState
                                 },
                               ),
                             ),
@@ -798,7 +906,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             child: Text(
-                              'Version 1.0.1+2', // Using the version from pubspec.yaml
+                              'Version 1.0.1+2',
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 14,
@@ -837,24 +945,24 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
             setState(() {
               gender = profileData['gender'] ?? "Male";
               height = profileData['height']?.toDouble() ?? 170.0;
-              weight = profileData['weight']?.toInt() ?? 60;
+              weight = profileData['weight']?.toDouble() ?? 60.0;
               dob = profileData['dateOfBirth']?.toDate() ?? DateTime(2005, 1, 1);
               
               // Update controllers with new values
-              heightController.text = height.toStringAsFixed(0);
-              weightController.text = weight.toString();
+              heightController.text = height.toStringAsFixed(1);
+              weightController.text = weight.toStringAsFixed(1);
             });
           } else {
             // If no profile data exists, reset to default values
             setState(() {
               gender = "Male";
               height = 170.0;
-              weight = 60;
+              weight = 60.0;
               dob = DateTime(2005, 1, 1);
               
               // Update controllers with default values
-              heightController.text = height.toStringAsFixed(0);
-              weightController.text = weight.toString();
+              heightController.text = height.toStringAsFixed(1);
+              weightController.text = weight.toStringAsFixed(1);
             });
           }
         } else {
@@ -862,12 +970,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
           setState(() {
             gender = "Male";
             height = 170.0;
-            weight = 60;
+            weight = 60.0;
             dob = DateTime(2005, 1, 1);
             
             // Update controllers with default values
-            heightController.text = height.toStringAsFixed(0);
-            weightController.text = weight.toString();
+            heightController.text = height.toStringAsFixed(1);
+            weightController.text = weight.toStringAsFixed(1);
           });
         }
       }

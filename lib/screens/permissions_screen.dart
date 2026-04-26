@@ -17,6 +17,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   bool agreePolicy = false;
   bool joinProgram = false;
   bool _isLoading = false;
+  bool _showFullText = false;
 
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -46,7 +47,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     }
   }
 
-  /// ✅ Save permission data to Firestore
   Future<void> _savePermissionData() async {
     if (!agreePolicy) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -62,7 +62,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     try {
       final user = _firebaseAuth.currentUser;
       if (user != null) {
-        // Save permission data to user document
         await _firestore.collection('users').doc(user.uid).update({
           'permissions': {
             'agreedToPolicy': agreePolicy,
@@ -72,16 +71,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
-        print('✅ Permission data saved for user: ${user.uid}');
-
-        // Navigate to profile screen
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const MyProfileScreen()),
         );
       }
     } catch (e) {
-      print('❌ Error saving permission data: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving data: $e')),
       );
@@ -94,105 +89,218 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     return WebAuthShell(
       leftTitle: 'Welcome',
       leftSubtitle: 'Rockies Fitness Gym Tracker',
-      rightChild: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Terms and Conditions',
-                  style: TextStyle(
-                    color: Color(0xFF141414),
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
+      rightChild: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Terms and Conditions',
+              style: TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Collapsible text section
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 300),
+              crossFadeState: _showFullText 
+                  ? CrossFadeState.showFirst 
+                  : CrossFadeState.showSecond,
+              firstChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome to Rockies Fitness Gym Tracker. You can use this app to manage and track your workouts and view your progress data. We shall protect your information in accordance with relevant laws, regulations, and privacy policies. To be able to work normally, the app needs to connect to the internet.\n\nTo provide you with additional services while you\'re using the app, we might need the following permissions:',
+                    style: TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
                   ),
+                  const SizedBox(height: 20),
+                  // Permission 1
+                  const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.location_on, color: Color(0xFFFF7317), size: 20),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Access Location',
+                              style: TextStyle(
+                                color: Color(0xFF1A1A1A),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'For tracking your workout distance and routes',
+                              style: TextStyle(
+                                color: Color(0xFF888888),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Permission 2
+                  const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.fitness_center, color: Color(0xFFFF7317), size: 20),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Access Activity Info',
+                              style: TextStyle(
+                                color: Color(0xFF1A1A1A),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'For recording your workouts and health information',
+                              style: TextStyle(
+                                color: Color(0xFF888888),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'You can always adjust your permissions preferences in the Settings',
+                    style: TextStyle(
+                      color: Color(0xFF999999),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              secondChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome to Rockies Fitness Gym Tracker...',
+                    style: TextStyle(
+                      color: Color(0xFF666666),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'You can always adjust your permissions preferences in the Settings',
+                    style: TextStyle(
+                      color: Color(0xFF999999),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            // Show More / Show Less button
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showFullText = !_showFullText;
+                  });
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF7317),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 32),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  "Welcome to Rockies Fitness Gym Tracker. You can use this app to manage and track your workouts and view your progress data. We shall protect your information in accordance with relevant laws, regulations, and privacy policies. To be able to work normally, the app needs to connect to the internet.\n\nTo provide you with additional services while you're using the app, we might need the following permissions:",
-                  style: TextStyle(
-                    color: Color(0xFF666666),
+                child: Text(
+                  _showFullText ? 'Show less' : 'Show more',
+                  style: const TextStyle(
                     fontSize: 12,
-                    height: 1.5,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 18),
-                const _WebPermissionItem(
-                  icon: Icons.location_on,
-                  title: 'Access Location',
-                  description: 'For tracking your workout distance and routes',
-                ),
-                const SizedBox(height: 14),
-                const _WebPermissionItem(
-                  icon: Icons.directions_run,
-                  title: 'Access Activity Info',
-                  description:
-                      'For recording your workouts and health information',
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'You can always adjust your permissions preferences in the Settings',
-                  style: TextStyle(
-                    color: Color(0xFF9A9A9A),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                CheckboxListTile(
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            // Checkbox 1
+            Row(
+              children: [
+                Checkbox(
                   value: agreePolicy,
-                  onChanged: _isLoading
-                      ? null
-                      : (value) {
-                          setState(() => agreePolicy = value ?? false);
-                        },
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: _isLoading ? null : (value) {
+                    setState(() => agreePolicy = value ?? false);
+                  },
                   activeColor: const Color(0xFFFF7317),
-                  title: const Text(
+                ),
+                const Expanded(
+                  child: Text(
                     'Read and Agree to our User Agreement and Privacy Policy',
                     style: TextStyle(
-                      color: Color(0xFF444444),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF333333),
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                CheckboxListTile(
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Checkbox 2
+            Row(
+              children: [
+                Checkbox(
                   value: joinProgram,
-                  onChanged: _isLoading
-                      ? null
-                      : (value) {
-                          setState(() => joinProgram = value ?? false);
-                        },
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: _isLoading ? null : (value) {
+                    setState(() => joinProgram = value ?? false);
+                  },
                   activeColor: const Color(0xFFFF7317),
-                  title: const Text(
+                ),
+                const Expanded(
+                  child: Text(
                     'Enroll in User Experience Program to help us improve our products and services by sharing your stats with us',
                     style: TextStyle(
-                      color: Color(0xFF444444),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF333333),
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
+              ],
+            ),
+            const SizedBox(height: 32),
+            // Buttons Row
+            Row(
+              children: [
+                Expanded(
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _savePermissionData,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF7317),
                       foregroundColor: Colors.white,
-                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _isLoading
@@ -201,46 +309,42 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : const Text(
                             'Agree',
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
+                const SizedBox(width: 16),
+                Expanded(
                   child: OutlinedButton(
                     onPressed: _isLoading ? null : _exitOnboarding,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF141414),
-                      side: const BorderSide(color: Color(0xFFD8D2CE)),
-                      backgroundColor: Colors.white.withOpacity(0.8),
+                      side: const BorderSide(color: Color(0xFFDDDDDD)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: const Text(
                       'Exit',
                       style: TextStyle(
+                        color: Color(0xFF666666),
                         fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -252,6 +356,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
       return _buildWebPermissionScreen(context);
     }
 
+    // MOBILE UI - UNTOUCHED
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -261,7 +366,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 30),
-              // Title
               const Text(
                 "Terms and Conditions",
                 style: TextStyle(
@@ -271,8 +375,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                 ),
               ),
               const SizedBox(height: 15),
-
-              // Description
               const Text(
                 "Welcome to Rockies Fitness Gym Tracker. You can use this app to manage and track your workouts and view your progress data. We shall protect your information in accordance with relevant laws, regulations, and privacy policies. To be able to work normally, the app needs to connect to the internet.\n\n"
                 "To provide you with additional services while you're using the app, we might need the following permissions:",
@@ -283,8 +385,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Permissions
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
@@ -320,17 +420,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 25),
-
-              // Small note
               const Text(
                 "You can always adjust your permissions preferences in the Settings",
                 style: TextStyle(color: Colors.white54, fontSize: 11),
               ),
               const SizedBox(height: 20),
-
-              // Checkboxes
               Row(
                 children: [
                   Checkbox(
@@ -369,10 +464,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                   ),
                 ],
               ),
-
               const Spacer(),
-
-              // Buttons
               Column(
                 children: [
                   SizedBox(
@@ -416,9 +508,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: _isLoading
-                          ? null
-                          : _exitOnboarding,
+                      onPressed: _isLoading ? null : _exitOnboarding,
                       child: const Text(
                         "Exit",
                         style: TextStyle(
@@ -435,62 +525,6 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _WebPermissionItem extends StatelessWidget {
-  const _WebPermissionItem({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: const BoxDecoration(
-            color: Color(0xFFFF7317),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 14),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xFF141414),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: const TextStyle(
-                  color: Color(0xFF666666),
-                  fontSize: 11,
-                  height: 1.4,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
