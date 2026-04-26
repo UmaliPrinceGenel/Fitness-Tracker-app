@@ -3,179 +3,179 @@ class VideoMappingService {
   static final Map<String, String> _journeyVideoMapping = {
     // Weight Loss
     'Burpees':
-        'assets/Fitness Journey/Weight Loss/Workout 1 Full Body HIIT Circuit/Burpees.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/Burpees.mp4',
     'Mountain Climbers':
-        'assets/Fitness Journey/Weight Loss/Workout 1 Full Body HIIT Circuit/Mountain Climbers.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/Mountain_Climbers.mp4',
     'Kettlebell Swings':
-        'assets/Fitness Journey/Weight Loss/Workout 1 Full Body HIIT Circuit/Kettlebell Swings_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/Kettlebell_Swings_.mp4',
     'Jumping Jacks':
-        'assets/Fitness Journey/Weight Loss/Workout 1 Full Body HIIT Circuit/Jumping Jacks_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/Jumping_Jacks_.mp4',
     'Dumbbell Thrusters':
-        'assets/Fitness Journey/Weight Loss/Workout 2 Dumbbell Fat Burner/Dumbbell Thrusters.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_2_Dumbbell_Fat_Burner/Dumbbell_Thrusters.mp4',
     'Renegade Rows':
-        'assets/Fitness Journey/Weight Loss/Workout 2 Dumbbell Fat Burner/Renegade Rows_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_2_Dumbbell_Fat_Burner/Renegade_Rows_.mp4',
     'Alternating Dumbbell Lunges':
-        'assets/Fitness Journey/Weight Loss/Workout 2 Dumbbell Fat Burner/Alternating Dumbbell Lunges.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_2_Dumbbell_Fat_Burner/Alternating_Dumbbell_Lunges.mp4',
     'Dumbbell Snatch':
-        'assets/Fitness Journey/Weight Loss/Workout 2 Dumbbell Fat Burner/Dumbbell Snatch_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_2_Dumbbell_Fat_Burner/Dumbbell_Snatch_.mp4',
     'Battle Ropes':
-        'assets/Fitness Journey/Weight Loss/Workout 3 Metabolic Conditioning/Battle Ropes.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_3_Metabolic_Conditioning/Battle_Ropes.mp4',
     'Medicine Ball Slams':
-        'assets/Fitness Journey/Weight Loss/Workout 3 Metabolic Conditioning/Medicine Ball Slams_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_3_Metabolic_Conditioning/Medicine_Ball_Slams_.mp4',
     'Box Jumps':
-        'assets/Fitness Journey/Weight Loss/Workout 3 Metabolic Conditioning/Box Jumps.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_3_Metabolic_Conditioning/Box_Jumps.mp4',
     'Jump Rope':
-        'assets/Fitness Journey/Weight Loss/Workout 3 Metabolic Conditioning/Jump Rope_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_3_Metabolic_Conditioning/Jump_Rope_.mp4',
     'Squat Jumps':
-        'assets/Fitness Journey/Weight Loss/Workout 4 Bodyweight Calorie Crusher/Squat Jumps_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_4_Bodyweight_Calorie_Crusher/Squat_Jumps_.mp4',
     'Plank Jacks':
-        'assets/Fitness Journey/Weight Loss/Workout 4 Bodyweight Calorie Crusher/Plank Jacks_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_4_Bodyweight_Calorie_Crusher/Plank_Jacks_.mp4',
     'High Knees':
-        'assets/Fitness Journey/Weight Loss/Workout 4 Bodyweight Calorie Crusher/High Knees_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_4_Bodyweight_Calorie_Crusher/High_Knees_.mp4',
     'Bear Crawls':
-        'assets/Fitness Journey/Weight Loss/Workout 4 Bodyweight Calorie Crusher/Bear Crawls_.mp4',
+        'assets/Fitness_Journey/Weight_Loss/Workout_4_Bodyweight_Calorie_Crusher/Bear_Crawls_.mp4',
 
     // Cardio
     'Treadmill Sprints':
-        'assets/Fitness Journey/Cardio/Workout 1 Gym Machine Intervals/Treadmill Sprints.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/Treadmill_Sprints.mp4',
     'StairMaster Climbing':
-        'assets/Fitness Journey/Cardio/Workout 1 Gym Machine Intervals/Stair Master Climbing.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/Stair_Master_Climbing.mp4',
     'Stair Master Climbing':
-        'assets/Fitness Journey/Cardio/Workout 1 Gym Machine Intervals/Stair Master Climbing.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/Stair_Master_Climbing.mp4',
     'Rowing Machine Intervals':
-        'assets/Fitness Journey/Cardio/Workout 1 Gym Machine Intervals/Rowing Machine Intervals_.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/Rowing_Machine_Intervals_.mp4',
     'Stationary Bike Sprints':
-        'assets/Fitness Journey/Cardio/Workout 1 Gym Machine Intervals/Stationary Bike Sprints.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/Stationary_Bike_Sprints.mp4',
     'Incline Treadmill Walk':
-        'assets/Fitness Journey/Cardio/Workout 2 Steady-State Cardio/Incline Treadmill Walk.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_2_Steady-State_Cardio/Incline_Treadmill_Walk.mp4',
     'Elliptical Machine':
-        'assets/Fitness Journey/Cardio/Workout 2 Steady-State Cardio/Elliptical Machine.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_2_Steady-State_Cardio/Elliptical_Machine.mp4',
     'Recumbent Bike':
-        'assets/Fitness Journey/Cardio/Workout 2 Steady-State Cardio/Recumbent Bike.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_2_Steady-State_Cardio/Recumbent_Bike.mp4',
     'Rowing Machine at Moderate Pace':
-        'assets/Fitness Journey/Cardio/Workout 2 Steady-State Cardio/Rowing Machine at Moderate Pace.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_2_Steady-State_Cardio/Rowing_Machine_at_Moderate_Pace.mp4',
     'Jump Squats':
-        'assets/Fitness Journey/Cardio/Workout 3 Bodyweight Cardio Blast/Jumping Squats.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_3_Bodyweight_Cardio_Blast/Jumping_Squats.mp4',
     'Jumping Squats':
-        'assets/Fitness Journey/Cardio/Workout 3 Bodyweight Cardio Blast/Jumping Squats.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_3_Bodyweight_Cardio_Blast/Jumping_Squats.mp4',
     'Skater Jumps':
-        'assets/Fitness Journey/Cardio/Workout 3 Bodyweight Cardio Blast/Skater Jumps.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_3_Bodyweight_Cardio_Blast/Skater_Jumps.mp4',
     '5K Row':
-        'assets/Fitness Journey/Cardio/Workout 4 Endurance Cardio Circuit/Rowing Machine at Moderate Pace_.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/Rowing_Machine_at_Moderate_Pace_.mp4',
     'Assault Bike':
-        'assets/Fitness Journey/Cardio/Workout 4 Endurance Cardio Circuit/Assault Bike.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/Assault_Bike.mp4',
     'Brisk Walking Cooldown':
-        'assets/Fitness Journey/Cardio/Workout 4 Endurance Cardio Circuit/Brisk Walking Cooldown.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/Brisk_Walking_Cooldown.mp4',
     'SkiErg':
-        'assets/Fitness Journey/Cardio/Workout 4 Endurance Cardio Circuit/SkiErg_.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/SkiErg_.mp4',
     'SkiErg Intervals':
-        'assets/Fitness Journey/Cardio/Workout 4 Endurance Cardio Circuit/SkiErg_.mp4',
+        'assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/SkiErg_.mp4',
 
     // Strength & Power
     'Barbell Back Squat':
-        'assets/Fitness Journey/Strength & Power/Workout 1 The Big Three/Barbell Back Squat.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_1_The_Big_Three/Barbell_Back_Squat.mp4',
     'Barbell Conventional Deadlift':
-        'assets/Fitness Journey/Strength & Power/Workout 1 The Big Three/Barbell Conventional Deadlift_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_1_The_Big_Three/Barbell_Conventional_Deadlift_.mp4',
     'Barbell Overhead Press':
-        'assets/Fitness Journey/Strength & Power/Workout 2 Upper Body Push Strength/Barbell Overhead Press.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/Barbell_Overhead_Press.mp4',
     'Close-Grip Bench Press':
-        'assets/Fitness Journey/Strength & Power/Workout 2 Upper Body Push Strength/Close Grip Barbell Bench Press_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/Close_Grip_Barbell_Bench_Press_.mp4',
     'Close Grip Barbell Bench Press':
-        'assets/Fitness Journey/Strength & Power/Workout 2 Upper Body Push Strength/Close Grip Barbell Bench Press_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/Close_Grip_Barbell_Bench_Press_.mp4',
     'Weighted Dips':
-        'assets/Fitness Journey/Strength & Power/Workout 2 Upper Body Push Strength/Dumbbell Weighted Dip.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/Dumbbell_Weighted_Dip.mp4',
     'Incline Barbell Press':
-        'assets/Fitness Journey/Strength & Power/Workout 2 Upper Body Push Strength/Incline Barbell Press_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/Incline_Barbell_Press_.mp4',
     'Weighted Pull-Ups':
-        'assets/Fitness Journey/Strength & Power/Workout 3 Upper Body Pull Strength/Weighted Pull-Ups.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_3_Upper_Body_Pull_Strength/Weighted_Pull-Ups.mp4',
     'Barbell Pendlay Rows':
-        'assets/Fitness Journey/Strength & Power/Workout 3 Upper Body Pull Strength/Barbell Pendlay Rows_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_3_Upper_Body_Pull_Strength/Barbell_Pendlay_Rows_.mp4',
     'Heavy Dumbbell Shrugs':
-        'assets/Fitness Journey/Strength & Power/Workout 3 Upper Body Pull Strength/Heavy Dumbbell Shrugs.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_3_Upper_Body_Pull_Strength/Heavy_Dumbbell_Shrugs.mp4',
     'Power Cleans':
-        'assets/Fitness Journey/Strength & Power/Workout 4 Explosive Power/Power Cleans.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/Power_Cleans.mp4',
     'Push Press':
-        'assets/Fitness Journey/Strength & Power/Workout 4 Explosive Power/Push Press.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/Push_Press.mp4',
     'Heavy Kettlebell Swings':
-        'assets/Fitness Journey/Strength & Power/Workout 4 Explosive Power/Heavy Kettlebell Swing.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/Heavy_Kettlebell_Swing.mp4',
     'Heavy Kettlebell Swing':
-        'assets/Fitness Journey/Strength & Power/Workout 4 Explosive Power/Heavy Kettlebell Swing.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/Heavy_Kettlebell_Swing.mp4',
     'Heavy Medicine Ball Throws':
-        'assets/Fitness Journey/Strength & Power/Workout 4 Explosive Power/Heavy Medicine Ball Throws_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/Heavy_Medicine_Ball_Throws_.mp4',
     'Barbell Romanian Deadlift':
-        'assets/Fitness Journey/Strength & Power/Workout 5 Posterior Chain Strength/Barbell Romanian Deadlift_.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_5_Posterior_Chain_Strength/Barbell_Romanian_Deadlift_.mp4',
     'Barbell Good Mornings':
-        'assets/Fitness Journey/Strength & Power/Workout 5 Posterior Chain Strength/Barbell Good Mornings.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_5_Posterior_Chain_Strength/Barbell_Good_Mornings.mp4',
     "Farmer's Walk":
-        'assets/Fitness Journey/Strength & Power/Workout 5 Posterior Chain Strength/Farmers Walk.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_5_Posterior_Chain_Strength/Farmers_Walk.mp4',
     'Glute-Ham Raises':
-        'assets/Fitness Journey/Strength & Power/Workout 5 Posterior Chain Strength/Glute-Ham Raises.mp4',
+        'assets/Fitness_Journey/Strength_&_Power/Workout_5_Posterior_Chain_Strength/Glute-Ham_Raises.mp4',
 
     // Muscular Endurance
     'Walking Lunges':
-        'assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/Walking Lunge.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/Walking_Lunge.mp4',
     'Walking Lunge':
-        'assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/Walking Lunge.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/Walking_Lunge.mp4',
     'Goblet Squats':
-        'assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/Goblet Squats.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/Goblet_Squats.mp4',
     'Wall Sits':
-        'assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/Wall Sits.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/Wall_Sits.mp4',
     'Box Step-Ups':
-        'assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/Box Step up.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/Box_Step_up.mp4',
     'Box Step up':
-        'assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/Box Step up.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/Box_Step_up.mp4',
     'Inverted Rows':
-        'assets/Fitness Journey/Muscular Endurance/Workout 2 Upper Body Endurance/Inverted Row.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_2_Upper_Body_Endurance/Inverted_Row.mp4',
     'Inverted Row':
-        'assets/Fitness Journey/Muscular Endurance/Workout 2 Upper Body Endurance/Inverted Row.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_2_Upper_Body_Endurance/Inverted_Row.mp4',
     'Light Dumbbell Shoulder Press':
-        'assets/Fitness Journey/Muscular Endurance/Workout 2 Upper Body Endurance/Light Dumbbell Shoulder Press_.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_2_Upper_Body_Endurance/Light_Dumbbell_Shoulder_Press_.mp4',
     'Lightweight Barbell Squats':
-        'assets/Fitness Journey/Muscular Endurance/Workout 3 High-Rep Full Body Challenge/Lightweight Barbell Squats.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_3_High-Rep_Full_Body_Challenge/Lightweight_Barbell_Squats.mp4',
     'TRX Rows':
-        'assets/Fitness Journey/Muscular Endurance/Workout 3 High-Rep Full Body Challenge/TRX Rows.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_3_High-Rep_Full_Body_Challenge/TRX_Rows.mp4',
     'Jumping Lunges':
-        'assets/Fitness Journey/Muscular Endurance/Workout 3 High-Rep Full Body Challenge/Jumping Lunges_.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_3_High-Rep_Full_Body_Challenge/Jumping_Lunges_.mp4',
     'Plank Holds':
-        'assets/Fitness Journey/Muscular Endurance/Workout 4 Core and Carry Endurance/Plank Holds.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/Plank_Holds.mp4',
     'Suitcase Carries':
-        'assets/Fitness Journey/Muscular Endurance/Workout 4 Core and Carry Endurance/Suitcase Carries.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/Suitcase_Carries.mp4',
     "Farmer's Carries":
-        'assets/Fitness Journey/Muscular Endurance/Workout 4 Core and Carry Endurance/Farmer\u2019s Carries.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/Farmer\u2019s_Carries.mp4',
     'Hollow Body Holds':
-        'assets/Fitness Journey/Muscular Endurance/Workout 4 Core and Carry Endurance/Hollow Body Hold.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/Hollow_Body_Hold.mp4',
     'Hollow Body Hold':
-        'assets/Fitness Journey/Muscular Endurance/Workout 4 Core and Carry Endurance/Hollow Body Hold.mp4',
+        'assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/Hollow_Body_Hold.mp4',
 
     // General Health & Wellness
     'Machine Chest Press':
-        'assets/Fitness Journey/General Health & Wellness/Workout 1 Beginner Machine Circuit/Machine Chest Press.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_1_Beginner_Machine_Circuit/Machine_Chest_Press.mp4',
     'Machine Leg Press':
-        'assets/Fitness Journey/General Health & Wellness/Workout 1 Beginner Machine Circuit/Machine Leg Press.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_1_Beginner_Machine_Circuit/Machine_Leg_Press.mp4',
     'Forearm Plank':
-        'assets/Fitness Journey/General Health & Wellness/Workout 2 Core Stability and Mobility/Forearm Plank.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/Forearm_Plank.mp4',
     'Cat-Cow Stretch':
-        'assets/Fitness Journey/General Health & Wellness/Workout 2 Core Stability and Mobility/Cat - Cow Stretch.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/Cat_-_Cow_Stretch.mp4',
     'Cat Cow Stretch':
-        'assets/Fitness Journey/General Health & Wellness/Workout 2 Core Stability and Mobility/Cat - Cow Stretch.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/Cat_-_Cow_Stretch.mp4',
     'Bird-Dog':
-        'assets/Fitness Journey/General Health & Wellness/Workout 2 Core Stability and Mobility/Bird Dog.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/Bird_Dog.mp4',
     'Bird Dog':
-        'assets/Fitness Journey/General Health & Wellness/Workout 2 Core Stability and Mobility/Bird Dog.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/Bird_Dog.mp4',
     'Light Stationary Bike':
-        'assets/Fitness Journey/General Health & Wellness/Workout 3 Active Recovery/Light Stationary Bike.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_3_Active_Recovery/Light_Stationary_Bike.mp4',
     'Swiss Ball Crunches':
-        'assets/Fitness Journey/General Health & Wellness/Workout 3 Active Recovery/Swiss Ball Crunch.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_3_Active_Recovery/Swiss_Ball_Crunch.mp4',
     'Swiss Ball Crunch':
-        'assets/Fitness Journey/General Health & Wellness/Workout 3 Active Recovery/Swiss Ball Crunch.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_3_Active_Recovery/Swiss_Ball_Crunch.mp4',
     'Standing Stretch Routine':
-        'assets/Fitness Journey/General Health & Wellness/Workout 3 Active Recovery/Standing Stretch Routine.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_3_Active_Recovery/Standing_Stretch_Routine.mp4',
     'Dumbbell Bicep Curls':
-        'assets/Fitness Journey/General Health & Wellness/Workout 4 Light Free Weights Introduction/Dumbbell Bicep Curls.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_4_Light_Free_Weights_Introduction/Dumbbell_Bicep_Curls.mp4',
     'Light Dumbbell Romanian Deadlift':
-        'assets/Fitness Journey/General Health & Wellness/Workout 4 Light Free Weights Introduction/Light Dumbbell Romanian Deadlift_.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_4_Light_Free_Weights_Introduction/Light_Dumbbell_Romanian_Deadlift_.mp4',
     'Triceps Dumbbell Kickbacks':
-        'assets/Fitness Journey/General Health & Wellness/Workout 4 Light Free Weights Introduction/Triceps Dumbbell Kickbacks.mp4',
+        'assets/Fitness_Journey/General_Health_&_Wellness/Workout_4_Light_Free_Weights_Introduction/Triceps_Dumbbell_Kickbacks.mp4',
   };
 
   static final Map<String, String> _fallbackVideoMapping = {
@@ -371,6 +371,7 @@ class VideoMappingService {
   static String _normalizeName(String name) {
     return name
         .toLowerCase()
+        .replaceAll('_', ' ') // Treat underscores as spaces
         .replaceAll(RegExp(r'[^\w\s]'), '') // Remove special characters
         .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
         .trim();

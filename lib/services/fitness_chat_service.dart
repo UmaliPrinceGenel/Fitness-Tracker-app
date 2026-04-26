@@ -100,8 +100,25 @@ class FitnessChatService {
       );
     }
 
-    // Mobile: try local model first.
+    // Mobile: check if model file exists but do NOT eagerly load it.
+    // Loading the native llama library allocates large blocks of native
+    // memory that can trigger the Android OOM killer in release builds
+    // (a process-level kill that Dart try/catch cannot intercept).
+    // The model will be loaded lazily if/when streamMessage() needs it.
     final location = await _modelStorageService.getModelLocation();
+
+    // If remote chat is available, prefer it and skip local prep entirely.
+    if (_remoteWebChatService.isConfigured) {
+      return ModelLocationState(
+        exists: true,
+        source: ModelPathSource.remoteHostedModel,
+        path: 'remote://fitness-chat',
+        suggestedPath: location.suggestedPath,
+      );
+    }
+
+    // No remote available — try to load local model (may still crash in
+    // release on low-memory devices, but there is no alternative).
     final modelPath = location.path;
     if (location.exists && modelPath != null) {
       await _runtimeService.ensureModelLoaded(modelPath);
@@ -189,7 +206,55 @@ class FitnessChatService {
       return;
     }
 
-    // Mobile: try local model first, fall back to remote.
+    // Mobile: use remote (Supabase edge function) as PRIMARY when available.
+    // The native llama library can trigger the Android OOM killer in release
+    // builds — a process-level kill that Dart try/catch cannot intercept.
+    // By calling remote first we avoid that crash entirely.
+    if (_remoteWebChatService.isConfigured) {
+      final remoteResult = await _remoteWebChatService.generateReply(
+        messages: chatMessages,
+      );
+      if (remoteResult.hasReply) {
+        yield remoteResult.reply!;
+        return;
+      }
+
+      // Remote failed — try local model as fallback.
+      final modelLocation = await _modelStorageService.getModelLocation();
+      final modelPath = modelLocation.path;
+      if (modelLocation.exists && modelPath != null) {
+        final messages = chatMessages
+            .map(
+              (message) => llama.ChatMessage(
+                role: message['role'] ?? 'user',
+                content: message['content'] ?? '',
+              ),
+            )
+            .toList(growable: false);
+
+        try {
+          yield* _runtimeService.generateChat(
+            modelPath: modelPath,
+            messages: messages,
+          );
+          return;
+        } catch (error, stackTrace) {
+          debugPrint('Mobile local chat fallback also failed: $error');
+          debugPrintStack(stackTrace: stackTrace);
+        }
+      }
+
+      // Both remote and local failed.
+      final reason = remoteResult.reason?.trim();
+      if (reason != null && reason.isNotEmpty) {
+        yield _buildHostedChatFailureReply([reason]);
+        return;
+      }
+      yield _hostedChatFailurePrefix;
+      return;
+    }
+
+    // No remote configured — local model only.
     final modelLocation = await _modelStorageService.getModelLocation();
     final modelPath = modelLocation.path;
     if (modelLocation.exists && modelPath != null) {
@@ -211,31 +276,9 @@ class FitnessChatService {
       } catch (error, stackTrace) {
         debugPrint('Mobile local chat failed: $error');
         debugPrintStack(stackTrace: stackTrace);
-
-        if (!_remoteWebChatService.isConfigured) {
-          yield 'The local mobile model could not respond. Restart the app and try again.';
-          return;
-        }
-      }
-    }
-
-    // Fallback to remote if local model unavailable or failed.
-    if (_remoteWebChatService.isConfigured) {
-      final remoteResult = await _remoteWebChatService.generateReply(
-        messages: chatMessages,
-      );
-      if (remoteResult.hasReply) {
-        yield remoteResult.reply!;
+        yield 'The local mobile model could not respond. Restart the app and try again.';
         return;
       }
-
-      final reason = remoteResult.reason?.trim();
-      if (reason != null && reason.isNotEmpty) {
-        yield _buildHostedChatFailureReply([reason]);
-        return;
-      }
-      yield _hostedChatFailurePrefix;
-      return;
     }
 
     final suggestedPath = modelLocation.suggestedPath;

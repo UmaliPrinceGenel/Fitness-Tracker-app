@@ -137,16 +137,12 @@ class LocalLlmRuntimeService {
   }) async* {
     final loadStatus = await ensureModelLoaded(modelPath);
     if (!loadStatus.isReady) {
-      if (loadStatus.message != null) {
-        yield loadStatus.message!;
-      }
-      return;
+      throw Exception(loadStatus.message ?? 'Failed to load local model.');
     }
 
     final controller = _controller;
     if (controller == null) {
-      yield 'Local model controller is unavailable.';
-      return;
+      throw Exception('Local model controller is unavailable.');
     }
 
     _updateStatus(

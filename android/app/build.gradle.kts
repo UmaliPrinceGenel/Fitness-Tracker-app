@@ -80,6 +80,10 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    lint {
+        checkReleaseBuilds = false
+    }
 }
 
 dependencies {

@@ -85,33 +85,33 @@ flutter:
   assets:
     - assets/
     - models/SmolLM-135M-Instruct.Q2_K.gguf
-    - assets/Fitness Journey/
-    - assets/Fitness Journey/Weight Loss/
-    - assets/Fitness Journey/Weight Loss/Workout 1 Full Body HIIT Circuit/
-    - assets/Fitness Journey/Weight Loss/Workout 2 Dumbbell Fat Burner/
-    - assets/Fitness Journey/Weight Loss/Workout 3 Metabolic Conditioning/
-    - assets/Fitness Journey/Weight Loss/Workout 4 Bodyweight Calorie Crusher/
-    - assets/Fitness Journey/Cardio/
-    - assets/Fitness Journey/Cardio/Workout 1 Gym Machine Intervals/
-    - assets/Fitness Journey/Cardio/Workout 2 Steady-State Cardio/
-    - assets/Fitness Journey/Cardio/Workout 3 Bodyweight Cardio Blast/
-    - assets/Fitness Journey/Cardio/Workout 4 Endurance Cardio Circuit/
-    - assets/Fitness Journey/Strength & Power/
-    - assets/Fitness Journey/Strength & Power/Workout 1 The Big Three/
-    - assets/Fitness Journey/Strength & Power/Workout 2 Upper Body Push Strength/
-    - assets/Fitness Journey/Strength & Power/Workout 3 Upper Body Pull Strength/
-    - assets/Fitness Journey/Strength & Power/Workout 4 Explosive Power/
-    - assets/Fitness Journey/Strength & Power/Workout 5 Posterior Chain Strength/
-    - assets/Fitness Journey/Muscular Endurance/
-    - assets/Fitness Journey/Muscular Endurance/Workout 1 Lower Body Stamina/
-    - assets/Fitness Journey/Muscular Endurance/Workout 2 Upper Body Endurance/
-    - assets/Fitness Journey/Muscular Endurance/Workout 3 High-Rep Full Body Challenge/
-    - assets/Fitness Journey/Muscular Endurance/Workout 4 Core and Carry Endurance/
-    - assets/Fitness Journey/General Health & Wellness/
-    - assets/Fitness Journey/General Health & Wellness/Workout 1 Beginner Machine Circuit/
-    - assets/Fitness Journey/General Health & Wellness/Workout 2 Core Stability and Mobility/
-    - assets/Fitness Journey/General Health & Wellness/Workout 3 Active Recovery/
-    - assets/Fitness Journey/General Health & Wellness/Workout 4 Light Free Weights Introduction/
+    - assets/Fitness_Journey/
+    - assets/Fitness_Journey/Weight_Loss/
+    - assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/
+    - assets/Fitness_Journey/Weight_Loss/Workout_2_Dumbbell_Fat_Burner/
+    - assets/Fitness_Journey/Weight_Loss/Workout_3_Metabolic_Conditioning/
+    - assets/Fitness_Journey/Weight_Loss/Workout_4_Bodyweight_Calorie_Crusher/
+    - assets/Fitness_Journey/Cardio/
+    - assets/Fitness_Journey/Cardio/Workout_1_Gym_Machine_Intervals/
+    - assets/Fitness_Journey/Cardio/Workout_2_Steady-State_Cardio/
+    - assets/Fitness_Journey/Cardio/Workout_3_Bodyweight_Cardio_Blast/
+    - assets/Fitness_Journey/Cardio/Workout_4_Endurance_Cardio_Circuit/
+    - assets/Fitness_Journey/Strength_&_Power/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_1_The_Big_Three/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_2_Upper_Body_Push_Strength/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_3_Upper_Body_Pull_Strength/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_4_Explosive_Power/
+    - assets/Fitness_Journey/Strength_&_Power/Workout_5_Posterior_Chain_Strength/
+    - assets/Fitness_Journey/Muscular_Endurance/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_1_Lower_Body_Stamina/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_2_Upper_Body_Endurance/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_3_High-Rep_Full_Body_Challenge/
+    - assets/Fitness_Journey/Muscular_Endurance/Workout_4_Core_and_Carry_Endurance/
+    - assets/Fitness_Journey/General_Health_&_Wellness/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_1_Beginner_Machine_Circuit/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_2_Core_Stability_and_Mobility/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_3_Active_Recovery/
+    - assets/Fitness_Journey/General_Health_&_Wellness/Workout_4_Light_Free_Weights_Introduction/
     - assets/default_picture.jpg
     - assets/thumbnails/
     - assets/thumbnails/Journeys/
@@ -179,4 +179,6 @@ flutter_launcher_icons:
   min_sdk_android: 21 # android min sdk min:16, default 21
   adaptive_icon_background: "#FFFFFF" # only available for android 8.0 devices and above
   adaptive_icon_foreground: "assets/logo.jpg"
+
+
 

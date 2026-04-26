@@ -18,6 +18,7 @@ import 'screens/admin_dashboard_screen.dart';
 // Remove the duplicate main function - keeping only one
 
 void main() async {
+  
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Supabase.initialize(
@@ -185,7 +186,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-// Your existing WelcomeScreen remains exactly the same...
+
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
