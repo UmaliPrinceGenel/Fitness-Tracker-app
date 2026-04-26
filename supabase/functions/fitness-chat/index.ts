@@ -234,7 +234,7 @@ async function requestProviderReply({
         model,
         messages,
         temperature: 0.65,
-        max_tokens: 320,
+        max_tokens: 1024,
       }),
     },
   );

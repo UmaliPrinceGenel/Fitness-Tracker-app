@@ -260,7 +260,12 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
   }
 
   Future<void> _prepareModel() async {
-    await _chatService.prepareModel();
+    try {
+      await _chatService.prepareModel();
+    } catch (error, stackTrace) {
+      debugPrint('Chatbot model preparation failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
     if (!mounted) {
       return;
     }

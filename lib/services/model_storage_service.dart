@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+
+import 'asset_copy_channel.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -150,25 +151,18 @@ class ModelStorageService {
       return targetFile.path;
     }
 
-    final bundledModel = await _loadBundledModelBytes();
-    if (bundledModel == null) {
-      return null;
-    }
-
-    await targetFile.parent.create(recursive: true);
-    await targetFile.writeAsBytes(
-      bundledModel.buffer.asUint8List(
-        bundledModel.offsetInBytes,
-        bundledModel.lengthInBytes,
-      ),
-      flush: true,
-    );
-    return targetFile.path;
-  }
-
-  Future<ByteData?> _loadBundledModelBytes() async {
+    // Use the platform channel to stream-copy the asset in small chunks
+    // instead of rootBundle.load() which loads the entire 84MB into Dart
+    // heap memory and can trigger the OOM killer on budget devices.
     try {
-      return await rootBundle.load(_defaultBundledModelAssetPath);
+      if (!Platform.isAndroid) {
+        return null;
+      }
+      final copied = await copyAssetToFile(
+        assetKey: _defaultBundledModelAssetPath,
+        destPath: suggestedPath,
+      );
+      return copied ? targetFile.path : null;
     } catch (_) {
       return null;
     }

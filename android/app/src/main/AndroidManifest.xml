@@ -3,6 +3,7 @@
         android:label="rockies_fitness_app"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
+        android:extractNativeLibs="true"
         android:largeHeap="true">
         <activity
             android:name=".MainActivity"

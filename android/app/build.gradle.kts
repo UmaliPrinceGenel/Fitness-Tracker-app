@@ -63,6 +63,8 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig =
                 if (hasKeyProperties || hasBundledKeystore) {
                     signingConfigs.getByName("release")
@@ -70,6 +72,12 @@ android {
                     // Fallback for local testing when no custom keystore exists yet.
                     signingConfigs.getByName("debug")
                 }
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }

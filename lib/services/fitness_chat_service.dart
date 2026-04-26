@@ -9,86 +9,27 @@ import 'model_storage_service.dart';
 import 'remote_fitness_chat_service.dart';
 import 'web_llm_runtime_bridge.dart';
 
-const String _fitnessOnlySystemPrompt = '''
-You are a fitness-only assistant for this workout tracking app.
-Only answer topics related to fitness, workouts, calories, recovery, sleep, mobility, and user progress.
-If the user asks about anything unrelated to fitness, politely refuse and redirect them back to fitness topics.
-Use only the supplied user context when referring to personal data.
-Do not invent user data.
-If the user asks about their own stats, nutrition, diet plan, profile, goals, workouts, streaks, calories, weight, BMI, sleep, or progress, answer only from the supplied app context.
-If the requested personal data is not present in the supplied context, clearly say that the data is not available in the app context.
-Do not answer coding, politics, history, entertainment, schoolwork, general trivia, or other non-fitness topics.
-Do not give medical diagnosis.
-Keep answers concise and practical.
+const String _fitnessSystemPrompt = '''
+You are a knowledgeable fitness and wellness assistant for the Rockies Fitness Gym Tracker app.
+
+SCOPE — you can help with:
+• Workouts, exercise form, training programs and routines
+• Nutrition, meal plans, diet plans, calorie counting, macros
+• Supplements, hydration, pre/post-workout nutrition
+• Weight management, body composition, BMI
+• Recovery, sleep optimization, stretching, mobility
+• Goal setting, progress tracking, motivation
+• General health and wellness related to fitness
+
+RULES:
+1. Give complete, actionable answers. Include specific exercises, sets/reps, meal suggestions, or calorie targets when relevant.
+2. Do NOT ask unnecessary follow-up questions. Provide your best answer with the available context. Only ask for clarification when truly essential information is missing.
+3. Use the supplied user context when referring to personal data. Do not invent user data.
+4. If the requested personal data is not in the supplied context, clearly say it is not available.
+5. Politely decline topics completely unrelated to fitness and wellness (e.g., coding, politics, history, entertainment, schoolwork).
+6. Do not give medical diagnoses or prescribe medication.
+7. Keep answers practical, well-structured, and easy to follow. Use bullet points or numbered lists for plans.
 ''';
-
-const Set<String> _allowedFitnessKeywords = {
-  'fitness',
-  'fit',
-  'workout',
-  'workouts',
-  'exercise',
-  'exercises',
-  'train',
-  'training',
-  'gym',
-  'strength',
-  'cardio',
-  'calories',
-  'calorie',
-  'weight',
-  'bmi',
-  'diet',
-  'height',
-  'steps',
-  'sleep',
-  'recovery',
-  'mobility',
-  'stretch',
-  'stretching',
-  'protein',
-  'nutrition',
-  'meal',
-  'meals',
-  'macro',
-  'macros',
-  'hydrate',
-  'hydration',
-  'water',
-  'fat',
-  'muscle',
-  'goal',
-  'goals',
-  'progress',
-  'streak',
-  'reps',
-  'sets',
-  'bench',
-  'squat',
-  'deadlift',
-  'run',
-  'running',
-  'walk',
-  'walking',
-  'jog',
-  'jogging',
-  'bodyweight',
-  'routine',
-  'plan',
-};
-
-const Set<String> _allowedGreetingMessages = {
-  'hi',
-  'hello',
-  'hey',
-  'yo',
-  'good morning',
-  'good afternoon',
-  'good evening',
-};
-
-const String _offTopicReply =
-    'I can only help with fitness topics and your app-based fitness data, such as workouts, calories, weight, BMI, sleep, goals, streaks, and progress.';
 const String _genericChatFailureReply =
     'Unable to generate a fitness reply right now. Please try again in a moment.';
 const String _webRuntimeFailureReply =
@@ -129,7 +70,7 @@ class FitnessChatService {
   ValueNotifier<LocalLlmRuntimeStatus> get runtimeStatus =>
       _runtimeService.status;
 
-  bool get isHostedChatEnabled => kIsWeb && _remoteWebChatService.isConfigured;
+  bool get isHostedChatEnabled => _remoteWebChatService.isConfigured;
 
   Future<ModelLocationState> getModelLocation() {
     return _modelStorageService.getModelLocation();
@@ -159,6 +100,7 @@ class FitnessChatService {
       );
     }
 
+    // Mobile: try local model first.
     final location = await _modelStorageService.getModelLocation();
     final modelPath = location.path;
     if (location.exists && modelPath != null) {
@@ -188,8 +130,7 @@ class FitnessChatService {
     required String userMessage,
     required List<FitnessChatTurn> history,
   }) async* {
-    if (!_isAllowedFitnessMessage(userMessage)) {
-      yield _offTopicReply;
+    if (userMessage.trim().isEmpty) {
       return;
     }
 
@@ -248,6 +189,7 @@ class FitnessChatService {
       return;
     }
 
+    // Mobile: try local model first, fall back to remote.
     final modelLocation = await _modelStorageService.getModelLocation();
     final modelPath = modelLocation.path;
     if (modelLocation.exists && modelPath != null) {
@@ -277,6 +219,7 @@ class FitnessChatService {
       }
     }
 
+    // Fallback to remote if local model unavailable or failed.
     if (_remoteWebChatService.isConfigured) {
       final remoteResult = await _remoteWebChatService.generateReply(
         messages: chatMessages,
@@ -303,7 +246,7 @@ class FitnessChatService {
 
   String _buildSystemPrompt(FitnessChatContext context) {
     return '''
-$_fitnessOnlySystemPrompt
+$_fitnessSystemPrompt
 
 ${context.toPromptBlock()}
 '''.trim();
@@ -318,9 +261,9 @@ ${context.toPromptBlock()}
         .where((turn) => turn.content.trim().isNotEmpty)
         .toList(growable: false);
 
-    final recentHistory = trimmedHistory.length <= 6
+    final recentHistory = trimmedHistory.length <= 10
         ? trimmedHistory
-        : trimmedHistory.sublist(trimmedHistory.length - 6);
+        : trimmedHistory.sublist(trimmedHistory.length - 10);
 
     final messages = <Map<String, String>>[
       {
@@ -366,24 +309,7 @@ ${context.toPromptBlock()}
     return '$_hostedChatFailurePrefix\n\n${normalizedReasons.join('\n\n')}';
   }
 
-  bool _isAllowedFitnessMessage(String message) {
-    final normalized = message.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      return false;
-    }
 
-    if (_allowedGreetingMessages.contains(normalized)) {
-      return true;
-    }
-
-    for (final keyword in _allowedFitnessKeywords) {
-      if (normalized.contains(keyword)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
 
   String get genericChatFailureReply => _genericChatFailureReply;
 }

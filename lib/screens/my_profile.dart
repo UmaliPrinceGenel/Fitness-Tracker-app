@@ -1,11 +1,11 @@
 import 'dart:typed_data';
-
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'progress_album_screen.dart';
 import 'about_app_screen.dart';
 import 'login_screen.dart';
@@ -1224,6 +1224,42 @@ class _MyProfileState extends State<MyProfile> {
                               ],
                             ),
                           ),
+                          
+                          // ✅ LOGOUT BUTTON - Mobile only
+                          if (!kIsWeb) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 20),
+                              child: ElevatedButton(
+                                onPressed: _logout,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.withOpacity(0.85),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 4,
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.logout, size: 22),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      "Logout",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                          
                           const SizedBox(height: 10),
                         ],
                       ),
