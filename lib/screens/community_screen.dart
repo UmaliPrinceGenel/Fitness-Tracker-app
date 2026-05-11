@@ -2075,11 +2075,20 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      height: MediaQuery.of(context).size.height * 0.8,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Sheet takes up to 80% of screen, but shrinks to make room for keyboard
+    final sheetHeight = (screenHeight * 0.8)
+        .clamp(0.0, screenHeight - keyboardHeight - 60);
+
+    return Padding(
+      // Pushes the whole sheet up when keyboard appears
+      padding: EdgeInsets.only(bottom: keyboardHeight),
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        height: sheetHeight,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 40,
@@ -2278,7 +2287,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           const SizedBox(height: 16),
         ],
       ),
-    );
+    ),  // Container
+    );  // Padding
   }
 }
 

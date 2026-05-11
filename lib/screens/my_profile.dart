@@ -442,6 +442,12 @@ class _MyProfileState extends State<MyProfile> {
             ),
           );
         }
+
+        // Sync new photo to all past posts and comments in background
+        _syncPostsWithProfile(
+          newUsername: _userData?['displayName']?.toString(),
+          newPhotoUrl: newAvatarUrl,
+        );
       }
     } catch (e) {
       print('Error changing profile picture: $e');
@@ -560,6 +566,9 @@ class _MyProfileState extends State<MyProfile> {
           ),
         );
       }
+
+      // Sync new name to all past posts and comments in background
+      _syncPostsWithProfile(newUsername: newName, newPhotoUrl: _profileImageUrl);
     } catch (e) {
       print('Error updating display name: $e');
       if (mounted) {
@@ -576,6 +585,72 @@ class _MyProfileState extends State<MyProfile> {
           _isUpdatingProfile = false;
         });
       }
+    }
+  }
+
+  /// ✅ Sync updated name/photo to all past community posts and comments
+  Future<void> _syncPostsWithProfile({
+    String? newUsername,
+    String? newPhotoUrl,
+  }) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) return;
+
+      final postsSnapshot = await _firestore
+          .collection('community_posts')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      if (postsSnapshot.docs.isEmpty) return;
+
+      // Build the update map for posts
+      final Map<String, dynamic> postUpdate = {};
+      if (newUsername != null) postUpdate['username'] = newUsername;
+      if (newPhotoUrl != null) postUpdate['profileImage'] = newPhotoUrl;
+
+      if (postUpdate.isEmpty) return;
+
+      // Batch update posts (Firestore max 500 per batch)
+      const int batchLimit = 400;
+      final allPostDocs = postsSnapshot.docs;
+
+      for (int i = 0; i < allPostDocs.length; i += batchLimit) {
+        final chunk = allPostDocs.sublist(
+          i,
+          (i + batchLimit).clamp(0, allPostDocs.length),
+        );
+        final batch = _firestore.batch();
+        for (final postDoc in chunk) {
+          batch.update(postDoc.reference, postUpdate);
+        }
+        await batch.commit();
+      }
+      print('✅ Synced ${allPostDocs.length} posts with new profile data');
+
+      // Sync comments — query all posts, then update matching comments
+      for (final postDoc in allPostDocs) {
+        try {
+          final commentsSnapshot = await postDoc.reference
+              .collection('comments')
+              .where('userId', isEqualTo: user.uid)
+              .get();
+
+          if (commentsSnapshot.docs.isEmpty) continue;
+
+          final commentBatch = _firestore.batch();
+          for (final commentDoc in commentsSnapshot.docs) {
+            commentBatch.update(commentDoc.reference, postUpdate);
+          }
+          await commentBatch.commit();
+        } catch (e) {
+          print('⚠️ Could not sync comments for post ${postDoc.id}: $e');
+        }
+      }
+      print('✅ Synced comments with new profile data');
+    } catch (e) {
+      print('⚠️ Error syncing posts with profile: $e');
+      // Non-critical — don't surface to user
     }
   }
 
