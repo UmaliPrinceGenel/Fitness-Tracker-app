@@ -10,6 +10,7 @@ import 'admin_feedback_screen.dart';
 import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
 import 'community_member_profile_screen.dart';
+import 'community_screen.dart';
 import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -98,7 +99,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final postsSnapshot = results[1] as QuerySnapshot<Map<String, dynamic>>;
       final feedbackSnapshot = results[2] as QuerySnapshot<Map<String, dynamic>>;
 
-      final users = usersSnapshot.docs.map((doc) {
+      final users = usersSnapshot.docs
+          .where((doc) => doc.data()['emailVerified'] == true)
+          .map((doc) {
         final data = doc.data();
         final profile = data['profile'];
         final profileMap =
@@ -222,6 +225,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return DateFormat('MMM d, yyyy - hh:mm a').format(value.toDate());
     }
     return 'Unknown date';
+  }
+
+  void _showVideoPlayer(String videoUrl) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            VideoPlayerOverlay(videoUrl: videoUrl),
+      ),
+    );
   }
 
   void _openUserProfile(Map<String, dynamic> user) {
@@ -716,14 +729,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       padding: EdgeInsets.only(
                         right: index == videoUrls.length - 1 ? 0 : 10,
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: SizedBox(
-                          width: 210,
-                          child: Container(
-                            color: Colors.black26,
-                            child: const Center(
-                              child: Icon(Icons.videocam, color: Colors.white38, size: 34),
+                      child: GestureDetector(
+                        onTap: () => _showVideoPlayer(videoUrls[index]),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            width: 210,
+                            child: VideoThumbnailWidget(
+                              videoUrl: videoUrls[index],
                             ),
                           ),
                         ),

@@ -79,3 +79,5 @@ app.*.map.json
 
 models/
 *.gguf
+*.hprof
+

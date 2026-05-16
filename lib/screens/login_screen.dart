@@ -137,6 +137,18 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
+        // Reload user to get latest emailVerified status from Firebase Auth
+        await user.reload();
+        final refreshedUser = _firebaseAuth.currentUser;
+        final isVerified = refreshedUser?.emailVerified ?? false;
+
+        // Sync emailVerified to Firestore whenever it's true but not yet saved
+        if (isVerified && userData['emailVerified'] != true) {
+          await _firestore.collection('users').doc(user.uid).update({
+            'emailVerified': true,
+          });
+        }
+
         final hasCompletedProfile = userData['hasCompletedProfile'] ?? false;
 
         if (hasCompletedProfile) {

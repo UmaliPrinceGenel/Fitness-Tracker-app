@@ -81,7 +81,8 @@ class _MyProfileState extends State<MyProfile> {
 
   bool _isPlaceholderProfileUrl(String? url) {
     final normalizedUrl = url?.trim() ?? '';
-    return normalizedUrl.isEmpty || normalizedUrl.contains('via.placeholder.com');
+    return normalizedUrl.isEmpty ||
+        normalizedUrl.contains('via.placeholder.com');
   }
 
   Widget _buildProfileAvatar(double size) {
@@ -117,8 +118,9 @@ class _MyProfileState extends State<MyProfile> {
           final userData = userDoc.data();
           final storedPhotoUrl =
               userData?['photoURL'] ?? userData?['profile']?['photoURL'];
-          final hasPlaceholderPhoto =
-              !_isPlaceholderProfileUrl(storedPhotoUrl) ? false : (storedPhotoUrl?.toString().trim().isNotEmpty ?? false);
+          final hasPlaceholderPhoto = !_isPlaceholderProfileUrl(storedPhotoUrl)
+              ? false
+              : (storedPhotoUrl?.toString().trim().isNotEmpty ?? false);
 
           if (hasPlaceholderPhoto) {
             await _firestore.collection('users').doc(user.uid).update({
@@ -129,8 +131,9 @@ class _MyProfileState extends State<MyProfile> {
 
           setState(() {
             _userData = userData;
-            _profileImageUrl =
-                _isPlaceholderProfileUrl(storedPhotoUrl) ? null : storedPhotoUrl;
+            _profileImageUrl = _isPlaceholderProfileUrl(storedPhotoUrl)
+                ? null
+                : storedPhotoUrl;
           });
         }
       }
@@ -282,8 +285,9 @@ class _MyProfileState extends State<MyProfile> {
 
   String _formatProfileMetric(String key, String unit) {
     final value = _safeProfileNumber(key);
-    final formatted =
-        value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    final formatted = value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(1);
     return '$formatted $unit';
   }
 
@@ -384,7 +388,7 @@ class _MyProfileState extends State<MyProfile> {
   }
 
   /// ✅ FIXED: Change profile picture - USE BYTES LIKE SIGNUP SCREEN
- Future<void> _changeProfilePicture() async {
+  Future<void> _changeProfilePicture() async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -568,7 +572,10 @@ class _MyProfileState extends State<MyProfile> {
       }
 
       // Sync new name to all past posts and comments in background
-      _syncPostsWithProfile(newUsername: newName, newPhotoUrl: _profileImageUrl);
+      _syncPostsWithProfile(
+        newUsername: newName,
+        newPhotoUrl: _profileImageUrl,
+      );
     } catch (e) {
       print('Error updating display name: $e');
       if (mounted) {
@@ -597,59 +604,68 @@ class _MyProfileState extends State<MyProfile> {
       final user = _firebaseAuth.currentUser;
       if (user == null) return;
 
+      // Build the update map
+      final Map<String, dynamic> profileUpdate = {};
+      if (newUsername != null) profileUpdate['username'] = newUsername;
+      if (newPhotoUrl != null) profileUpdate['profileImage'] = newPhotoUrl;
+
+      if (profileUpdate.isEmpty) return;
+
+      // ── 1. Update all posts authored by this user ──────────────────────────
       final postsSnapshot = await _firestore
           .collection('community_posts')
           .where('userId', isEqualTo: user.uid)
           .get();
 
-      if (postsSnapshot.docs.isEmpty) return;
+      if (postsSnapshot.docs.isNotEmpty) {
+        const int batchLimit = 400;
+        final allPostDocs = postsSnapshot.docs;
 
-      // Build the update map for posts
-      final Map<String, dynamic> postUpdate = {};
-      if (newUsername != null) postUpdate['username'] = newUsername;
-      if (newPhotoUrl != null) postUpdate['profileImage'] = newPhotoUrl;
-
-      if (postUpdate.isEmpty) return;
-
-      // Batch update posts (Firestore max 500 per batch)
-      const int batchLimit = 400;
-      final allPostDocs = postsSnapshot.docs;
-
-      for (int i = 0; i < allPostDocs.length; i += batchLimit) {
-        final chunk = allPostDocs.sublist(
-          i,
-          (i + batchLimit).clamp(0, allPostDocs.length),
-        );
-        final batch = _firestore.batch();
-        for (final postDoc in chunk) {
-          batch.update(postDoc.reference, postUpdate);
-        }
-        await batch.commit();
-      }
-      print('✅ Synced ${allPostDocs.length} posts with new profile data');
-
-      // Sync comments — query all posts, then update matching comments
-      for (final postDoc in allPostDocs) {
-        try {
-          final commentsSnapshot = await postDoc.reference
-              .collection('comments')
-              .where('userId', isEqualTo: user.uid)
-              .get();
-
-          if (commentsSnapshot.docs.isEmpty) continue;
-
-          final commentBatch = _firestore.batch();
-          for (final commentDoc in commentsSnapshot.docs) {
-            commentBatch.update(commentDoc.reference, postUpdate);
+        for (int i = 0; i < allPostDocs.length; i += batchLimit) {
+          final chunk = allPostDocs.sublist(
+            i,
+            (i + batchLimit).clamp(0, allPostDocs.length),
+          );
+          final batch = _firestore.batch();
+          for (final postDoc in chunk) {
+            batch.update(postDoc.reference, profileUpdate);
           }
-          await commentBatch.commit();
-        } catch (e) {
-          print('⚠️ Could not sync comments for post ${postDoc.id}: $e');
+          await batch.commit();
         }
+        print('✅ Synced ${allPostDocs.length} posts with new profile data');
       }
-      print('✅ Synced comments with new profile data');
+
+      // ── 2. Update ALL comments by this user across EVERY post ─────────────
+      // collectionGroup queries every 'comments' subcollection in Firestore,
+      // so it catches comments on other users' posts too.
+      final allCommentsSnapshot = await _firestore
+          .collectionGroup('comments')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      if (allCommentsSnapshot.docs.isNotEmpty) {
+        const int batchLimit = 400;
+        final allCommentDocs = allCommentsSnapshot.docs;
+
+        for (int i = 0; i < allCommentDocs.length; i += batchLimit) {
+          final chunk = allCommentDocs.sublist(
+            i,
+            (i + batchLimit).clamp(0, allCommentDocs.length),
+          );
+          final batch = _firestore.batch();
+          for (final commentDoc in chunk) {
+            batch.update(commentDoc.reference, profileUpdate);
+          }
+          await batch.commit();
+        }
+        print(
+          '✅ Synced ${allCommentDocs.length} comments with new profile data',
+        );
+      } else {
+        print('ℹ️ No comments found to sync');
+      }
     } catch (e) {
-      print('⚠️ Error syncing posts with profile: $e');
+      print('⚠️ Error syncing posts/comments with profile: $e');
       // Non-critical — don't surface to user
     }
   }
@@ -721,9 +737,7 @@ class _MyProfileState extends State<MyProfile> {
   void _navigateToAboutApp() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const AboutThisAppScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const AboutThisAppScreen()),
     );
   }
 
@@ -822,529 +836,569 @@ class _MyProfileState extends State<MyProfile> {
           SafeArea(
             child: CustomScrollView(
               slivers: [
-            SliverAppBar(
-              backgroundColor: Colors.black,
-              pinned: true,
-              floating: false,
-              snap: false,
-              automaticallyImplyLeading: false,
-              title: const Text(
-                "Profile",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                SliverAppBar(
+                  backgroundColor: Colors.black,
+                  pinned: true,
+                  floating: false,
+                  snap: false,
+                  automaticallyImplyLeading: false,
+                  title: const Text(
+                    "Profile",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ),
 
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.orange,
-                          ),
-                        ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: _changeProfilePicture,
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 80,
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: const LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [Colors.blue, Colors.purple],
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.3,
-                                            ),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 5),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ClipOval(
-                                        child: _buildProfileAvatar(80),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 0,
-                                      right: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.orange,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.edit,
-                                          color: Colors.black,
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    if (_isUpdatingProfile)
-                                      Positioned.fill(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.45),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Center(
-                                            child: SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2.4,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<Color>(
-                                                  Colors.orange,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: _changeDisplayName,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              _userData?['displayName'] ??
-                                                  'User',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 26,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Icon(
-                                            Icons.edit,
-                                            color: Colors.orange,
-                                            size: 16,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            _userData?['profile']?['gender'] ??
-                                                'Not set',
-                                            style: const TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const Text(
-                                            " | ",
-                                            style: TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          Text(
-                                            _formatProfileMetric('height', 'cm'),
-                                            style: const TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const Text(
-                                            " | ",
-                                            style: TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          Text(
-                                            "${_calculateAge()?.toString() ?? '?'} yrs",
-                                            style: const TextStyle(
-                                              color: Colors.white60,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
-                            child: Text(
-                              "Health Stats",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.orange,
                               ),
                             ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildHealthCard(
-                                value: _formatProfileMetric('weight', 'kg'),
-                                label: "Weight",
-                                icon: Icons.monitor_weight,
-                                progressValue: _weightProgress(),
-                                color: Colors.green,
-                              ),
-                              const SizedBox(width: 12),
-                              _buildHealthCard(
-                                value: _formatProfileMetric('height', 'cm'),
-                                label: "Height",
-                                icon: Icons.height,
-                                progressValue: _heightProgress(),
-                                color: Colors.blue,
-                              ),
-                              const SizedBox(width: 12),
-                              _buildHealthCard(
-                                value: _calculateBMI()?.toString() ?? '0',
-                                label: "BMI",
-                                icon: Icons.monitor_heart,
-                                progressValue: _bmiProgress(),
-                                color: Colors.orange,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          // Progress Album card
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF141414),
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(color: Colors.white10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Row(
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: _changeProfilePicture,
+                                    child: Stack(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(10),
+                                          width: 80,
+                                          height: 80,
                                           decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.14),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                            shape: BoxShape.circle,
+                                            gradient: const LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                Colors.blue,
+                                                Colors.purple,
+                                              ],
                                             ),
-                                            border: Border.all(
-                                              color: Colors.blue.withOpacity(0.22),
-                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(
+                                                  0.3,
+                                                ),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 5),
+                                              ),
+                                            ],
                                           ),
-                                          child: const Icon(
-                                            Icons.photo_library_outlined,
-                                            color: Colors.blue,
-                                            size: 22,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        const Flexible(
-                                          child: Text(
-                                            "Progress Album",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                          child: ClipOval(
+                                            child: _buildProfileAvatar(80),
                                           ),
                                         ),
+                                        Positioned(
+                                          bottom: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.orange,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.edit,
+                                              color: Colors.black,
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                        if (_isUpdatingProfile)
+                                          Positioned.fill(
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withOpacity(
+                                                  0.45,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Center(
+                                                child: SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.4,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                          Color
+                                                        >(Colors.orange),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                       ],
                                     ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: _navigateToProgressAlbum,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(0xFF3EA6FF).withOpacity(0.22),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Text(
-                                          "View",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  "Latest photo from your album",
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 13,
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                Container(
-                                  width: double.infinity,
-                                  height: 208,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF202020),
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.white10),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(18),
-                                    child: _recentProgressImage != null
-                                        ? Image.network(
-                                            _recentProgressImage!,
-                                            fit: BoxFit.cover,
-                                            loadingBuilder: (context, child, loadingProgress) {
-                                              if (loadingProgress == null)
-                                                return child;
-                                              return Center(
-                                                child: CircularProgressIndicator(
-                                                  value:
-                                                      loadingProgress
-                                                              .expectedTotalBytes !=
-                                                          null
-                                                      ? loadingProgress
-                                                                .cumulativeBytesLoaded /
-                                                            loadingProgress
-                                                                .expectedTotalBytes!
-                                                      : null,
-                                                  valueColor:
-                                                      const AlwaysStoppedAnimation<
-                                                        Color
-                                                      >(Colors.blue),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: _changeDisplayName,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  _userData?['displayName'] ??
+                                                      'User',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 26,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
-                                              );
-                                            },
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                                  return _buildFallbackImage();
-                                                },
-                                          )
-                                        : _buildFallbackImage(),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Icon(
+                                                Icons.edit,
+                                                color: Colors.orange,
+                                                size: 16,
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                _userData?['profile']?['gender'] ??
+                                                    'Not set',
+                                                style: const TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              const Text(
+                                                " | ",
+                                                style: TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              Text(
+                                                _formatProfileMetric(
+                                                  'height',
+                                                  'cm',
+                                                ),
+                                                style: const TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              const Text(
+                                                " | ",
+                                                style: TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              Text(
+                                                "${_calculateAge()?.toString() ?? '?'} yrs",
+                                                style: const TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Padding(
+                                padding: EdgeInsets.only(
+                                  left: 8.0,
+                                  bottom: 8.0,
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Settings card
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "App Information",
+                                child: Text(
+                                  "Health Stats",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                // Version
-                                _buildSettingsItem(
-                                  icon: Icons.info,
-                                  title: "Version",
-                                  color: const Color.fromARGB(
-                                    255,
-                                    112,
-                                    90,
-                                    221,
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _buildHealthCard(
+                                    value: _formatProfileMetric('weight', 'kg'),
+                                    label: "Weight",
+                                    icon: Icons.monitor_weight,
+                                    progressValue: _weightProgress(),
+                                    color: Colors.green,
                                   ),
-                                  trailing: const Text(
-                                    "DEV0.0.5",
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 16,
+                                  const SizedBox(width: 12),
+                                  _buildHealthCard(
+                                    value: _formatProfileMetric('height', 'cm'),
+                                    label: "Height",
+                                    icon: Icons.height,
+                                    progressValue: _heightProgress(),
+                                    color: Colors.blue,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _buildHealthCard(
+                                    value: _calculateBMI()?.toString() ?? '0',
+                                    label: "BMI",
+                                    icon: Icons.monitor_heart,
+                                    progressValue: _bmiProgress(),
+                                    color: Colors.orange,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              // Progress Album card
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF141414),
+                                  borderRadius: BorderRadius.circular(22),
+                                  border: Border.all(color: Colors.white10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                // About this app
-                                GestureDetector(
-                                  onTap: _navigateToAboutApp,
-                                  child: _buildSettingsItem(
-                                    icon: Icons.info_outline,
-                                    title: "About this app",
-                                    color: Colors.lightBlue,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _isFeedbackExpanded = !_isFeedbackExpanded;
-                                    });
-                                  },
-                                  child: _buildSettingsItem(
-                                    icon: Icons.rate_review_outlined,
-                                    title: "User Feedback",
-                                    color: Colors.amber,
-                                    trailing: AnimatedRotation(
-                                      turns: _isFeedbackExpanded ? 0.5 : 0,
-                                      duration: const Duration(milliseconds: 280),
-                                      curve: Curves.easeInOut,
-                                      child: Icon(
-                                        Icons.keyboard_arrow_down,
-                                        color: Colors.grey[500],
-                                        size: 22,
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  10,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue
+                                                      .withOpacity(0.14),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: Colors.blue
+                                                        .withOpacity(0.22),
+                                                  ),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.photo_library_outlined,
+                                                  color: Colors.blue,
+                                                  size: 22,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              const Flexible(
+                                                child: Text(
+                                                  "Progress Album",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: _navigateToProgressAlbum,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: const LinearGradient(
+                                                colors: [
+                                                  Color(0xFF3EA6FF),
+                                                  Color(0xFF67C3FF),
+                                                ],
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: const Color(
+                                                    0xFF3EA6FF,
+                                                  ).withOpacity(0.22),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Text(
+                                              "View",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      "Latest photo from your album",
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 13,
                                       ),
                                     ),
-                                  ),
-                                ),
-                                ClipRect(
-                                  child: AnimatedSize(
-                                    duration: const Duration(milliseconds: 320),
-                                    curve: Curves.easeInOutCubic,
-                                    alignment: Alignment.topCenter,
-                                    child: AnimatedSlide(
-                                      duration: const Duration(milliseconds: 320),
-                                      curve: Curves.easeInOutCubic,
-                                      offset: _isFeedbackExpanded
-                                          ? Offset.zero
-                                          : const Offset(0, -0.08),
-                                      child: _isFeedbackExpanded
-                                          ? Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 12,
-                                              ),
-                                              child: _buildFeedbackCard(),
-                                            )
-                                          : const SizedBox.shrink(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // ✅ LOGOUT BUTTON - Mobile only
-                          if (!kIsWeb) ...[
-                            const SizedBox(height: 10),
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 20),
-                              child: ElevatedButton(
-                                onPressed: _logout,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red.withOpacity(0.85),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  elevation: 4,
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.logout, size: 22),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      "Logout",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: double.infinity,
+                                      height: 208,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF202020),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: Colors.white10,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.2,
+                                            ),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: _recentProgressImage != null
+                                            ? Image.network(
+                                                _recentProgressImage!,
+                                                fit: BoxFit.cover,
+                                                loadingBuilder: (context, child, loadingProgress) {
+                                                  if (loadingProgress == null)
+                                                    return child;
+                                                  return Center(
+                                                    child: CircularProgressIndicator(
+                                                      value:
+                                                          loadingProgress
+                                                                  .expectedTotalBytes !=
+                                                              null
+                                                          ? loadingProgress
+                                                                    .cumulativeBytesLoaded /
+                                                                loadingProgress
+                                                                    .expectedTotalBytes!
+                                                          : null,
+                                                      valueColor:
+                                                          const AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.blue),
+                                                    ),
+                                                  );
+                                                },
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) {
+                                                      return _buildFallbackImage();
+                                                    },
+                                              )
+                                            : _buildFallbackImage(),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                          
-                          const SizedBox(height: 10),
-                        ],
-                      ),
-              ),
-            ),
+                              const SizedBox(height: 10),
+
+                              // Settings card
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF191919),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "App Information",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Version
+                                    _buildSettingsItem(
+                                      icon: Icons.info,
+                                      title: "Version",
+                                      color: const Color.fromARGB(
+                                        255,
+                                        112,
+                                        90,
+                                        221,
+                                      ),
+                                      trailing: const Text(
+                                        "DEV0.0.5",
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // About this app
+                                    GestureDetector(
+                                      onTap: _navigateToAboutApp,
+                                      child: _buildSettingsItem(
+                                        icon: Icons.info_outline,
+                                        title: "About this app",
+                                        color: Colors.lightBlue,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _isFeedbackExpanded =
+                                              !_isFeedbackExpanded;
+                                        });
+                                      },
+                                      child: _buildSettingsItem(
+                                        icon: Icons.rate_review_outlined,
+                                        title: "User Feedback",
+                                        color: Colors.amber,
+                                        trailing: AnimatedRotation(
+                                          turns: _isFeedbackExpanded ? 0.5 : 0,
+                                          duration: const Duration(
+                                            milliseconds: 280,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                          child: Icon(
+                                            Icons.keyboard_arrow_down,
+                                            color: Colors.grey[500],
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    ClipRect(
+                                      child: AnimatedSize(
+                                        duration: const Duration(
+                                          milliseconds: 320,
+                                        ),
+                                        curve: Curves.easeInOutCubic,
+                                        alignment: Alignment.topCenter,
+                                        child: AnimatedSlide(
+                                          duration: const Duration(
+                                            milliseconds: 320,
+                                          ),
+                                          curve: Curves.easeInOutCubic,
+                                          offset: _isFeedbackExpanded
+                                              ? Offset.zero
+                                              : const Offset(0, -0.08),
+                                          child: _isFeedbackExpanded
+                                              ? Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 12,
+                                                      ),
+                                                  child: _buildFeedbackCard(),
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // ✅ LOGOUT BUTTON - Mobile only
+                              if (!kIsWeb) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  child: ElevatedButton(
+                                    onPressed: _logout,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.withOpacity(
+                                        0.85,
+                                      ),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      elevation: 4,
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.logout, size: 22),
+                                        SizedBox(width: 12),
+                                        Text(
+                                          "Logout",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+
+                              const SizedBox(height: 10),
+                            ],
+                          ),
+                  ),
+                ),
               ],
             ),
           ),
-          if (widget.showChatbot)
-            const ChatbotLauncher(title: 'Profile Chat'),
+          if (widget.showChatbot) const ChatbotLauncher(title: 'Profile Chat'),
         ],
       ),
     );
@@ -1374,7 +1428,11 @@ class _MyProfileState extends State<MyProfile> {
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.photo_library_outlined, color: Colors.white70, size: 42),
+                  Icon(
+                    Icons.photo_library_outlined,
+                    color: Colors.white70,
+                    size: 42,
+                  ),
                   SizedBox(height: 10),
                   Text(
                     "No progress photos yet",
@@ -1473,8 +1531,10 @@ class _MyProfileState extends State<MyProfile> {
                       },
                 borderRadius: BorderRadius.circular(999),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Colors.amber.withOpacity(0.16)
@@ -1541,8 +1601,7 @@ class _MyProfileState extends State<MyProfile> {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.black),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                       ),
                     )
                   : const Icon(Icons.send_rounded),
