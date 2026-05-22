@@ -9,7 +9,7 @@ import '../services/fitness_chat_service.dart';
 
 const double _chatbotButtonSize = 56;
 const double _chatbotEdgeInset = 12;
-const double _chatbotSideSwitchThreshold = 36;
+const double _chatbotSideSwitchThreshold = 90;
 const String _chatHistoryPreferenceKey = 'fitness_chat_history_v1';
 const String _chatbotIntroText =
     'Hi! I am your fitness assistant. Ask about workouts, calories, sleep, goals, or progress.';

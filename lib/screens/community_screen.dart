@@ -1346,14 +1346,19 @@ class _PostCardState extends State<PostCard>
             ),
           // Post media
           if (allMedia.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-              width: double.infinity,
-              height: 260,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                color: Colors.grey[850],
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final mediaHeight = kIsWeb
+                    ? (constraints.maxWidth * 9 / 16).clamp(200.0, 320.0)
+                    : 260.0;
+                return Container(
+                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                  width: double.infinity,
+                  height: mediaHeight,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: Colors.grey[850],
+                  ),
               child: Stack(
                 children: [
                   // Show media gallery
@@ -1511,6 +1516,8 @@ class _PostCardState extends State<PostCard>
                     ),
                 ],
               ),
+                );
+              },
             ),
           // Engagement metrics
           Container(

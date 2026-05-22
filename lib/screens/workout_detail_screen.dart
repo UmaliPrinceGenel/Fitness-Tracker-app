@@ -228,27 +228,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
           ),
           centerTitle: true,
-          actions: [
-            PopupMenuButton<String>(
-              onSelected: (String choice) {
-                if (choice == 'reset') {
-                  _showResetConfirmationDialog();
-                }
-              },
-              itemBuilder: (BuildContext context) {
-                return {
-                  if (_isWorkoutCompleted) // Only show reset option if workout is completed
-                    'reset': 'Reset Workout Status',
-                }.entries.map((entry) {
-                  return PopupMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  );
-                }).toList();
-              },
-              icon: Icon(Icons.more_vert, color: Colors.white),
-            ),
-          ],
         ),
         body: SafeArea(
           child: Align(

@@ -1076,11 +1076,14 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
@@ -1219,6 +1222,8 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                     ),
                   ),
               ],
+                ),
+              ),
             ),
           ),
         ),

@@ -844,15 +844,36 @@ class _HealthDashboardState extends State<HealthDashboard>
       case 1:
         return const WorkoutScreen(showChatbot: false);
       case 2:
-        return const CommunityScreen(showChatbot: false);
+        return _buildWebCenteredPanel(
+          const CommunityScreen(showChatbot: false),
+        );
       case 3:
-        return MyProfile(
-          refreshVersion: _profileRefreshVersion,
-          showChatbot: false,
+        return _buildWebCenteredPanel(
+          MyProfile(
+            refreshVersion: _profileRefreshVersion,
+            showChatbot: false,
+          ),
         );
       default:
         return _buildWebHealthPanel();
     }
+  }
+
+  /// Wraps a screen in a centered, max-width container for desktop web.
+  /// This constrains wide pages (Community, Profile) so they don't stretch
+  /// across the entire panel on large screens. Mobile is unaffected because
+  /// it never calls this method.
+  Widget _buildWebCenteredPanel(Widget child) {
+    return Container(
+      color: Colors.black,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 780),
+          child: child,
+        ),
+      ),
+    );
   }
 
   Widget _buildWebHealthPanel() {
