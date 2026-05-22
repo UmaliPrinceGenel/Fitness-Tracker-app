@@ -309,20 +309,38 @@ class _DetailScreenState extends State<DetailScreen> {
                         .toDouble()
                     : (healthData['waistMeasurement'] ?? 0.0).toDouble();
                 _goalData = 80.0;
-                // Use subcollection data if main history is empty (Android compatibility)
-                List<double> waistHistoryFromSubcollection = [];
+
+                // Use subcollection data with real timestamps (Android compatible)
+                _historicalData = [];
+                _historicalDates = [];
                 for (var doc in waistHistorySnapshot.docs) {
                   final data = doc.data();
-                  waistHistoryFromSubcollection.add((data['waist'] ?? 0.0).toDouble());
+                  final waistValue = (data['waist'] ?? 0.0).toDouble();
+                  DateTime? waistDate;
+                  final dateValue = data['date'];
+                  final tsValue = data['timestamp'];
+                  if (dateValue is Timestamp) {
+                    waistDate = dateValue.toDate();
+                  } else if (dateValue is DateTime) {
+                    waistDate = dateValue;
+                  } else if (tsValue is Timestamp) {
+                    waistDate = tsValue.toDate();
+                  }
+                  if (waistDate != null) {
+                    _historicalData.add(waistValue);
+                    _historicalDates.add(waistDate);
+                  }
                 }
-                waistHistoryFromSubcollection = waistHistoryFromSubcollection.reversed.toList(); // Chronological order
 
-                _historicalData = waistHistoryFromSubcollection.isEmpty
-                    ? List<double>.from(healthData['waistHistory'] ?? [])
-                    : waistHistoryFromSubcollection;
-
-                // Generate dates for the historical data
-                _historicalDates = _generateDatesForHistory(_historicalData.length);
+                if (_historicalData.isEmpty) {
+                  // Fallback to legacy array if no subcollection data
+                  _historicalData = List<double>.from(healthData['waistHistory'] ?? []);
+                  _historicalDates = _generateDatesForHistory(_historicalData.length);
+                } else {
+                  // Reverse to chronological order (oldest → newest)
+                  _historicalData = _historicalData.reversed.toList();
+                  _historicalDates = _historicalDates.reversed.toList();
+                }
                 break;
               case "Weight":
                 _currentData = weightHistorySnapshot.docs.isNotEmpty
@@ -1116,7 +1134,7 @@ class _DetailScreenState extends State<DetailScreen> {
           .doc(DateTime.now().toIso8601String())
           .set({
             'waist': newValue,
-            'date': DateTime.now(),
+            'date': Timestamp.fromDate(DateTime.now()),
             'timestamp': FieldValue.serverTimestamp(),
           });
     }
