@@ -57,7 +57,9 @@ dependencies:
   url_launcher: ^6.3.2
   file_picker: ^11.0.2
   path_provider: ^2.1.5
+  provider: ^6.1.2
   llama_flutter_android: ^0.2.3
+  flutter_markdown: ^0.7.2
 
 dev_dependencies:
   flutter_test:
@@ -84,7 +86,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
-    - models/SmolLM-135M-Instruct.Q2_K.gguf
+    # - models/SmolLM-135M-Instruct.Q2_K.gguf
     - assets/Fitness_Journey/
     - assets/Fitness_Journey/Weight_Loss/
     - assets/Fitness_Journey/Weight_Loss/Workout_1_Full_Body_HIIT_Circuit/

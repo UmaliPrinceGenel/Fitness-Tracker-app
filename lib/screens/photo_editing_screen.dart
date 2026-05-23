@@ -829,9 +829,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
         width: double.infinity,
         height: 300,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          color: const Color(0xFF242424),
-          border: Border.all(color: Colors.white10, width: 1),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          color: Colors.transparent,
+          border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1032,6 +1032,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         title: const Text(
           "Create Post",
@@ -1060,14 +1061,38 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                     ),
                   ),
                 )
-              : TextButton(
-                  onPressed: _handlePost,
-                  child: const Text(
-                    "Post",
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+              : Container(
+                  margin: const EdgeInsets.only(right: 8, top: 10, bottom: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF5200).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextButton(
+                    onPressed: _handlePost,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Text(
+                      "Post",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1088,9 +1113,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF141414),
+                    color: Colors.white.withOpacity(0.04),
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: Colors.white10),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1119,9 +1144,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF141414),
+                    color: Colors.white.withOpacity(0.04),
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: Colors.white10),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.24),
@@ -1137,7 +1162,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: const BoxDecoration(
-                          color: Color(0xFF141414),
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.vertical(
                             bottom: Radius.circular(22),
                           ),
@@ -1156,9 +1181,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF141414),
+                    color: Colors.white.withOpacity(0.04),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white10),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1243,9 +1268,9 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF202020),
+          color: Colors.white.withOpacity(0.06),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
         ),
         child: Row(
           children: [

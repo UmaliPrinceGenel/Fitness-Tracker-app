@@ -10,6 +10,9 @@ import 'progress_album_screen.dart';
 import 'about_app_screen.dart';
 import 'login_screen.dart';
 import '../widgets/chatbot_launcher.dart';
+import 'package:provider/provider.dart';
+import '../theme/theme_provider.dart';
+import '../theme/app_colors.dart';
 
 class MyProfile extends StatefulWidget {
   final int refreshVersion;
@@ -47,6 +50,7 @@ class _MyProfileState extends State<MyProfile> {
   int _selectedFeedbackRating = 0;
   bool _isSubmittingFeedback = false;
   bool _isFeedbackExpanded = false;
+  bool _isPrivateAccount = false;
 
   @override
   void initState() {
@@ -134,6 +138,7 @@ class _MyProfileState extends State<MyProfile> {
             _profileImageUrl = _isPlaceholderProfileUrl(storedPhotoUrl)
                 ? null
                 : storedPhotoUrl;
+            _isPrivateAccount = userData?['isPrivateAccount'] ?? false;
           });
         }
       }
@@ -595,6 +600,45 @@ class _MyProfileState extends State<MyProfile> {
     }
   }
 
+  /// ✅ Toggle Account Privacy
+  Future<void> _togglePrivacy(bool value) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) return;
+
+      setState(() {
+        _isPrivateAccount = value;
+      });
+
+      await _firestore.collection('users').doc(user.uid).update({
+        'isPrivateAccount': value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(value ? 'Account is now private.' : 'Account is now public.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error updating privacy settings: $e');
+      if (mounted) {
+        setState(() {
+          _isPrivateAccount = !value; // Revert on error
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update privacy settings: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// ✅ Sync updated name/photo to all past community posts and comments
   Future<void> _syncPostsWithProfile({
     String? newUsername,
@@ -829,25 +873,31 @@ class _MyProfileState extends State<MyProfile> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.scaffold,
       body: Stack(
         children: [
           SafeArea(
+            bottom: false,
             child: CustomScrollView(
               slivers: [
                 SliverAppBar(
-                  backgroundColor: Colors.black,
+                  backgroundColor: colors.scaffold,
+                  toolbarHeight: 80,
                   pinned: true,
                   floating: false,
                   snap: false,
                   automaticallyImplyLeading: false,
-                  title: const Text(
-                    "Profile",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  title: Padding(
+                    padding: const EdgeInsets.only(top: 20),
+                    child: Text(
+                      "Profile",
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
@@ -856,173 +906,189 @@ class _MyProfileState extends State<MyProfile> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: _isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.orange,
-                              ),
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(height: 100),
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.04),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1.5),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.orange.withOpacity(0.15),
+                                        blurRadius: 30,
+                                        spreadRadius: 5,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                const Text(
+                                  "Loading Profile...",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
                             ),
                           )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: _changeProfilePicture,
-                                    child: Stack(
-                                      children: [
-                                        Container(
-                                          width: 80,
-                                          height: 80,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            gradient: const LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                Colors.blue,
-                                                Colors.purple,
+                              const SizedBox(height: 30),
+                              Center(
+                                child: Column(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _changeProfilePicture,
+                                      child: Stack(
+                                        children: [
+                                          Container(
+                                            width: 100,
+                                            height: 100,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white.withOpacity(0.15), width: 3),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.orange.withOpacity(0.15),
+                                                  blurRadius: 24,
+                                                  spreadRadius: 4,
+                                                ),
                                               ],
                                             ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(
-                                                  0.3,
-                                                ),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 5),
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipOval(
-                                            child: _buildProfileAvatar(80),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          bottom: 0,
-                                          right: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(4),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.orange,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.edit,
-                                              color: Colors.black,
-                                              size: 16,
+                                            child: ClipOval(
+                                              child: _buildProfileAvatar(100),
                                             ),
                                           ),
-                                        ),
-                                        if (_isUpdatingProfile)
-                                          Positioned.fill(
+                                          Positioned(
+                                            bottom: 0,
+                                            right: 0,
                                             child: Container(
+                                              padding: const EdgeInsets.all(8),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withOpacity(
-                                                  0.45,
+                                                gradient: const LinearGradient(
+                                                  colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
                                                 ),
                                                 shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: const Color(0xFFFF5200).withOpacity(0.4),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 3),
+                                                  ),
+                                                ],
                                               ),
-                                              child: const Center(
-                                                child: SizedBox(
-                                                  width: 22,
-                                                  height: 22,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2.4,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<
-                                                          Color
-                                                        >(Colors.orange),
+                                              child: const Icon(
+                                                Icons.edit_rounded,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                          ),
+                                          if (_isUpdatingProfile)
+                                            Positioned.fill(
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black.withOpacity(0.45),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 26,
+                                                    height: 26,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2.6,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: GestureDetector(
+                                    const SizedBox(height: 20),
+                                    GestureDetector(
                                       onTap: _changeDisplayName,
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
+                                            mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Expanded(
+                                              Flexible(
                                                 child: Text(
-                                                  _userData?['displayName'] ??
-                                                      'User',
+                                                  _userData?['displayName'] ?? 'User',
                                                   style: const TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 26,
-                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 28,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
-                                              const SizedBox(width: 8),
-                                              const Icon(
-                                                Icons.edit,
-                                                color: Colors.orange,
-                                                size: 16,
+                                              const SizedBox(width: 10),
+                                              Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withOpacity(0.08),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.edit_rounded,
+                                                  color: Colors.orange,
+                                                  size: 14,
+                                                ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 8),
                                           Row(
+                                            mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Text(
-                                                _userData?['profile']?['gender'] ??
-                                                    'Not set',
-                                                style: const TextStyle(
-                                                  color: Colors.white60,
-                                                  fontSize: 14,
-                                                ),
+                                                _userData?['profile']?['gender'] ?? 'Not set',
+                                                style: const TextStyle(color: Colors.white60, fontSize: 14),
                                               ),
                                               const Text(
-                                                " | ",
-                                                style: TextStyle(
-                                                  color: Colors.white60,
-                                                  fontSize: 14,
-                                                ),
+                                                "  |  ",
+                                                style: TextStyle(color: Colors.white38, fontSize: 14),
                                               ),
                                               Text(
-                                                _formatProfileMetric(
-                                                  'height',
-                                                  'cm',
-                                                ),
-                                                style: const TextStyle(
-                                                  color: Colors.white60,
-                                                  fontSize: 14,
-                                                ),
+                                                _formatProfileMetric('height', 'cm'),
+                                                style: const TextStyle(color: Colors.white60, fontSize: 14),
                                               ),
                                               const Text(
-                                                " | ",
-                                                style: TextStyle(
-                                                  color: Colors.white60,
-                                                  fontSize: 14,
-                                                ),
+                                                "  |  ",
+                                                style: TextStyle(color: Colors.white38, fontSize: 14),
                                               ),
                                               Text(
                                                 "${_calculateAge()?.toString() ?? '?'} yrs",
-                                                style: const TextStyle(
-                                                  color: Colors.white60,
-                                                  fontSize: 14,
-                                                ),
+                                                style: const TextStyle(color: Colors.white60, fontSize: 14),
                                               ),
                                             ],
                                           ),
                                         ],
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 30),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 10),
                               const Padding(
@@ -1073,9 +1139,9 @@ class _MyProfileState extends State<MyProfile> {
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF141414),
+                                  color: Colors.white.withOpacity(0.04),
                                   borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(color: Colors.white10),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.3),
@@ -1238,12 +1304,107 @@ class _MyProfileState extends State<MyProfile> {
                               ),
                               const SizedBox(height: 10),
 
+
+                              const SizedBox(height: 10),
+
+                              // Privacy Settings card
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.04),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Privacy Settings",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(10),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.deepPurple.withOpacity(0.14),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: Colors.deepPurple.withOpacity(0.22),
+                                                  ),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.lock_outline,
+                                                  color: Colors.deepPurpleAccent,
+                                                  size: 22,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Text(
+                                                      "Private Account",
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "Hide your progress from the community",
+                                                      style: TextStyle(
+                                                        color: Colors.grey[400],
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Switch(
+                                          value: _isPrivateAccount,
+                                          onChanged: (val) => _togglePrivacy(val),
+                                          activeColor: Colors.white,
+                                          activeTrackColor: Colors.deepPurpleAccent,
+                                          inactiveThumbColor: Colors.grey[400],
+                                          inactiveTrackColor: Colors.white.withOpacity(0.1),
+                                          trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
                               // Settings card
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF191919),
+                                  color: Colors.white.withOpacity(0.04),
                                   borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.3),
@@ -1276,7 +1437,7 @@ class _MyProfileState extends State<MyProfile> {
                                         221,
                                       ),
                                       trailing: const Text(
-                                        "DEV0.0.5",
+                                        "2.0.0",
                                         style: TextStyle(
                                           color: Colors.grey,
                                           fontSize: 16,
@@ -1390,7 +1551,7 @@ class _MyProfileState extends State<MyProfile> {
                                 ),
                               ],
 
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 120), // Added padding to clear the bottom navigation bar
                             ],
                           ),
                   ),
@@ -1456,9 +1617,9 @@ class _MyProfileState extends State<MyProfile> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF131313),
+        color: Colors.white.withOpacity(0.04),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1529,25 +1690,35 @@ class _MyProfileState extends State<MyProfile> {
                           _selectedFeedbackRating = ratingValue;
                         });
                       },
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+                    horizontal: 12,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Colors.amber.withOpacity(0.16)
-                        : Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(999),
+                        ? Colors.orange.withOpacity(0.15)
+                        : Colors.white.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? Colors.amber : Colors.white12,
+                      color: isSelected ? Colors.orange.withOpacity(0.6) : Colors.transparent,
+                      width: 1.5,
                     ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.orange.withOpacity(0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            )
+                          ]
+                        : null,
                   ),
                   child: Icon(
-                    isSelected ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
-                    size: 24,
+                    isSelected ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: isSelected ? Colors.orange : Colors.white38,
+                    size: 32,
                   ),
                 ),
               );
@@ -1582,14 +1753,28 @@ class _MyProfileState extends State<MyProfile> {
             ),
           ),
           const SizedBox(height: 14),
-          SizedBox(
+          Container(
             width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF5200).withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: ElevatedButton.icon(
               onPressed: _isSubmittingFeedback ? null : _submitFeedback,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: Colors.orange.withOpacity(0.45),
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white70,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -1627,8 +1812,9 @@ class _MyProfileState extends State<MyProfile> {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF191919),
+          color: Colors.white.withOpacity(0.04),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
@@ -1684,7 +1870,13 @@ class _MyProfileState extends State<MyProfile> {
     Widget? trailing,
   }) {
     return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
       child: Row(
         children: [
           Container(

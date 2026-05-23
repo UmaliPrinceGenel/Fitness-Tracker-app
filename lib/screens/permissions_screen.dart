@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import '../screens/login_screen.dart';
 import '../screens/profile_screen.dart';
 import '../widgets/web_auth_shell.dart';
+import '../theme/app_colors.dart';
 
 class PermissionsScreen extends StatefulWidget {
   const PermissionsScreen({super.key});
@@ -352,173 +353,302 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
+    if (kIsWeb && MediaQuery.of(context).size.width >= 800) {
       return _buildWebPermissionScreen(context);
     }
 
-    // MOBILE UI - UNTOUCHED
+    final colors = AppColors.of(context);
+
+    // MOBILE UI - ENHANCED
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.scaffold,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 30),
-              const Text(
-                "Terms and Conditions",
+              const SizedBox(height: 20),
+              Text(
+                "Terms & Conditions",
                 style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: colors.textPrimary,
+                  letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 15),
-              const Text(
-                "Welcome to Rockies Fitness Gym Tracker. You can use this app to manage and track your workouts and view your progress data. We shall protect your information in accordance with relevant laws, regulations, and privacy policies. To be able to work normally, the app needs to connect to the internet.\n\n"
-                "To provide you with additional services while you're using the app, we might need the following permissions:",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  height: 1.4,
+              const SizedBox(height: 8),
+              Container(
+                width: 60,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF7317),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Icon(Icons.location_on, color: Colors.orange, size: 28),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Access Location\nFor tracking your workout distance and routes",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        height: 1.3,
+              const SizedBox(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Welcome to Rockies Fitness Gym Tracker. You can use this app to manage and track your workouts and view your progress data. We shall protect your information in accordance with relevant laws, regulations, and privacy policies. To be able to work normally, the app needs to connect to the internet.\n\n"
+                        "To provide you with additional services while you're using the app, we might need the following permissions:",
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Icon(Icons.directions_run, color: Colors.orange, size: 28),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Access Activity Info\nFor recording your workouts and health information",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        height: 1.3,
+                      const SizedBox(height: 30),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: colors.cardAlt,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF7317).withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.location_on, color: Color(0xFFFF7317), size: 24),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Access Location",
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "For tracking your workout distance and routes",
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 13,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(color: Colors.white10, height: 1),
+                            ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF7317).withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.directions_run, color: Color(0xFFFF7317), size: 24),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Access Activity Info",
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "For recording your workouts and health information",
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 13,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 24),
+                      Text(
+                        "You can always adjust your permissions preferences in the Settings",
+                        style: TextStyle(color: colors.textSecondary.withOpacity(0.6), fontSize: 12),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: colors.cardBorder)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: agreePolicy,
+                            onChanged: _isLoading
+                                ? null
+                                : (value) {
+                                    setState(() => agreePolicy = value ?? false);
+                                  },
+                            activeColor: const Color(0xFFFF7317),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            side: BorderSide(color: colors.textSecondary.withOpacity(0.5)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Read and Agree to our User Agreement and Privacy Policy",
+                            style: TextStyle(color: colors.textSecondary, fontSize: 13, height: 1.4),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 25),
-              const Text(
-                "You can always adjust your permissions preferences in the Settings",
-                style: TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Checkbox(
-                    value: agreePolicy,
-                    onChanged: _isLoading
-                        ? null
-                        : (value) {
-                            setState(() => agreePolicy = value ?? false);
-                          },
-                    activeColor: Colors.orange,
-                  ),
-                  const Expanded(
-                    child: Text(
-                      "Read and Agree to our User Agreement and Privacy Policy",
-                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: joinProgram,
+                            onChanged: _isLoading
+                                ? null
+                                : (value) {
+                                    setState(() => joinProgram = value ?? false);
+                                  },
+                            activeColor: const Color(0xFFFF7317),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            side: BorderSide(color: colors.textSecondary.withOpacity(0.5)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Enroll in User Experience Program to help us improve our products and services by sharing your stats with us",
+                            style: TextStyle(color: colors.textSecondary, fontSize: 13, height: 1.4),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  Checkbox(
-                    value: joinProgram,
-                    onChanged: _isLoading
-                        ? null
-                        : (value) {
-                            setState(() => joinProgram = value ?? false);
-                          },
-                    activeColor: Colors.orange,
-                  ),
-                  const Expanded(
-                    child: Text(
-                      "Enroll in User Experience Program to help us improve our products and services by sharing your stats with us",
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
+              const SizedBox(height: 12),
               Column(
                 children: [
-                  SizedBox(
+                  Container(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF7317),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.5),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF7317).withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _isLoading ? null : _savePermissionData,
+                        borderRadius: BorderRadius.circular(30),
+                        child: Center(
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  "Agree",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
-                      onPressed: _isLoading ? null : _savePermissionData,
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text(
-                              "Agree",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _isLoading ? null : _exitOnboarding,
+                        borderRadius: BorderRadius.circular(30),
+                        child: const Center(
+                          child: Text(
+                            "Exit",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[850],
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _isLoading ? null : _exitOnboarding,
-                      child: const Text(
-                        "Exit",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
                 ],
               ),
             ],

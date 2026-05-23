@@ -207,7 +207,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-        backgroundColor: Colors.black,
+          toolbarHeight: 80,
+          backgroundColor: Colors.black,
           leading: _isSavingWorkoutCompletion
               ? null
               : IconButton(
@@ -503,21 +504,46 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ],
                   ),
                 )
-              : ElevatedButton(
-                  onPressed: _getButtonAction(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _getButtonColor(),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              : Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: _getButtonAction() == null
+                        ? null
+                        : const LinearGradient(
+                            colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    color: _getButtonAction() == null ? Colors.grey[800] : null,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: _getButtonAction() != null
+                        ? [
+                            BoxShadow(
+                              color: Colors.orange.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                        : [],
                   ),
-                  child: Text(
-                    _getButtonText(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  child: ElevatedButton(
+                    onPressed: _getButtonAction(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      _getButtonText(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ),
@@ -806,24 +832,45 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                               ],
                             ),
                           )
-                        : SizedBox(
+                        : Container(
                             width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: _getButtonAction() == null
+                                  ? null
+                                  : const LinearGradient(
+                                      colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                              color: _getButtonAction() == null ? Colors.grey[800] : null,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: _getButtonAction() != null
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.orange.withOpacity(0.3),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
                             child: ElevatedButton(
                               onPressed: _getButtonAction(),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _getButtonColor(),
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
                                 foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(vertical: 18),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
                               child: Text(
                                 _getButtonText(),
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
@@ -964,69 +1011,80 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             );
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white10,
-                  width: 0.5,
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
-              ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.orange.withOpacity(0.4),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF9800), Color(0xFFFF5722)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Text(
                       (i + 1).toString(), // Use 1-based indexing for display
                       style: const TextStyle(
-                        color: Colors.orange,
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        exercise.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
+                  child: Text(
+                    exercise.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.white30,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
           ),
         ),
       );
-
-      if (i < widget.workout.exerciseList.length - 1) {
-        exercises.add(const Divider(height: 1, color: Colors.white10));
-      }
     }
 
     return exercises;

@@ -45,6 +45,7 @@ class _AboutThisAppScreenState extends State<AboutThisAppScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         elevation: 0,
         title: const Text(
@@ -237,7 +238,7 @@ class _AboutThisAppScreenState extends State<AboutThisAppScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInfoRow('Version', 'DEV 0.0.5'),
+                  _buildInfoRow('Version', '2.0.0'),
                   const SizedBox(height: 12),
                   _buildInfoRow('Build Date', 'December 2025'),
                   const SizedBox(height: 12),

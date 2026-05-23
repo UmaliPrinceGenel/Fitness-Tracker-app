@@ -13,6 +13,7 @@ import '../services/journey_progress_service.dart';
 import '../services/workout_goal_service.dart';
 import 'workout_detail_screen.dart'; // Import workout detail screen
 import '../widgets/chatbot_launcher.dart';
+import '../theme/app_colors.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({
@@ -435,10 +436,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     required bool compact,
   }) {
     final sections = <PieChartSectionData>[];
-    final cleanRadius = compact ? 42.0 : 50.0;
-    final cheatedRadius = compact ? 34.0 : 42.0;
-    final cleanFontSize = compact ? 10.0 : 12.0;
-    final cheatedFontSize = compact ? 9.0 : 11.0;
+    final cleanRadius = compact ? 42.0 : 54.0;
+    final cheatedRadius = compact ? 34.0 : 44.0;
+    final cleanFontSize = compact ? 12.0 : 14.0;
+    final cheatedFontSize = compact ? 10.0 : 12.0;
     final activeCounts = _activeMonthlyCounts;
     final activeCheatedCounts = _activeMonthlyCheatedCounts;
     final activeColors = _activeMonthlyColors;
@@ -456,8 +457,11 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             radius: cleanRadius,
             titleStyle: TextStyle(
               fontSize: cleanFontSize,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
               color: Colors.white,
+              shadows: const [
+                Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2)),
+              ],
             ),
           ),
         );
@@ -466,14 +470,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       if (cheatedCount > 0) {
         sections.add(
           PieChartSectionData(
-            color: activeColors[i].withOpacity(0.35),
+            color: activeColors[i].withOpacity(0.4),
             value: cheatedCount.toDouble(),
             title: '!$cheatedCount',
             radius: cheatedRadius,
             titleStyle: TextStyle(
               fontSize: cheatedFontSize,
               fontWeight: FontWeight.bold,
-              color: Colors.amber,
+              color: const Color(0xFFFF5200),
+              shadows: const [
+                Shadow(color: Colors.black, blurRadius: 4),
+              ],
             ),
           ),
         );
@@ -491,23 +498,31 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final color = _activeMonthlyColors[index];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.18),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 10,
-            height: 10,
+            width: 12,
+            height: 12,
+            margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.6),
+                  blurRadius: 8,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,24 +532,22 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: compact ? 11 : 12,
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: compact ? 12 : 13,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 if (cheatedCount > 0)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 10,
-                        height: 10,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.35),
+                          color: const Color(0xFFFF5200),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.amber.withOpacity(0.7),
-                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -544,7 +557,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.amber,
+                            color: const Color(0xFFFF5200),
                             fontSize: compact ? 11 : 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -556,7 +569,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   Text(
                     '$cleanCount clean',
                     style: TextStyle(
-                      color: Colors.white38,
+                      color: Colors.white54,
                       fontSize: compact ? 11 : 12,
                     ),
                   ),
@@ -575,14 +588,14 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     Color? borderColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: borderColor == null
             ? null
             : Border.all(
-                color: borderColor,
+                color: borderColor.withOpacity(0.5),
                 width: 1,
               ),
       ),
@@ -590,8 +603,9 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         label,
         style: TextStyle(
           color: textColor,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
+          letterSpacing: 0.3,
         ),
       ),
     );
@@ -604,6 +618,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           workout.title,
@@ -611,11 +626,12 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            height: 1.2,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -623,28 +639,19 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             if (workout.journeyName != null)
               _buildWorkoutMetaChip(
                 label: workout.journeyName!,
-                backgroundColor: const Color(0xFFFF6B35).withOpacity(0.18),
-                textColor: const Color(0xFFFF9B73),
+                backgroundColor: const Color(0xFFFF6B35).withOpacity(0.15),
+                textColor: const Color(0xFFFF8A5C),
               ),
             _buildWorkoutMetaChip(
               label: "${workout.exerciseList.length} exercises",
-              backgroundColor: Colors.grey[800]!,
+              backgroundColor: Colors.white.withOpacity(0.06),
               textColor: Colors.white70,
             ),
             _buildWorkoutMetaChip(
               label: workout.level,
-              backgroundColor: _getLevelColor(workout.level).withOpacity(0.2),
+              backgroundColor: _getLevelColor(workout.level).withOpacity(0.15),
               textColor: _getLevelColor(workout.level),
             ),
-            if (isCompleted)
-              _buildWorkoutMetaChip(
-                label: isCheated ? 'Cheated' : 'Done',
-                backgroundColor: isCheated
-                    ? Colors.red.withOpacity(0.2)
-                    : Colors.green.withOpacity(0.2),
-                textColor: isCheated ? Colors.red : Colors.green,
-                borderColor: isCheated ? Colors.red : Colors.green,
-              ),
           ],
         ),
       ],
@@ -856,16 +863,21 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final isCompactScreen = screenWidth < 360;
     final horizontalPadding = isCompactScreen ? 12.0 : 16.0;
 
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.scaffold,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text(
-          "Workout",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        backgroundColor: colors.scaffold,
+        toolbarHeight: 80,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: Text(
+            "Workout",
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         centerTitle: false,
@@ -874,6 +886,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       body: Stack(
         children: [
           SafeArea(
+            bottom: false,
             child: RefreshIndicator(
               onRefresh: _loadMonthlyCategoryData,
               child: LayoutBuilder(
@@ -947,30 +960,60 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   // Body Focus Tabs Choices
   Widget _buildTab(String title, int index) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTabIndex = index;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: _selectedTabIndex == index
-              ? const Color(0xFFFF6B35)
-              : const Color(0xFF191919),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: _selectedTabIndex == index
-                  ? Colors.white
-                  : Colors.white70,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+    final isSelected = _selectedTabIndex == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        gradient: isSelected
+            ? const LinearGradient(
+                colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: isSelected ? null : Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: isSelected
+            ? Border.all(color: Colors.transparent, width: 1)
+            : Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFFF5200).withOpacity(0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            setState(() {
+              _selectedTabIndex = index;
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Center(
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                style: DefaultTextStyle.of(context).style.copyWith(
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.65),
+                  fontWeight: isSelected
+                      ? FontWeight.w900
+                      : FontWeight.w600,
+                  fontSize: 14,
+                  letterSpacing: 0.3,
+                ),
+                child: Text(title),
+              ),
             ),
           ),
         ),
@@ -988,18 +1031,29 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         minHeight: isCompactScreen ? 320 : 350,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1F1F24),
+            Color(0xFF141416),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(isCompactScreen ? 14 : 16),
+        padding: EdgeInsets.all(isCompactScreen ? 16 : 20),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compactCard = constraints.maxWidth < 360;
@@ -1009,11 +1063,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                 : compactCard
                     ? 160.0
                     : 190.0;
-            final legendWidth = compactCard
-                ? constraints.maxWidth
-                : desktopCard
-                    ? (constraints.maxWidth - 20) / 2
-                    : (constraints.maxWidth - 10) / 2;
+            // Ensure 2 columns fit comfortably even with floating point errors
+            final legendWidth = (constraints.maxWidth - 16) / 2;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1022,8 +1073,9 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   "Monthly Category Tracking",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: compactCard ? 16 : 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: compactCard ? 18 : 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1031,16 +1083,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   _currentMonthLabel(),
                   style: TextStyle(
                     color: Colors.white54,
-                    fontSize: compactCard ? 11 : 12,
-                    fontWeight: FontWeight.w500,
+                    fontSize: compactCard ? 12 : 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.24),
-                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.black.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
                   ),
                   child: Row(
                     children: [
@@ -1052,13 +1105,26 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                             });
                           },
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: _selectedMonthlyTrackingView == 0
-                                  ? const Color(0xFFFF6B35)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
+                              gradient: _selectedMonthlyTrackingView == 0
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : null,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: _selectedMonthlyTrackingView == 0
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFFFF5200).withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : null,
                             ),
                             child: Text(
                               "Body Focus",
@@ -1066,9 +1132,9 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                               style: TextStyle(
                                 color: _selectedMonthlyTrackingView == 0
                                     ? Colors.white
-                                    : Colors.white70,
+                                    : Colors.white60,
                                 fontWeight: FontWeight.bold,
-                                fontSize: compactCard ? 12 : 13,
+                                fontSize: compactCard ? 13 : 14,
                               ),
                             ),
                           ),
@@ -1082,13 +1148,26 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                             });
                           },
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: _selectedMonthlyTrackingView == 1
-                                  ? const Color(0xFFFF6B35)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
+                              gradient: _selectedMonthlyTrackingView == 1
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : null,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: _selectedMonthlyTrackingView == 1
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFFFF5200).withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : null,
                             ),
                             child: Text(
                               "Journeys",
@@ -1096,9 +1175,9 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                               style: TextStyle(
                                 color: _selectedMonthlyTrackingView == 1
                                     ? Colors.white
-                                    : Colors.white70,
+                                    : Colors.white60,
                                 fontWeight: FontWeight.bold,
-                                fontSize: compactCard ? 12 : 13,
+                                fontSize: compactCard ? 13 : 14,
                               ),
                             ),
                           ),
@@ -1107,14 +1186,14 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 SizedBox(
                   height: chartHeight,
                   child: _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.orange,
+                              Color(0xFFFF5200),
                             ),
                           ),
                         )
@@ -1124,8 +1203,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                 sections: _buildMonthlyChartSections(
                                   compact: compactCard,
                                 ),
-                                centerSpaceRadius: compactCard ? 24 : 30,
-                                sectionsSpace: 2,
+                                centerSpaceRadius: compactCard ? 28 : 36,
+                                sectionsSpace: 4,
                                 pieTouchData: PieTouchData(enabled: true),
                               ),
                             )
@@ -1133,17 +1212,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                               child: Text(
                                 "Complete a workout to see your progress",
                                 style: TextStyle(
-                                  color: Colors.white70,
+                                  color: Colors.white54,
                                   fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: List.generate(_activeMonthlyTitles.length, (i) {
                     return SizedBox(
                       width: legendWidth,
@@ -1151,41 +1230,72 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                     );
                   }),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'Solid slices = clean completions. Faded slices with ! = cheated completions.',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: compactCard ? 10 : 11,
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.white38, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Solid slices = clean completions. Faded slices with ! = cheated completions.',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: compactCard ? 10 : 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
+                const SizedBox(height: 16),
+                Container(
                   width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF5200).withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              const ProgressTrackingScreen(),
+                          builder: (context) => const ProgressTrackingScreen(),
                         ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF6B35),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    icon: const Icon(Icons.insights),
+                    icon: const Icon(Icons.insights, color: Colors.white),
                     label: Text(
                       "Open Progress Tracking",
                       style: TextStyle(
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: compactCard ? 13 : 14,
+                        fontSize: compactCard ? 14 : 15,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ),
@@ -1233,50 +1343,82 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               "Fitness Journey",
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF191919),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white10),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF1F1F24),
+                    Color(0xFF141416),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.08),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Recommended Journey",
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.orange, size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "Recommended Journey",
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     _allJourneysCompleted
                         ? "All journeys are complete. You can still replay any journey anytime."
                         : "The app automatically highlights the journey that fits your current progress best.",
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.72),
-                      fontSize: 12,
+                      fontSize: 13,
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.2),
+                      gradient: LinearGradient(
+                        colors: [
+                          recommendedJourney.accentColor.withOpacity(0.1),
+                          recommendedJourney.accentColor.withOpacity(0.02),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: recommendedJourney.accentColor.withOpacity(0.35),
+                        width: 1.5,
                       ),
                     ),
                     child: Column(
@@ -1286,20 +1428,21 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                           goalLabel(_recommendedGoalType),
                           style: TextStyle(
                             color: recommendedJourney.accentColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           recommendedJourney.title,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           _allJourneysCompleted
                               ? '${recommendedJourney.description} Replay any journey whenever you want.'
@@ -1308,16 +1451,16 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                   : recommendedJourney.description,
                           style: const TextStyle(
                             color: Colors.white70,
-                            fontSize: 12,
-                            height: 1.35,
+                            fontSize: 13,
+                            height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
                           _recommendationReason,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.58),
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1366,7 +1509,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               ),
             const SizedBox(height: 8),
             SizedBox(
-              height: 250,
+              height: 310,
               child: ScrollConfiguration(
                 behavior: const _WorkoutDesktopScrollBehavior(),
                 child: kIsWeb
@@ -1482,20 +1625,31 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.all(18),
+                                        padding: const EdgeInsets.all(22),
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
                                             Container(
                                               padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
+                                                horizontal: 14,
                                                 vertical: 8,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(0.18),
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    Colors.black.withOpacity(0.6),
+                                                    Colors.black.withOpacity(0.2),
+                                                  ],
+                                                ),
+                                                border: Border.all(
+                                                  color: Colors.white.withOpacity(0.24),
+                                                  width: 1,
+                                                ),
                                                 borderRadius:
-                                                    BorderRadius.circular(16),
+                                                    BorderRadius.circular(20),
                                               ),
                                               child: Text(
                                                 isRecommended
@@ -1505,15 +1659,9 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                                         : journey.durationLabel,
                                                 style: const TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  shadows: [
-                                                    Shadow(
-                                                      color: Colors.black54,
-                                                      blurRadius: 12,
-                                                      offset: Offset(0, 2),
-                                                    ),
-                                                  ],
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 1.2,
                                                 ),
                                               ),
                                             ),
@@ -1522,53 +1670,80 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                                               journey.headline.toUpperCase(),
                                               style: const TextStyle(
                                                 color: Colors.white,
-                                                fontSize: 26,
+                                                fontSize: 28,
                                                 fontWeight: FontWeight.w900,
-                                                height: 0.98,
+                                                letterSpacing: -0.5,
+                                                height: 1.0,
                                                 shadows: [
                                                   Shadow(
                                                     color: Colors.black87,
-                                                    blurRadius: 18,
-                                                    offset: Offset(0, 3),
+                                                    blurRadius: 24,
+                                                    offset: Offset(0, 4),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                            const SizedBox(height: 10),
+                                            const SizedBox(height: 12),
                                             Text(
                                               journey.description,
-                                              style: TextStyle(
-                                                color: Colors.white.withOpacity(0.92),
-                                                fontSize: 13,
-                                                height: 1.25,
-                                                shadows: const [
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                                height: 1.3,
+                                                shadows: [
                                                   Shadow(
-                                                    color: Colors.black87,
-                                                    blurRadius: 12,
+                                                    color: Colors.black,
+                                                    blurRadius: 16,
                                                     offset: Offset(0, 2),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                            const SizedBox(height: 16),
+                                            const SizedBox(height: 20),
                                             Container(
                                               width: double.infinity,
                                               padding: const EdgeInsets.symmetric(
-                                                vertical: 13,
+                                                vertical: 14,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(26),
-                                              ),
-                                              child: Text(
-                                                journey.buttonLabel,
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  color: journey.buttonTextColor,
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 15,
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    Colors.white,
+                                                    Colors.white.withOpacity(0.9),
+                                                  ],
                                                 ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.3),
+                                                    blurRadius: 12,
+                                                    offset: const Offset(0, 6),
+                                                  ),
+                                                ],
+                                                borderRadius:
+                                                    BorderRadius.circular(24),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    journey.buttonLabel,
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      color: journey.buttonTextColor,
+                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: 15,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    color: journey.buttonTextColor,
+                                                    size: 18,
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
@@ -1985,98 +2160,117 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           },
           child: Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFF151515),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withOpacity(0.06), width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isCompactCard = constraints.maxWidth < 340;
-                  final thumbnailWidth =
-                      isCompactCard ? constraints.maxWidth : 120.0;
-                  final thumbnailHeight = isCompactCard ? 170.0 : 80.0;
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompactCard = constraints.maxWidth < 340;
+                final thumbnailWidth =
+                    isCompactCard ? constraints.maxWidth : 130.0;
+                final thumbnailHeight = isCompactCard ? 170.0 : double.infinity;
 
-                  final thumbnail = Stack(
-                    children: [
-                      Container(
-                        width: thumbnailWidth,
-                        height: thumbnailHeight,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[800],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            workout.thumbnailAsset,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.play_arrow,
+                final thumbnail = Stack(
+                  fit: isCompactCard ? StackFit.loose : StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: isCompactCard
+                          ? const BorderRadius.vertical(top: Radius.circular(21))
+                          : const BorderRadius.horizontal(left: Radius.circular(21)),
+                      child: Image.asset(
+                        workout.thumbnailAsset,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[900],
+                            child: const Center(
+                              child: Icon(Icons.fitness_center, color: Colors.white24, size: 40),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (isCompleted)
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: (isCheated ? Colors.red : Colors.green).withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isCheated ? Icons.warning_rounded : Icons.check_circle_rounded,
                                 color: Colors.white,
-                                size: 40,
-                              );
-                            },
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isCheated ? "CHEATED" : "DONE",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      if (isCompleted)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: isCheated ? Colors.red : Colors.green,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              isCheated ? Icons.warning : Icons.check,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
+                  ],
+                );
 
-                  final details = _buildWorkoutDetails(
+                final details = Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _buildWorkoutDetails(
                     workout,
                     isCompleted: isCompleted,
                     isCheated: isCheated,
-                  );
+                  ),
+                );
 
-                  if (isCompactCard) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        thumbnail,
-                        const SizedBox(height: 12),
-                        details,
-                      ],
-                    );
-                  }
-
-                  return Row(
+                if (isCompactCard) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      thumbnail,
-                      const SizedBox(width: 12),
-                      Expanded(child: details),
+                      SizedBox(height: thumbnailHeight, width: thumbnailWidth, child: thumbnail),
+                      details,
                     ],
                   );
-                },
-              ),
+                }
+
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: thumbnailWidth, child: thumbnail),
+                      Expanded(child: details),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         );
