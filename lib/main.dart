@@ -70,7 +70,7 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  /// ✅ Check if user has completed their profile
+  /// Check if user has completed their profile
   Future<void> _checkUserProfileStatus(fbAuth.User user) async {
     try {
       final normalizedEmail = user.email?.trim().toLowerCase() ?? '';
