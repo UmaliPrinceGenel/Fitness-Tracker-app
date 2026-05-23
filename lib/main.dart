@@ -22,7 +22,6 @@ import 'theme/app_theme.dart';
 // Remove the duplicate main function - keeping only one
 
 void main() async {
-  
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Supabase.initialize(
@@ -94,7 +93,7 @@ class _MyAppState extends State<MyApp> {
       }
 
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      
+
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         final bool isBanned = userData['isBanned'] ?? false;
@@ -110,8 +109,9 @@ class _MyAppState extends State<MyApp> {
           return;
         }
 
-        final bool hasCompletedProfile = userData['hasCompletedProfile'] ?? false;
-        
+        final bool hasCompletedProfile =
+            userData['hasCompletedProfile'] ?? false;
+
         setState(() {
           _firebaseUser = user;
           _hasCompletedProfile = hasCompletedProfile;
@@ -222,7 +222,6 @@ class _MyAppState extends State<MyApp> {
     }
   }
 }
-
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -486,10 +485,10 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+  };
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
