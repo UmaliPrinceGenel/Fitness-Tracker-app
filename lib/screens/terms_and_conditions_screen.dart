@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/web_auth_shell.dart';
+import '../theme/app_colors.dart';
 
 class TermsAndConditionsScreen extends StatelessWidget {
   const TermsAndConditionsScreen({super.key});
@@ -116,231 +117,47 @@ class TermsAndConditionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
+    if (kIsWeb && MediaQuery.of(context).size.width >= 800) {
       return _buildWebTermsScreen(context);
     }
 
+    final colors = AppColors.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Back button with circular background
-              Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF191919),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Header - Fixed at the top
-              const Text(
-                "Terms and Conditions",
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Content container with fixed header and scrollable text
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF191919),
-                    borderRadius: BorderRadius.all(Radius.circular(30)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: colors.scaffold,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  backgroundColor: colors.scaffold,
+                  toolbarHeight: 80,
+                  pinned: true,
+                  automaticallyImplyLeading: false,
+                  title: Padding(
+                    padding: const EdgeInsets.only(top: 20, bottom: 8),
+                    child: Row(
                       children: [
-                        // Fixed header inside the container
-                        const Text(
-                          "Rockies Fitness Terms and Conditions",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.cardAlt,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ),
-                        const SizedBox(height: 16),
-
-                        // Scrollable text content
+                        const SizedBox(width: 16),
                         Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Content with consistent border radius on all corners
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // Section 1
-                                      const Text(
-                                        "1. Acceptance of Terms",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "By downloading or using this app, you agree to be bound by these Terms and Conditions. If you do not agree, do not use the app.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Section 2
-                                      const Text(
-                                        "2. Health Disclaimer",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "This app provides fitness-related content for informational purposes only. It does not substitute for professional medical advice. Consult a healthcare provider before beginning any exercise program. Use of the app is at your own risk.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Section 3
-                                      const Text(
-                                        "3. User Responsibilities",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "You are responsible for maintaining the security of your account and device. Do not share your login credentials. Any content you upload must be lawful and owned by you.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Section 4
-                                      const Text(
-                                        "4. Intellectual Property",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "All content, trademarks, and software within the app are the property of the app provider. You may not copy, modify, or reverse-engineer any part of the app.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Section 5
-                                      const Text(
-                                        "5. Privacy and Data Usage",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "The app may collect and process personal data to improve services. You are responsible for any data charges incurred while using the app.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Section 6
-                                      const Text(
-                                        "6. Limitation of Liability",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "The app provider is not liable for injuries, health issues, or damages resulting from use of the app. You assume full responsibility for your participation in workouts.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Section 7
-                                      const Text(
-                                        "7. Deletion of Account",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "The provider may suspend or terminate your access if you violate these Terms.",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Add some spacing at the bottom
-                                const SizedBox(height: 20),
-                              ],
+                          child: Text(
+                            "Terms & Conditions",
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -348,15 +165,122 @@ class TermsAndConditionsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
-            ],
+                SliverPadding(
+                  padding: const EdgeInsets.all(16.0),
+                  sliver: SliverToBoxAdapter(
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: colors.cardGradient,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: colors.cardBorder),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.shadow,
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            "Rockies Fitness Agreements",
+                            style: TextStyle(
+                              color: Color(0xFFFF7317), // Theme accent color
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          SizedBox(height: 24),
+                          _TermsSection(
+                            title: '1. Acceptance of Terms',
+                            body:
+                                'By downloading or using this app, you agree to be bound by these Terms and Conditions. If you do not agree, do not use the app.',
+                          ),
+                          _TermsSection(
+                            title: '2. Health Disclaimer',
+                            body:
+                                'This app provides fitness-related content for informational purposes only. It does not substitute for professional medical advice. Consult a healthcare provider before beginning any exercise program. Use of the app is at your own risk.',
+                          ),
+                          _TermsSection(
+                            title: '3. User Responsibilities',
+                            body:
+                                'You are responsible for maintaining the security of your account and device. Do not share your login credentials. Any content you upload must be lawful and owned by you.',
+                          ),
+                          _TermsSection(
+                            title: '4. Intellectual Property',
+                            body:
+                                'All content, trademarks, and software within the app are the property of the app provider. You may not copy, modify, or reverse-engineer any part of the app.',
+                          ),
+                          _TermsSection(
+                            title: '5. Privacy and Data Usage',
+                            body:
+                                'The app may collect and process personal data to improve services. You are responsible for any data charges incurred while using the app.',
+                          ),
+                          _TermsSection(
+                            title: '6. Limitation of Liability',
+                            body:
+                                'The app provider is not liable for injuries, health issues, or damages resulting from use of the app. You assume full responsibility for your participation in workouts.',
+                          ),
+                          _TermsSection(
+                            title: '7. Deletion of Account',
+                            body:
+                                'The provider may suspend or terminate your access if you violate these Terms.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
+class _TermsSection extends StatelessWidget {
+  const _TermsSection({required this.title, required this.body});
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 class _WebTermsSection extends StatelessWidget {
   const _WebTermsSection({required this.title, required this.body});
 

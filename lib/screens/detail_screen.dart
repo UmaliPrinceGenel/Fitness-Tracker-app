@@ -691,6 +691,8 @@ class _DetailScreenState extends State<DetailScreen> {
         return const Color(0xFF4FC3F7);
       case "Sleep Hours": // UPDATED: Changed to purple
         return Colors.purple;
+      case "Weight":
+        return Colors.green;
       default:
         return Colors.orange;
     }
@@ -764,6 +766,7 @@ class _DetailScreenState extends State<DetailScreen> {
       return Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
+          toolbarHeight: 80,
           backgroundColor: Colors.black,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -785,6 +788,7 @@ class _DetailScreenState extends State<DetailScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -846,9 +850,23 @@ class _DetailScreenState extends State<DetailScreen> {
         widget.title == "Waist Measurement" ||
         widget.title == "Sleep Hours") {
       return [
-        IconButton(
-          icon: const Icon(Icons.add, color: Colors.white),
-          onPressed: _showMetricInputDialog,
+        Padding(
+          padding: const EdgeInsets.only(right: 16.0),
+          child: Center(
+            child: InkWell(
+              onTap: _showMetricInputDialog,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _getThemeColor(),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 24),
+              ),
+            ),
+          ),
         ),
       ];
     }
@@ -1302,13 +1320,21 @@ class _DetailScreenState extends State<DetailScreen> {
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -1386,13 +1412,21 @@ class _DetailScreenState extends State<DetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -1512,13 +1546,21 @@ class _DetailScreenState extends State<DetailScreen> {
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -1636,13 +1678,21 @@ class _DetailScreenState extends State<DetailScreen> {
         final chartCard = Container(
           height: isWideLayout ? 260 : 220,
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -1711,13 +1761,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -1912,13 +1970,21 @@ class _DetailScreenState extends State<DetailScreen> {
       padding: const EdgeInsets.all(16),
       width: MediaQuery.of(context).size.width / 2.3,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -1967,13 +2033,21 @@ class _DetailScreenState extends State<DetailScreen> {
         final summaryCard = Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -2027,14 +2101,15 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 Center(
                   child: Text(
                     _currentData.toStringAsFixed(1),
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isWideLayout ? 56 : 48,
-                      fontWeight: FontWeight.bold,
+                      fontSize: isWideLayout ? 64 : 56,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1.5,
                     ),
                   ),
                 ),
@@ -2045,6 +2120,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: isWideLayout ? 15 : 14,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -2054,6 +2130,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   child: LayoutBuilder(
                     builder: (context, scaleConstraints) {
                       return Stack(
+                        clipBehavior: Clip.none,
                         children: [
                           Container(
                             height: 18,
@@ -2071,34 +2148,22 @@ class _DetailScreenState extends State<DetailScreen> {
                             ),
                           ),
                           Positioned(
-                            left: _calculateBMIPosition(scaleConstraints.maxWidth),
-                            bottom: 14,
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.arrow_drop_up,
-                                  color: _getBMIColor(_currentData),
-                                  size: 32,
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
+                            left: _calculateBMIPosition(scaleConstraints.maxWidth) - 2, // Center the 4px wide line
+                            top: -6,
+                            child: Container(
+                              width: 4,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.4),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: _getBMIColor(_currentData),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    _currentData.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -2139,10 +2204,25 @@ class _DetailScreenState extends State<DetailScreen> {
 
         final categoriesCard = Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF252525),
-            borderRadius: BorderRadius.circular(12),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2174,9 +2254,23 @@ class _DetailScreenState extends State<DetailScreen> {
         final recommendationCard = Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF252525),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white10),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -2299,13 +2393,21 @@ class _DetailScreenState extends State<DetailScreen> {
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -2354,13 +2456,21 @@ class _DetailScreenState extends State<DetailScreen> {
         final chartCard = Container(
           height: isWideLayout ? 260 : 220,
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -2421,13 +2531,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -2535,13 +2653,18 @@ class _DetailScreenState extends State<DetailScreen> {
           width: double.infinity,
           padding: EdgeInsets.symmetric(vertical: isWideLayout ? 24 : 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -2552,16 +2675,18 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(0),
                 style: TextStyle(
                   color: _getThemeColor(),
-                  fontSize: isWideLayout ? 64 : 56,
-                  fontWeight: FontWeight.bold,
+                  fontSize: isWideLayout ? 68 : 60,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 _getUnitWithGoal(),
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: Colors.white60,
                   fontSize: isWideLayout ? 20 : 18,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -2571,37 +2696,42 @@ class _DetailScreenState extends State<DetailScreen> {
         final todayCard = Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 28,
-                      height: 28,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        color: _getThemeColor().withOpacity(0.2),
+                        color: _getThemeColor().withOpacity(0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         _getIconForMetric(),
                         color: _getThemeColor(),
-                        size: 16,
+                        size: 18,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     const Text(
                       "Today",
                       style: TextStyle(
@@ -2612,23 +2742,25 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Divider(color: Colors.white38, height: 1, thickness: 0.5),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
+                const Divider(color: Colors.white24, height: 1, thickness: 0.5),
+                const SizedBox(height: 18),
                 Text(
                   "${_currentData.toStringAsFixed(0)} ${_getUnit()}",
                   style: TextStyle(
                     color: _getThemeColor(),
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 const Text(
                   "Total",
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: Colors.white60,
                     fontSize: 14,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -2639,40 +2771,57 @@ class _DetailScreenState extends State<DetailScreen> {
         final aboutCard = Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, color: _getThemeColor(), size: 24),
-                    const SizedBox(width: 12),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: _getThemeColor().withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.info_outline,
+                        color: _getThemeColor(),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         "About ${widget.title}",
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                const Divider(color: Colors.white38, height: 1, thickness: 0.5),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
+                const Divider(color: Colors.white24, height: 1, thickness: 0.5),
+                const SizedBox(height: 18),
                 Text(
                   _getInlineMetricInfo(),
                   style: const TextStyle(
@@ -2776,50 +2925,67 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.tips_and_updates_outlined, color: _getThemeColor(), size: 24),
-                const SizedBox(width: 12),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _getThemeColor().withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.tips_and_updates_outlined,
+                    color: _getThemeColor(),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 14),
                 const Expanded(
                   child: Text(
                     "Tips",
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            const Divider(color: Colors.white38, height: 1, thickness: 0.5),
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
+            const Divider(color: Colors.white24, height: 1, thickness: 0.5),
+            const SizedBox(height: 18),
             ...tips.asMap().entries.map((entry) {
               final isLast = entry.key == tips.length - 1;
               return Padding(
-                padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 22,
-                      height: 22,
+                      width: 24,
+                      height: 24,
                       margin: const EdgeInsets.only(top: 1),
                       decoration: BoxDecoration(
                         color: _getThemeColor().withOpacity(0.16),
@@ -2830,20 +2996,20 @@ class _DetailScreenState extends State<DetailScreen> {
                           '${entry.key + 1}',
                           style: TextStyle(
                             color: _getThemeColor(),
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         entry.value,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
-                          height: 1.45,
+                          height: 1.5,
                         ),
                       ),
                     ),
@@ -2866,13 +3032,21 @@ class _DetailScreenState extends State<DetailScreen> {
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -2921,13 +3095,21 @@ class _DetailScreenState extends State<DetailScreen> {
         final chartCard = Container(
           height: isWideLayout ? 260 : 220,
           decoration: BoxDecoration(
-            color: const Color(0xFF191919),
-            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -3078,8 +3260,23 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -3101,13 +3298,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -3270,13 +3475,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -3388,8 +3601,23 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -3538,13 +3766,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -3594,13 +3830,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -3646,13 +3890,21 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -3752,8 +4004,23 @@ class _DetailScreenState extends State<DetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),

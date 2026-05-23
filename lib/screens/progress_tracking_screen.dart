@@ -284,6 +284,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -445,8 +446,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
       title,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
+        fontSize: 22,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -0.5,
       ),
     );
   }
@@ -467,13 +469,28 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
 
   Widget _buildPanel({
     required Widget child,
-    EdgeInsetsGeometry padding = const EdgeInsets.all(16.0),
+    EdgeInsetsGeometry padding = const EdgeInsets.all(20.0),
   }) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Padding(
         padding: padding,
@@ -486,18 +503,37 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     return _buildPanel(
       child: Column(
         children: [
-          const Icon(
-            Icons.star,
-            color: Colors.yellow,
-            size: 32,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF5200).withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.star_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const Text(
             "Personal Best",
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 4),
@@ -506,17 +542,19 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                 ? "${_highestWeightRecord!.weightUsed} kg"
                 : "0 kg",
             style: const TextStyle(
-              color: Colors.yellow,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
           ),
           if (_highestWeightRecord != null)
             Text(
               _highestWeightRecord!.exerciseName,
               style: const TextStyle(
-                color: Colors.yellow,
-                fontSize: 12,
+                color: Colors.orange,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
         ],
@@ -536,12 +574,20 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     return _buildPanel(
       child: Row(
         children: [
-          const Icon(
-            Icons.today,
-            color: Colors.orange,
-            size: 24,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: const Icon(
+              Icons.today_rounded,
+              color: Colors.orange,
+              size: 24,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,6 +758,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
               const SizedBox(height: 16),
               if (isWide)
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: categoryField),
                     const SizedBox(width: 16),
@@ -731,104 +778,41 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   }
 
   Widget _buildGoalDropdown() {
-    return DropdownButtonFormField<String>(
+    return _PremiumDropdown(
+      label: 'Goal',
       value: _selectedGoal,
-      decoration: const InputDecoration(
-        labelText: 'Goal',
-        labelStyle: TextStyle(color: Colors.orange),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.orange),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.orange),
-        ),
-      ),
-      items: _goalOptions.map((String goalType) {
-        return DropdownMenuItem(
-          value: goalType,
-          child: Text(
-            goalType == 'All' ? 'All Goals' : goalLabel(goalType),
-            style: const TextStyle(color: Colors.white),
-          ),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        if (newValue == null) {
-          return;
-        }
-        _selectedGoal = newValue;
+      items: _goalOptions,
+      labelBuilder: (val) => val == 'All' ? 'All Goals' : goalLabel(val),
+      onChanged: (val) {
+        _selectedGoal = val;
         _filterWorkoutRecords();
       },
-      dropdownColor: const Color(0xFF191919),
-      iconEnabledColor: Colors.white,
     );
   }
 
   Widget _buildCategoryDropdown() {
-    return DropdownButtonFormField<String>(
+    return _PremiumDropdown(
+      label: 'Category',
       value: _selectedCategory,
-      decoration: const InputDecoration(
-        labelText: 'Category',
-        labelStyle: TextStyle(color: Colors.orange),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.orange),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.orange),
-        ),
-      ),
-      items: _categories.map((String category) {
-        return DropdownMenuItem(
-          value: category,
-          child: Text(
-            category,
-            style: const TextStyle(color: Colors.white),
-          ),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        if (newValue == null) {
-          return;
-        }
-        _selectedCategory = newValue;
+      items: _categories,
+      labelBuilder: (val) => val,
+      onChanged: (val) {
+        _selectedCategory = val;
         _filterWorkoutRecords();
       },
-      dropdownColor: const Color(0xFF191919),
-      iconEnabledColor: Colors.white,
     );
   }
 
   Widget _buildDifficultyDropdown() {
-    return DropdownButtonFormField<String>(
+    return _PremiumDropdown(
+      label: 'Difficulty',
       value: _selectedDifficulty,
-      decoration: const InputDecoration(
-        labelText: 'Difficulty',
-        labelStyle: TextStyle(color: Colors.orange),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.orange),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.orange),
-        ),
-      ),
-      items: _difficulties.map((String difficulty) {
-        return DropdownMenuItem(
-          value: difficulty,
-          child: Text(
-            difficulty,
-            style: const TextStyle(color: Colors.white),
-          ),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        if (newValue == null) {
-          return;
-        }
-        _selectedDifficulty = newValue;
+      items: _difficulties,
+      labelBuilder: (val) => val,
+      onChanged: (val) {
+        _selectedDifficulty = val;
         _filterWorkoutRecords();
       },
-      dropdownColor: const Color(0xFF191919),
-      iconEnabledColor: Colors.white,
     );
   }
 
@@ -897,8 +881,15 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.orange, size: 24),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.orange, size: 24),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -937,9 +928,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.18),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1046,8 +1037,19 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(Icons.fitness_center, color: Colors.orange, size: 24),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.fitness_center_rounded,
+              color: Colors.orange,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1217,6 +1219,144 @@ class _WorkoutCompletionSummary {
       recordedMinutes: (data['recordedMinutes'] as num?)?.toInt() ?? 0,
       recordedCalories: (data['recordedCalories'] as num?)?.toInt() ?? 0,
       isCheated: data['isCheated'] == true,
+    );
+  }
+}
+
+class _PremiumDropdown extends StatefulWidget {
+  final String label;
+  final String value;
+  final List<String> items;
+  final String Function(String) labelBuilder;
+  final ValueChanged<String> onChanged;
+
+  const _PremiumDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.labelBuilder,
+    required this.onChanged,
+  });
+
+  @override
+  State<_PremiumDropdown> createState() => _PremiumDropdownState();
+}
+
+class _PremiumDropdownState extends State<_PremiumDropdown> {
+  bool _isOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isOpen = !_isOpen;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _isOpen ? Colors.orange : Colors.white.withOpacity(0.1),
+                width: _isOpen ? 1.5 : 1.0,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      style: TextStyle(
+                        color: Colors.orange.withOpacity(0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.labelBuilder(widget.value),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(
+                  _isOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  color: _isOpen ? Colors.orange : Colors.white54,
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          child: _isOpen
+              ? Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141416),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: widget.items.map((item) {
+                        final isSelected = item == widget.value;
+                        return InkWell(
+                          onTap: () {
+                            widget.onChanged(item);
+                            setState(() {
+                              _isOpen = false;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            color: isSelected
+                                ? Colors.orange.withOpacity(0.12)
+                                : Colors.transparent,
+                            child: Text(
+                              widget.labelBuilder(item),
+                              style: TextStyle(
+                                color: isSelected ? Colors.orange : Colors.white70,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 }

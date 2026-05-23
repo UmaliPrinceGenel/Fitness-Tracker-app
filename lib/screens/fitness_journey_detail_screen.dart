@@ -354,15 +354,16 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
           },
           child: Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF191919),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
@@ -476,14 +477,19 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: widget.accentColor.withOpacity(0.7),
-              width: 1.5,
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.accentColor.withOpacity(0.14),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+                color: widget.accentColor.withOpacity(0.2),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -593,10 +599,18 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
     final isJourneyActionBusy = _isLoadingProgress || _isJourneyStarting;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -644,28 +658,63 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isJourneyActionBusy ? null : _startJourney,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.accentColor,
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: widget.accentColor.withOpacity(0.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: isJourneyActionBusy
+                      ? null
+                      : LinearGradient(
+                          colors: [
+                            widget.accentColor,
+                            widget.accentColor.withBlue(
+                              (widget.accentColor.blue - 50).clamp(0, 255),
+                            ).withRed(
+                              (widget.accentColor.red - 30).clamp(0, 255),
+                            ),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  color: isJourneyActionBusy
+                      ? widget.accentColor.withOpacity(0.5)
+                      : null,
+                  boxShadow: isJourneyActionBusy
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: widget.accentColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                 ),
-                child: Text(
-                  _isLoadingProgress
-                      ? 'Loading...'
-                      : _isJourneyStarting
-                          ? 'Starting...'
-                      : _isJourneyCompleted
-                          ? 'Start Workout Again'
-                          : 'Start Journey',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: isJourneyActionBusy ? null : _startJourney,
+                    splashColor: Colors.white.withOpacity(0.1),
+                    highlightColor: Colors.white.withOpacity(0.05),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        heightFactor: 1.0,
+                        child: Text(
+                          _isLoadingProgress
+                              ? 'Loading...'
+                              : _isJourneyStarting
+                                  ? 'Starting...'
+                                  : _isJourneyCompleted
+                                      ? 'Start Workout Again'
+                                      : 'Start Journey',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -731,10 +780,18 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
 
   Widget _buildJourneyTrackingCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -847,30 +904,30 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
   double _trackingPageHeightForWidth(double width, int pageIndex) {
     if (pageIndex == 0) {
       if (width < 330) {
-        return 240;
+        return 280;
       }
       if (width < 380) {
-        return 225;
+        return 270;
       }
       if (width < 460) {
-        return 210;
+        return 260;
       }
-      return 192;
+      return 240;
     }
 
     if (width < 330) {
-      return 610;
+      return 720;
     }
     if (width < 380) {
-      return 560;
+      return 680;
     }
     if (width < 420) {
-      return 500;
+      return 630;
     }
     if (width < 460) {
-      return 450;
+      return 560;
     }
-    return 380;
+    return 440;
   }
 
   double _trackingCarouselHeightForWidth(double width) {
@@ -1060,6 +1117,7 @@ class _FitnessJourneyDetailScreenState extends State<FitnessJourneyDetailScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),

@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_markdown/flutter_markdown.dart';
+
 import '../services/fitness_chat_service.dart';
 
 const double _chatbotButtonSize = 56;
@@ -21,11 +23,13 @@ class ChatbotLauncher extends StatefulWidget {
     this.title = 'Fitness Chat',
     this.initialLeft = 16,
     this.initialBottom = 20,
+    this.minBottomOffset = 0.0,
   });
 
   final String title;
   final double initialLeft;
   final double initialBottom;
+  final double minBottomOffset;
 
   @override
   State<ChatbotLauncher> createState() => _ChatbotLauncherState();
@@ -33,6 +37,7 @@ class ChatbotLauncher extends StatefulWidget {
 
 class _ChatbotLauncherState extends State<ChatbotLauncher> {
   double _horizontalDrag = 0;
+  bool _isDragging = false;
 
   void _openChatbot(BuildContext context) {
     showModalBottomSheet<void>(
@@ -50,16 +55,16 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
   }
 
   _ChatbotDockPosition _initialPosition(BoxConstraints constraints) {
-    final maxTravel = _maxTravel(constraints);
+    final maxTravelBottom = _maxTravel(constraints);
     final bottomOffset =
-        widget.initialBottom.clamp(0.0, maxTravel).toDouble();
-    final side = widget.initialLeft <= constraints.maxWidth / 2
-        ? _ChatbotSide.left
-        : _ChatbotSide.right;
+        widget.initialBottom.clamp(widget.minBottomOffset, maxTravelBottom).toDouble();
+    final maxTravelLeft = (constraints.maxWidth - _chatbotButtonSize).clamp(0.0, double.infinity).toDouble();
+    final leftOffset = widget.initialLeft.clamp(0.0, maxTravelLeft).toDouble();
 
     return _ChatbotDockPosition(
-      side: side,
+      side: _ChatbotSide.left, // Keep field to avoid hot reload crash
       bottomOffset: bottomOffset,
+      leftOffset: leftOffset,
     );
   }
 
@@ -77,76 +82,67 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
               : mediaSize.height,
         );
 
-        _SharedChatbotDock.position.value ??= _initialPosition(safeConstraints);
+        _SharedChatbotDockV2.position.value ??= _initialPosition(safeConstraints);
 
         return ValueListenableBuilder<_ChatbotDockPosition?>(
-          valueListenable: _SharedChatbotDock.position,
+          valueListenable: _SharedChatbotDockV2.position,
           builder: (context, sharedPosition, _) {
             final position = sharedPosition ?? _initialPosition(safeConstraints);
-            final maxTravel = _maxTravel(safeConstraints);
+            final maxTravelBottom = _maxTravel(safeConstraints);
+            final maxTravelLeft = (safeConstraints.maxWidth - _chatbotButtonSize).clamp(0.0, double.infinity).toDouble();
+            
             final bottomOffset =
-                position.bottomOffset.clamp(0.0, maxTravel).toDouble();
+                position.bottomOffset.clamp(widget.minBottomOffset, maxTravelBottom).toDouble();
+            final leftOffset = 
+                position.leftOffset.clamp(0.0, maxTravelLeft).toDouble();
+                
             final top = (safeConstraints.maxHeight -
                     _chatbotButtonSize -
                     bottomOffset)
-                .clamp(0.0, maxTravel)
+                .clamp(0.0, maxTravelBottom)
                 .toDouble();
-            final left = position.side == _ChatbotSide.left
-                ? _chatbotEdgeInset
-                : (safeConstraints.maxWidth -
-                        _chatbotButtonSize -
-                        _chatbotEdgeInset)
-                    .clamp(0.0, double.infinity)
-                    .toDouble();
 
             return Stack(
               children: [
-                Positioned(
-                  left: 0,
+                AnimatedPositioned(
+                  duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  left: leftOffset,
                   top: top,
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(end: left),
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, animatedLeft, child) {
-                      return Transform.translate(
-                        offset: Offset(animatedLeft, 0),
-                        child: child,
+                  child: GestureDetector(
+                    onPanStart: (_) {
+                      setState(() {
+                        _isDragging = true;
+                      });
+                    },
+                    onPanUpdate: (details) {
+                      final nextBottomOffset =
+                          (position.bottomOffset - details.delta.dy)
+                              .clamp(widget.minBottomOffset, maxTravelBottom)
+                              .toDouble();
+                      final nextLeftOffset =
+                          (position.leftOffset + details.delta.dx)
+                              .clamp(0.0, maxTravelLeft)
+                              .toDouble();
+
+                      _SharedChatbotDockV2.position.value = position.copyWith(
+                        bottomOffset: nextBottomOffset,
+                        leftOffset: nextLeftOffset,
                       );
                     },
-                    child: GestureDetector(
-                      onPanStart: (_) {
-                        _horizontalDrag = 0;
-                      },
-                      onPanUpdate: (details) {
-                        final nextBottomOffset =
-                            (bottomOffset - details.delta.dy)
-                                .clamp(0.0, maxTravel)
-                                .toDouble();
-                        var nextSide = position.side;
-
-                        _horizontalDrag += details.delta.dx;
-                        if (_horizontalDrag >= _chatbotSideSwitchThreshold) {
-                          nextSide = _ChatbotSide.right;
-                          _horizontalDrag = 0;
-                        } else if (_horizontalDrag <=
-                            -_chatbotSideSwitchThreshold) {
-                          nextSide = _ChatbotSide.left;
-                          _horizontalDrag = 0;
-                        }
-
-                        _SharedChatbotDock.position.value = position.copyWith(
-                          side: nextSide,
-                          bottomOffset: nextBottomOffset,
-                        );
-                      },
-                      onPanEnd: (_) {
-                        _horizontalDrag = 0;
-                      },
-                      onPanCancel: () {
-                        _horizontalDrag = 0;
-                      },
-                      child: Material(
+                    onPanEnd: (_) {
+                      setState(() {
+                        _isDragging = false;
+                      });
+                      final snapLeft = position.leftOffset < maxTravelLeft / 2
+                          ? _chatbotEdgeInset
+                          : maxTravelLeft - _chatbotEdgeInset;
+                      
+                      _SharedChatbotDockV2.position.value = position.copyWith(
+                        leftOffset: snapLeft,
+                      );
+                    },
+                    child: Material(
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () => _openChatbot(context),
@@ -155,12 +151,12 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
                             width: _chatbotButtonSize,
                             height: _chatbotButtonSize,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF7A00),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.2,
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFFFF7A00), Color(0xFFFF4500)],
                               ),
+                              borderRadius: BorderRadius.circular(18),
                               boxShadow: const [
                                 BoxShadow(
                                   color: Colors.black45,
@@ -171,14 +167,14 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
                             ),
                             child: const Icon(
                               Icons.chat_bubble_rounded,
-                              color: Colors.black,
+                              color: Colors.white,
+                              size: 28,
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
               ],
             );
           },
@@ -188,7 +184,7 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
   }
 }
 
-class _SharedChatbotDock {
+class _SharedChatbotDockV2 {
   static final ValueNotifier<_ChatbotDockPosition?> position =
       ValueNotifier<_ChatbotDockPosition?>(null);
 }
@@ -199,18 +195,22 @@ class _ChatbotDockPosition {
   const _ChatbotDockPosition({
     required this.side,
     required this.bottomOffset,
+    this.leftOffset = 0.0,
   });
 
   final _ChatbotSide side;
   final double bottomOffset;
+  final double leftOffset;
 
   _ChatbotDockPosition copyWith({
     _ChatbotSide? side,
     double? bottomOffset,
+    double? leftOffset,
   }) {
     return _ChatbotDockPosition(
       side: side ?? this.side,
       bottomOffset: bottomOffset ?? this.bottomOffset,
+      leftOffset: leftOffset ?? this.leftOffset,
     );
   }
 }
@@ -498,9 +498,22 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
           builder: (context, sheetController) {
             _activeScrollController = sheetController;
             return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF101010),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18181A),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1.5,
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.8),
+                    blurRadius: 40,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
@@ -521,12 +534,23 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF7A00),
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFFFF7A00), Color(0xFFFF4500)],
+                            ),
                             borderRadius: BorderRadius.circular(14),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black45,
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: const Icon(
                             Icons.smart_toy_rounded,
-                            color: Colors.black,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -579,11 +603,18 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                   ),
                   Container(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF151515),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121214),
                       border: Border(
-                        top: BorderSide(color: Colors.white12),
+                        top: BorderSide(color: Colors.white.withOpacity(0.08)),
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 20,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -623,14 +654,27 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                             width: 52,
                             height: 52,
                             decoration: BoxDecoration(
-                              color: _isSendCoolingDown && !_isReplying
-                                  ? const Color(0xFF8A5B2B)
-                                  : const Color(0xFFFF7A00),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: _isSendCoolingDown && !_isReplying
+                                    ? [const Color(0xFF8A5B2B), const Color(0xFF5A3B1B)]
+                                    : [const Color(0xFFFF7A00), const Color(0xFFFF4500)],
+                              ),
                               borderRadius: BorderRadius.circular(18),
+                              boxShadow: _isSendCoolingDown && !_isReplying
+                                  ? null
+                                  : const [
+                                      BoxShadow(
+                                        color: Colors.black45,
+                                        blurRadius: 12,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
                             ),
                             child: const Icon(
                               Icons.send_rounded,
-                              color: Colors.black,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -658,9 +702,7 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final alignment =
         message.isUser ? Alignment.centerRight : Alignment.centerLeft;
-    final bubbleColor =
-        message.isUser ? const Color(0xFFFF7A00) : const Color(0xFF1F1F1F);
-    final textColor = message.isUser ? Colors.black : Colors.white;
+    final textColor = Colors.white;
     final displayText = message.isStreaming && message.text.isEmpty
         ? 'Typing...'
         : message.text;
@@ -673,22 +715,55 @@ class _MessageBubble extends StatelessWidget {
         ),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: BorderRadius.circular(18),
+            gradient: message.isUser
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFF7A00), Color(0xFFFF4500)],
+                  )
+                : const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF222226), Color(0xFF1A1A1D)],
+                  ),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
+              bottomLeft: Radius.circular(message.isUser ? 20 : 4),
+              bottomRight: Radius.circular(message.isUser ? 4 : 20),
+            ),
             border: message.isUser
                 ? null
-                : Border.all(color: Colors.white10),
+                : Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Text(
-            displayText,
-            style: TextStyle(
-              color: message.isStreaming && message.text.isEmpty
-                  ? Colors.white70
-                  : textColor,
-              fontSize: 14,
-              height: 1.4,
+          child: MarkdownBody(
+            data: displayText,
+            styleSheet: MarkdownStyleSheet(
+              p: TextStyle(
+                color: message.isStreaming && message.text.isEmpty
+                    ? Colors.white70
+                    : textColor,
+                fontSize: 14,
+                height: 1.4,
+              ),
+              listBullet: TextStyle(color: textColor, fontSize: 14),
+              h1: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
+              h2: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+              h3: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+              h4: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+              h5: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+              h6: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+              strong: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+              em: TextStyle(color: textColor, fontStyle: FontStyle.italic),
             ),
           ),
         ),

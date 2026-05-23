@@ -23,9 +23,9 @@ class CommunityMemberProfileScreen extends StatefulWidget {
 
 class _CommunityMemberProfileScreenState
     extends State<CommunityMemberProfileScreen> {
-  static const Color _surface = Color(0xFF171717);
-  static const Color _surfaceAlt = Color(0xFF1E1E1E);
-  static const Color _border = Color(0xFF2A2A2A);
+  static const Color _surface = Color(0x0AFFFFFF);
+  static const Color _surfaceAlt = Color(0x0FFFFFFF);
+  static const Color _border = Color(0x14FFFFFF);
   static const double _minValidHeightCm = 80.0;
   static const double _maxValidHeightCm = 250.0;
   static const double _minValidWeightKg = 20.0;
@@ -49,6 +49,38 @@ class _CommunityMemberProfileScreenState
         await _firestore.collection('users').doc(widget.userId).get();
     if (!userDoc.exists) {
       throw Exception('User profile not found.');
+    }
+
+    final userData = userDoc.data() ?? <String, dynamic>{};
+    final bool isPrivateAccount = userData['isPrivateAccount'] == true;
+
+    if (isPrivateAccount) {
+      return _CommunityMemberProfileData(
+        userId: widget.userId,
+        displayName:
+            (userData['displayName'] as String?)?.trim().isNotEmpty == true
+                ? userData['displayName'] as String
+                : (widget.initialDisplayName?.trim().isNotEmpty == true
+                    ? widget.initialDisplayName!.trim()
+                    : 'Community Member'),
+        profileImageUrl: _resolveProfileImageUrl(userData),
+        gender: userData['profile']?['gender']?.toString(),
+        age: _calculateAge(userData),
+        weight: 0,
+        height: 0,
+        bmi: 0,
+        waistMeasurement: 0,
+        sleepHours: 0,
+        workoutRuns: [],
+        bestRecords: [],
+        totalCalories: 0,
+        totalMinutes: 0,
+        cleanWorkouts: 0,
+        journeyProgress: [],
+        completedJourneys: 0,
+        repeatedJourneyFinishes: 0,
+        isPrivateAccount: true,
+      );
     }
 
     final healthDoc = await _firestore
@@ -75,7 +107,6 @@ class _CommunityMemberProfileScreenState
         .collection('journey_progress')
         .get();
 
-    final userData = userDoc.data() ?? <String, dynamic>{};
     final healthData = healthDoc.data() ?? <String, dynamic>{};
 
     final workoutRuns = doneInfosSnapshot.docs
@@ -176,6 +207,7 @@ class _CommunityMemberProfileScreenState
       journeyProgress: journeyProgress,
       completedJourneys: completedJourneys,
       repeatedJourneyFinishes: repeatedJourneyFinishes,
+      isPrivateAccount: false,
     );
   }
 
@@ -310,6 +342,7 @@ class _CommunityMemberProfileScreenState
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
@@ -399,45 +432,80 @@ class _CommunityMemberProfileScreenState
                         children: [
                           _buildHeroCard(data),
                           const SizedBox(height: 24),
-                          _buildSectionTitle(
-                            title: 'Health Stats',
-                            subtitle:
-                                'A quick view of this member\'s current body metrics.',
-                          ),
-                          const SizedBox(height: 14),
-                          _buildHealthStatsGrid(data),
-                          const SizedBox(height: 28),
-                          _buildSectionTitle(
-                            title: 'Workout Progress',
-                            subtitle:
-                                'Completion totals and recorded effort across finished workouts.',
-                          ),
-                          const SizedBox(height: 14),
-                          _buildWorkoutSummaryGrid(data),
-                          const SizedBox(height: 28),
-                          _buildSectionTitle(
-                            title: 'Fitness Journeys',
-                            subtitle:
-                                'Journey status, current progress, and how many full journey runs this member has finished.',
-                          ),
-                          const SizedBox(height: 14),
-                          _buildFitnessJourneySection(data),
-                          const SizedBox(height: 28),
-                          _buildSectionTitle(
-                            title: 'Best Personal Records',
-                            subtitle:
-                                'Top recorded lifts and exercise performances.',
-                          ),
-                          const SizedBox(height: 14),
-                          _buildPersonalBestSection(data),
-                          const SizedBox(height: 28),
-                          _buildSectionTitle(
-                            title: 'Completed Workouts',
-                            subtitle:
-                                'Full workout history from this community member.',
-                          ),
-                          const SizedBox(height: 14),
-                          _buildWorkoutHistorySection(data),
+                          if (data.isPrivateAccount) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+                              decoration: BoxDecoration(
+                                color: _surface,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: _border),
+                              ),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.lock_outline, size: 64, color: Colors.white24),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    "This account is private",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    "Their progress and stats are hidden.",
+                                    style: TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else ...[
+                            _buildSectionTitle(
+                              title: 'Health Stats',
+                              subtitle:
+                                  'A quick view of this member\'s current body metrics.',
+                            ),
+                            const SizedBox(height: 14),
+                            _buildHealthStatsGrid(data),
+                            const SizedBox(height: 28),
+                            _buildSectionTitle(
+                              title: 'Workout Progress',
+                              subtitle:
+                                  'Completion totals and recorded effort across finished workouts.',
+                            ),
+                            const SizedBox(height: 14),
+                            _buildWorkoutSummaryGrid(data),
+                            const SizedBox(height: 28),
+                            _buildSectionTitle(
+                              title: 'Fitness Journeys',
+                              subtitle:
+                                  'Journey status, current progress, and how many full journey runs this member has finished.',
+                            ),
+                            const SizedBox(height: 14),
+                            _buildFitnessJourneySection(data),
+                            const SizedBox(height: 28),
+                            _buildSectionTitle(
+                              title: 'Best Personal Records',
+                              subtitle:
+                                  'Top recorded lifts and exercise performances.',
+                            ),
+                            const SizedBox(height: 14),
+                            _buildPersonalBestSection(data),
+                            const SizedBox(height: 28),
+                            _buildSectionTitle(
+                              title: 'Completed Workouts',
+                              subtitle:
+                                  'Full workout history from this community member.',
+                            ),
+                            const SizedBox(height: 14),
+                            _buildWorkoutHistorySection(data),
+                          ],
                         ],
                       ),
                     ),
@@ -460,11 +528,13 @@ class _CommunityMemberProfileScreenState
         color: _surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _border),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1D1D1D), Color(0xFF111111)],
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -522,8 +592,15 @@ class _CommunityMemberProfileScreenState
                   height: avatarSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white12, width: 2),
+                    border: Border.all(color: Colors.white.withOpacity(0.15), width: 3),
                     color: Colors.grey[850],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.15),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
                   child: ClipOval(
                     child: data.profileImageUrl != null
@@ -594,8 +671,15 @@ class _CommunityMemberProfileScreenState
                       height: avatarSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white12, width: 2),
+                        border: Border.all(color: Colors.white.withOpacity(0.15), width: 3),
                         color: Colors.grey[850],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.15),
+                            blurRadius: 24,
+                            spreadRadius: 4,
+                          ),
+                        ],
                       ),
                       child: ClipOval(
                         child: data.profileImageUrl != null
@@ -673,9 +757,9 @@ class _CommunityMemberProfileScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1545,6 +1629,7 @@ class _CommunityMemberProfileData {
   final List<_CommunityJourneyProgress> journeyProgress;
   final int completedJourneys;
   final int repeatedJourneyFinishes;
+  final bool isPrivateAccount;
 
   const _CommunityMemberProfileData({
     required this.userId,
@@ -1565,6 +1650,7 @@ class _CommunityMemberProfileData {
     required this.journeyProgress,
     required this.completedJourneys,
     required this.repeatedJourneyFinishes,
+    required this.isPrivateAccount,
   });
 }
 

@@ -732,11 +732,66 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     );
   }
 
+  Widget _buildGradientButton({
+    required String text,
+    required VoidCallback? onPressed,
+    required List<Color> gradientColors,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: onPressed != null
+            ? LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: onPressed == null ? Colors.white.withOpacity(0.05) : null,
+        boxShadow: onPressed != null
+            ? [
+                BoxShadow(
+                  color: gradientColors.first.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onPressed,
+          splashColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.white.withOpacity(0.05),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: onPressed != null ? Colors.white : Colors.white38,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomActionRow() {
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton(
+          child: _buildGradientButton(
+            text: "Previous",
             onPressed: widget.exerciseNumber > 1
                 ? () async {
                     if (widget.isReadOnlyMode) {
@@ -746,25 +801,19 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     }
                   }
                 : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey[800],
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey[900],
-              disabledForegroundColor: Colors.white38,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              "Previous",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            gradientColors: [Colors.grey[800]!, Colors.grey[700]!],
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: ElevatedButton(
+          child: _buildGradientButton(
+            text: widget.isReadOnlyMode
+                ? (widget.exerciseNumber < widget.workout.exerciseList.length
+                    ? "Next"
+                    : "Back")
+                : widget.exerciseNumber < widget.workout.exerciseList.length
+                    ? "Next"
+                    : "Done",
             onPressed: () async {
               int totalExercises = widget.workout.exerciseList.length;
 
@@ -784,36 +833,17 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               _markExerciseAsViewed();
               _notifyValidWeightInput();
 
-              // For the last exercise, don't save automatically when pressing "Done"
               if (widget.exerciseNumber < totalExercises) {
-                // Save before navigating to next exercise
                 await _saveExerciseRecord();
                 await _openExercise(widget.exerciseNumber + 1);
               } else {
-                // This is the last exercise, so just go back to workout detail screen
-                // The workout will be saved when the user presses the "Done" button on the workout screen
                 await _saveExerciseRecord();
-                Navigator.pop(context); // Go back to workout detail screen
+                Navigator.pop(context);
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              widget.isReadOnlyMode
-                  ? (widget.exerciseNumber < widget.workout.exerciseList.length
-                        ? "Next"
-                        : "Back")
-                  : widget.exerciseNumber < widget.workout.exerciseList.length
-                  ? "Next"
-                  : "Done",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            gradientColors: widget.isReadOnlyMode
+                ? (widget.exerciseNumber < widget.workout.exerciseList.length ? [Colors.orange, Colors.deepOrange] : [Colors.grey[800]!, Colors.grey[700]!])
+                : (widget.exerciseNumber < widget.workout.exerciseList.length ? [Colors.orange, Colors.deepOrange] : [Colors.green, Colors.green[700]!]),
           ),
         ),
       ],
@@ -824,12 +854,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
+        color: Colors.white.withOpacity(0.04),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
@@ -845,6 +876,44 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         color: Colors.white,
         fontSize: 18,
         fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _buildPremiumTextField({
+    required TextEditingController controller,
+    required String labelText,
+    String? helperText,
+    void Function(String)? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      enabled: !widget.isReadOnlyMode,
+      readOnly: widget.isReadOnlyMode,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      onChanged: widget.isReadOnlyMode ? null : onChanged,
+      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        labelText: labelText,
+        helperText: helperText,
+        helperStyle: const TextStyle(color: Colors.white54, fontSize: 12),
+        labelStyle: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.orange, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -947,7 +1016,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                     child: AspectRatio(
                                       aspectRatio:
                                           _controller!.value.aspectRatio,
-                                      child: VideoPlayer(_controller!),
+                                      child: VideoPlayer(
+                                        _controller!,
+                                        key: ValueKey(_controller.hashCode),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 12),
@@ -1124,25 +1196,69 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                             const SizedBox(height: 24),
                           ],
                           if (widget.isPreviewMode) ...[
-                            _buildSectionCard(
-                              child: const Text(
-                                "Preview only. Start the workout from the previous screen to log weight, reps, and sets.",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                  height: 1.5,
-                                ),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16.0),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.info_outline, color: Colors.orange, size: 24),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Expanded(
+                                    child: Text(
+                                      "Preview only. Start the workout from the previous screen to log weight, reps, and sets.",
+                                      style: TextStyle(
+                                        color: Colors.orange,
+                                        fontSize: 14,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ] else if (widget.isReadOnlyMode) ...[
-                            _buildSectionCard(
-                              child: const Text(
-                                "Completed workout review. Inputs are locked after finishing. Tap Again on the previous screen to log a new session.",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                  height: 1.5,
-                                ),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16.0),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.lock_outline, color: Colors.blue, size: 24),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Expanded(
+                                    child: Text(
+                                      "Completed workout review. Inputs are locked after finishing. Tap Again on the previous screen to log a new session.",
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 14,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ] else ...[
@@ -1165,39 +1281,11 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                     Row(
                                       children: [
                                         Expanded(
-                                          child: TextField(
+                                          child: _buildPremiumTextField(
                                             controller: weightController,
-                                            enabled: !widget.isReadOnlyMode,
-                                            readOnly: widget.isReadOnlyMode,
-                                            keyboardType: TextInputType.number,
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter
-                                                  .digitsOnly,
-                                            ],
-                                            onChanged: widget.isReadOnlyMode
-                                                ? null
-                                                : (_) {
-                                                    _notifyValidWeightInput();
-                                                  },
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                            decoration: const InputDecoration(
-                                              labelText: 'Weight (kg)',
-                                              helperText: 'Whole numbers only',
-                                              helperStyle: TextStyle(
-                                                color: Colors.white54,
-                                              ),
-                                              labelStyle: TextStyle(
-                                                color: Colors.orange,
-                                              ),
-                                              border: OutlineInputBorder(),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderSide: BorderSide(
-                                                  color: Colors.orange,
-                                                ),
-                                              ),
-                                            ),
+                                            labelText: 'Weight (kg)',
+                                            helperText: 'Whole numbers only',
+                                            onChanged: (_) => _notifyValidWeightInput(),
                                           ),
                                         ),
                                         const SizedBox(width: 10),
@@ -1268,66 +1356,18 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: TextField(
+                                        child: _buildPremiumTextField(
                                           controller: repsController,
-                                          enabled: !widget.isReadOnlyMode,
-                                          readOnly: widget.isReadOnlyMode,
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter
-                                                .digitsOnly,
-                                          ],
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                          decoration: const InputDecoration(
-                                            labelText: 'Reps',
-                                            helperText: 'Whole numbers only',
-                                            helperStyle: TextStyle(
-                                              color: Colors.white54,
-                                            ),
-                                            labelStyle: TextStyle(
-                                              color: Colors.orange,
-                                            ),
-                                            border: OutlineInputBorder(),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Colors.orange,
-                                              ),
-                                            ),
-                                          ),
+                                          labelText: 'Reps',
+                                          helperText: 'Whole numbers only',
                                         ),
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
-                                        child: TextField(
+                                        child: _buildPremiumTextField(
                                           controller: setsController,
-                                          enabled: !widget.isReadOnlyMode,
-                                          readOnly: widget.isReadOnlyMode,
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter
-                                                .digitsOnly,
-                                          ],
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                          decoration: const InputDecoration(
-                                            labelText: 'Sets',
-                                            helperText: 'Whole numbers only',
-                                            helperStyle: TextStyle(
-                                              color: Colors.white54,
-                                            ),
-                                            labelStyle: TextStyle(
-                                              color: Colors.orange,
-                                            ),
-                                            border: OutlineInputBorder(),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Colors.orange,
-                                              ),
-                                            ),
-                                          ),
+                                          labelText: 'Sets',
+                                          helperText: 'Whole numbers only',
                                         ),
                                       ),
                                     ],
@@ -1360,7 +1400,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                   ),
                                   const Divider(
                                     height: 20,
-                                    color: Colors.white38,
+                                    color: Colors.white10,
                                   ),
                                   _buildInfoRow(
                                     Icons.timer,
@@ -1369,7 +1409,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                   ),
                                   const Divider(
                                     height: 20,
-                                    color: Colors.white38,
+                                    color: Colors.white10,
                                   ),
                                   _buildInfoRow(
                                     Icons.local_fire_department,
@@ -1378,7 +1418,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                   ),
                                   const Divider(
                                     height: 20,
-                                    color: Colors.white38,
+                                    color: Colors.white10,
                                   ),
                                   _buildInfoRow(
                                     Icons.repeat,
@@ -1387,7 +1427,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                   ),
                                   const Divider(
                                     height: 20,
-                                    color: Colors.white38,
+                                    color: Colors.white10,
                                   ),
                                   _buildInfoRow(
                                     Icons.directions_run,
@@ -1460,6 +1500,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: Colors.black,
         appBar: AppBar(
           backgroundColor: Colors.black,
@@ -1507,12 +1548,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.white.withOpacity(0.04),
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
                                     ],
@@ -1528,7 +1570,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                           child: AspectRatio(
                                             aspectRatio:
                                                 _controller!.value.aspectRatio,
-                                            child: VideoPlayer(_controller!),
+                                            child: VideoPlayer(
+                                              _controller!,
+                                              key: ValueKey(_controller.hashCode),
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(height: 12),
@@ -1597,12 +1642,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.white.withOpacity(0.04),
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
                                     ],
@@ -1644,12 +1690,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF191919),
+                                  color: Colors.white.withOpacity(0.04),
                                   borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 10,
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],
@@ -1695,12 +1742,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.white.withOpacity(0.04),
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
                                     ],
@@ -1736,64 +1784,26 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         Row(
                                           children: [
                                             Expanded(
-                                              child: ElevatedButton(
+                                              child: _buildGradientButton(
+                                                text: _isTimerRunning ? "Pause" : "Start",
                                                 onPressed: _toggleTimer,
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      Colors.orange,
-                                                  foregroundColor: Colors.white,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  _isTimerRunning
-                                                      ? "Pause"
-                                                      : "Start",
-                                                ),
+                                                gradientColors: const [Colors.orange, Colors.deepOrange],
                                               ),
                                             ),
                                             const SizedBox(width: 10),
                                             Expanded(
-                                              child: OutlinedButton(
+                                              child: _buildGradientButton(
+                                                text: "Cancel",
                                                 onPressed: _cancelTimer,
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor:
-                                                      Colors.white70,
-                                                  side: const BorderSide(
-                                                    color: Colors.white24,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                ),
-                                                child: const Text("Cancel"),
+                                                gradientColors: [Colors.grey[800]!, Colors.grey[700]!],
                                               ),
                                             ),
                                             const SizedBox(width: 10),
                                             Expanded(
-                                              child: OutlinedButton(
+                                              child: _buildGradientButton(
+                                                text: "Done",
                                                 onPressed: _completeTimer,
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor:
-                                                      Colors.greenAccent,
-                                                  side: const BorderSide(
-                                                    color: Colors.greenAccent,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                ),
-                                                child: const Text("Done"),
+                                                gradientColors: [Colors.green, Colors.green[700]!],
                                               ),
                                             ),
                                           ],
@@ -1808,54 +1818,68 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               if (widget.isPreviewMode) ...[
                                 Container(
                                   width: double.infinity,
+                                  padding: const EdgeInsets.all(16.0),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.orange.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.info_outline, color: Colors.orange, size: 24),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      const Expanded(
+                                        child: Text(
+                                          "Preview only. Start the workout from the previous screen to log weight, reps, and sets.",
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 14,
+                                            height: 1.4,
+                                          ),
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text(
-                                      "Preview only. Start the workout from the previous screen to log weight, reps, and sets.",
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 14,
-                                        height: 1.5,
-                                      ),
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
                               ] else if (widget.isReadOnlyMode) ...[
                                 Container(
                                   width: double.infinity,
+                                  padding: const EdgeInsets.all(16.0),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.blue.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.lock_outline, color: Colors.blue, size: 24),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      const Expanded(
+                                        child: Text(
+                                          "Completed workout review. Inputs are locked after finishing. Tap Again on the previous screen to log a new session.",
+                                          style: TextStyle(
+                                            color: Colors.blue,
+                                            fontSize: 14,
+                                            height: 1.4,
+                                          ),
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text(
-                                      "Completed workout review. Inputs are locked after finishing. Tap Again on the previous screen to log a new session.",
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 14,
-                                        height: 1.5,
-                                      ),
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
@@ -1883,12 +1907,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.white.withOpacity(0.04),
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
                                     ],
@@ -1902,50 +1927,11 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                           Row(
                                             children: [
                                               Expanded(
-                                                child: TextField(
+                                                child: _buildPremiumTextField(
                                                   controller: weightController,
-                                                  enabled:
-                                                      !widget.isReadOnlyMode,
-                                                  readOnly:
-                                                      widget.isReadOnlyMode,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  inputFormatters: [
-                                                    FilteringTextInputFormatter
-                                                        .digitsOnly,
-                                                  ],
-                                                  onChanged:
-                                                      widget.isReadOnlyMode
-                                                      ? null
-                                                      : (_) {
-                                                          _notifyValidWeightInput();
-                                                        },
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        labelText:
-                                                            'Weight (kg)',
-                                                        helperText:
-                                                            'Whole numbers only',
-                                                        helperStyle: TextStyle(
-                                                          color: Colors.white54,
-                                                        ),
-                                                        labelStyle: TextStyle(
-                                                          color: Colors.orange,
-                                                        ),
-                                                        border:
-                                                            OutlineInputBorder(),
-                                                        focusedBorder:
-                                                            OutlineInputBorder(
-                                                              borderSide:
-                                                                  BorderSide(
-                                                                    color: Colors
-                                                                        .orange,
-                                                                  ),
-                                                            ),
-                                                      ),
+                                                  labelText: 'Weight (kg)',
+                                                  helperText: 'Whole numbers only',
+                                                  onChanged: (_) => _notifyValidWeightInput(),
                                                 ),
                                               ),
                                               const SizedBox(width: 10),
@@ -2023,41 +2009,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         Row(
                                           children: [
                                             Expanded(
-                                              child: TextField(
+                                              child: _buildPremiumTextField(
                                                 controller: repsController,
-                                                enabled: !widget.isReadOnlyMode,
-                                                readOnly: widget.isReadOnlyMode,
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                inputFormatters: [
-                                                  FilteringTextInputFormatter
-                                                      .digitsOnly,
-                                                ],
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText: 'Reps',
-                                                      helperText:
-                                                          'Whole numbers only',
-                                                      helperStyle: TextStyle(
-                                                        color: Colors.white54,
-                                                      ),
-                                                      labelStyle: TextStyle(
-                                                        color: Colors.orange,
-                                                      ),
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                      focusedBorder:
-                                                          OutlineInputBorder(
-                                                            borderSide:
-                                                                BorderSide(
-                                                                  color: Colors
-                                                                      .orange,
-                                                                ),
-                                                          ),
-                                                    ),
+                                                labelText: 'Reps',
+                                                helperText: 'Whole numbers only',
                                               ),
                                             ),
                                             const SizedBox(width: 10),
@@ -2075,41 +2030,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         Row(
                                           children: [
                                             Expanded(
-                                              child: TextField(
+                                              child: _buildPremiumTextField(
                                                 controller: setsController,
-                                                enabled: !widget.isReadOnlyMode,
-                                                readOnly: widget.isReadOnlyMode,
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                inputFormatters: [
-                                                  FilteringTextInputFormatter
-                                                      .digitsOnly,
-                                                ],
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText: 'Sets',
-                                                      helperText:
-                                                          'Whole numbers only',
-                                                      helperStyle: TextStyle(
-                                                        color: Colors.white54,
-                                                      ),
-                                                      labelStyle: TextStyle(
-                                                        color: Colors.orange,
-                                                      ),
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                      focusedBorder:
-                                                          OutlineInputBorder(
-                                                            borderSide:
-                                                                BorderSide(
-                                                                  color: Colors
-                                                                      .orange,
-                                                                ),
-                                                          ),
-                                                    ),
+                                                labelText: 'Sets',
+                                                helperText: 'Whole numbers only',
                                               ),
                                             ),
                                             const SizedBox(width: 10),
@@ -2141,12 +2065,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
+                                    color: Colors.white.withOpacity(0.04),
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
                                     ],
@@ -2164,7 +2089,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         ),
                                         const Divider(
                                           height: 20,
-                                          color: Colors.white38,
+                                          color: Colors.white10,
                                         ),
                                         // Changed label and value to dynamic calculation
                                         _buildInfoRow(
@@ -2174,7 +2099,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         ),
                                         const Divider(
                                           height: 20,
-                                          color: Colors.white38,
+                                          color: Colors.white10,
                                         ),
                                         // Changed label and value to dynamic calculation
                                         _buildInfoRow(
@@ -2184,7 +2109,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         ),
                                         const Divider(
                                           height: 20,
-                                          color: Colors.white38,
+                                          color: Colors.white10,
                                         ),
                                         _buildInfoRow(
                                           Icons.repeat,
@@ -2193,7 +2118,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                         ),
                                         const Divider(
                                           height: 20,
-                                          color: Colors.white38,
+                                          color: Colors.white10,
                                         ),
                                         _buildInfoRow(
                                           Icons.directions_run,
@@ -2220,12 +2145,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF191919),
+                                  color: Colors.white.withOpacity(0.04),
                                   borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 10,
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],
@@ -2257,12 +2183,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF191919),
+                                  color: Colors.white.withOpacity(0.04),
                                   borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 10,
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],

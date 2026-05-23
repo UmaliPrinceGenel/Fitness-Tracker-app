@@ -53,7 +53,9 @@ class _IconSequenceAnimationState extends State<IconSequenceAnimation>
     // Start animation after a delay
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1500), () {
-        _controller.forward();
+        if (mounted) {
+          _controller.forward();
+        }
       });
     });
   }

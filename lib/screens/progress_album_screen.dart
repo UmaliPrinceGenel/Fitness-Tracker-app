@@ -559,6 +559,7 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -1516,6 +1517,7 @@ class _ProgressPhotoEditingScreenState
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
         title: const Text(
           "Share Progress",

@@ -8,170 +8,35 @@ class SleepInfoScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        toolbarHeight: 80,
         backgroundColor: Colors.black,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Sleep Hours Info",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
         ),
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF191919),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Sleep Hours",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Tracking your sleep hours is essential for maintaining good health and well-being. Quality sleep plays a crucial role in physical and mental recovery.",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.4)),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Why Track Sleep?",
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            "• Helps monitor recovery and overall health\n• Improves sleep quality awareness\n• Supports fitness and wellness goals\n• Aids in identifying sleep patterns",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF191919),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Sleep Guidelines",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildGuidelineItem(
-                      "Recommended Hours",
-                      "Adults should aim for 7-9 hours of sleep per night for optimal health.",
-                      Colors.green,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildGuidelineItem(
-                      "Quality Matters",
-                      "Focus on both quantity and quality of sleep for maximum benefits.",
-                      Colors.orange,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildGuidelineItem(
-                      "Consistency",
-                      "Try to maintain regular sleep and wake times, even on weekends.",
-                      Colors.blue,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF191919),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Tips for Better Sleep",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTipItem(
-                      "Create a Sleep Schedule",
-                      "Go to bed and wake up at the same time every day.",
-                      Icons.schedule,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildTipItem(
-                      "Limit Screen Time",
-                      "Avoid screens at least 1 hour before bedtime.",
-                      Icons.screen_lock_portrait,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildTipItem(
-                      "Create a Relaxing Environment",
-                      "Keep your bedroom cool, dark, and quiet.",
-                      Icons.bed,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildTipItem(
-                      "Watch Your Diet",
-                      "Avoid caffeine and large meals before bedtime.",
-                      Icons.restaurant,
-                    ),
-                  ],
-                ),
-              ),
+              _buildMainCard(),
+              const SizedBox(height: 24),
+              _buildGuidelinesSection(),
+              const SizedBox(height: 24),
+              _buildTipsSection(),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -179,32 +44,93 @@ class SleepInfoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGuidelineItem(String title, String description, Color color) {
+  Widget _buildMainCard() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1F1F24), Color(0xFF141416)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.nights_stay, color: Colors.purpleAccent, size: 28),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Text(
+                  "Sleep Hours",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            "Tracking your sleep hours is essential for maintaining good health and well-being. Quality sleep plays a crucial role in physical and mental recovery.",
             style: TextStyle(
-              color: color,
+              color: Colors.white70,
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              height: 1.6,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              height: 1.4,
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.purpleAccent.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.purpleAccent.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.purpleAccent, size: 20),
+                    const SizedBox(width: 10),
+                    const Text(
+                      "Why Track Sleep?",
+                      style: TextStyle(
+                        color: Colors.purpleAccent,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildBulletPoint("Helps monitor recovery and overall health"),
+                _buildBulletPoint("Improves sleep quality awareness"),
+                _buildBulletPoint("Supports fitness and wellness goals"),
+                _buildBulletPoint("Aids in identifying sleep patterns"),
+              ],
             ),
           ),
         ],
@@ -212,36 +138,110 @@ class SleepInfoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTipItem(String title, String description, IconData icon) {
+  Widget _buildBulletPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Icon(Icons.circle, color: Colors.purpleAccent, size: 6),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuidelinesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 8.0, bottom: 16.0),
+          child: Text(
+            "Sleep Guidelines",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        _buildGuidelineCard(
+          "Recommended Hours",
+          "Adults should aim for 7-9 hours of sleep per night for optimal health.",
+          Icons.access_time_filled,
+          Colors.greenAccent,
+        ),
+        const SizedBox(height: 16),
+        _buildGuidelineCard(
+          "Quality Matters",
+          "Focus on both quantity and quality of sleep for maximum benefits.",
+          Icons.star_rounded,
+          Colors.orangeAccent,
+        ),
+        const SizedBox(height: 16),
+        _buildGuidelineCard(
+          "Consistency",
+          "Try to maintain regular sleep and wake times, even on weekends.",
+          Icons.calendar_month_rounded,
+          Colors.blueAccent,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGuidelineCard(String title, String description, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.15)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.orange, size: 20),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   description,
                   style: const TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
+                    fontSize: 15,
+                    height: 1.5,
                   ),
                 ),
               ],
@@ -249,6 +249,94 @@ class SleepInfoScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTipsSection() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF191919),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb, color: Colors.amber, size: 24),
+              SizedBox(width: 12),
+              Text(
+                "Tips for Better Sleep",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildTipItem("Create a Sleep Schedule", "Go to bed and wake up at the same time every day.", Icons.schedule),
+          _buildTipDivider(),
+          _buildTipItem("Limit Screen Time", "Avoid screens at least 1 hour before bedtime.", Icons.screen_lock_portrait),
+          _buildTipDivider(),
+          _buildTipItem("Relaxing Environment", "Keep your bedroom cool, dark, and quiet.", Icons.bed),
+          _buildTipDivider(),
+          _buildTipItem("Watch Your Diet", "Avoid caffeine and large meals before bedtime.", Icons.restaurant),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipItem(String title, String description, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: Colors.white70, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTipDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Divider(color: Colors.white.withOpacity(0.05), height: 1),
     );
   }
 }

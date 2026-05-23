@@ -7,6 +7,7 @@ import 'health_dashboard.dart';
 import 'admin_login_screen.dart';
 import 'permissions_screen.dart';
 import '../widgets/web_auth_shell.dart';
+import '../theme/app_colors.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -596,30 +597,34 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
+    if (kIsWeb && MediaQuery.of(context).size.width >= 800) {
       return _buildWebProfileScreen(context);
     }
 
+    final colors = AppColors.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.scaffold,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshProfileData,
+          color: const Color(0xFFFF7317),
           child: Stack(
             children: [
-              // Back button with circular background
+              // Back button with modern styling
               Padding(
-                padding: const EdgeInsets.only(left: 16, top: 8),
+                padding: const EdgeInsets.only(left: 16, top: 16),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF191919),
+                    decoration: BoxDecoration(
+                      color: colors.cardAlt,
                       shape: BoxShape.circle,
+                      border: Border.all(color: colors.cardBorder),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: Icon(Icons.arrow_back, color: colors.textPrimary),
                       onPressed: _isLoading
                           ? null
                           : _handleBackNavigation,
@@ -628,98 +633,128 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                 ),
               ),
 
-              // Grey card container
+              // Modern container
               Center(
                 child: Container(
                   width: double.infinity,
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    maxHeight: MediaQuery.of(context).size.height * 0.85,
                   ),
-                  margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF191919),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
-                      bottom: Radius.circular(30),
-                    ),
+                  margin: const EdgeInsets.fromLTRB(20, 80, 20, 20),
+                  decoration: BoxDecoration(
+                    color: colors.cardAlt,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: colors.cardBorder),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Title inside the container
-                        const Text(
+                        Text(
                           "My Profile",
                           style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFFF7317),
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
                         // Description text
-                        const Text(
+                        Text(
                           "Before you get started, fill out the following information to get more accurate body composition and calorie information.",
                           textAlign: TextAlign.left,
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 14, height: 1.5),
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 30),
 
                         // Gender
-                        const Text(
+                        Text(
                           "Gender",
                           style: TextStyle(
-                            color: Colors.orange,
-                            fontSize: 14,
+                            color: const Color(0xFFFF7317),
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            ChoiceChip(
-                              label: Row(
-                                children: const [
-                                  Icon(Icons.male, color: Colors.white),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    "Male",
-                                    style: TextStyle(color: Colors.white),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.male, color: gender == "Male" ? Colors.white : colors.textSecondary, size: 18),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Male",
+                                      style: TextStyle(
+                                        color: gender == "Male" ? Colors.white : colors.textSecondary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                selected: gender == "Male",
+                                selectedColor: const Color(0xFF36A8FF),
+                                backgroundColor: colors.scaffold,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: gender == "Male" ? Colors.transparent : colors.cardBorder,
                                   ),
-                                ],
+                                ),
+                                onSelected: _isLoading
+                                    ? null
+                                    : (selected) {
+                                        setState(() => gender = "Male");
+                                      },
                               ),
-                              selected: gender == "Male",
-                              selectedColor: Colors.blue,
-                              backgroundColor: Colors.grey[800],
-                              onSelected: _isLoading
-                                  ? null
-                                  : (selected) {
-                                      setState(() => gender = "Male");
-                                    },
                             ),
                             const SizedBox(width: 15),
-                            ChoiceChip(
-                              label: Row(
-                                children: const [
-                                  Icon(Icons.female, color: Colors.white),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    "Female",
-                                    style: TextStyle(color: Colors.white),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.female, color: gender == "Female" ? Colors.white : colors.textSecondary, size: 18),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Female",
+                                      style: TextStyle(
+                                        color: gender == "Female" ? Colors.white : colors.textSecondary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                selected: gender == "Female",
+                                selectedColor: const Color(0xFFFF69B4),
+                                backgroundColor: colors.scaffold,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: gender == "Female" ? Colors.transparent : colors.cardBorder,
                                   ),
-                                ],
+                                ),
+                                onSelected: _isLoading
+                                    ? null
+                                    : (selected) {
+                                        setState(() => gender = "Female");
+                                      },
                               ),
-                              selected: gender == "Female",
-                              selectedColor: Colors.pink,
-                              backgroundColor: Colors.grey[800],
-                              onSelected: _isLoading
-                                  ? null
-                                  : (selected) {
-                                      setState(() => gender = "Female");
-                                    },
                             ),
                           ],
                         ),
@@ -730,43 +765,40 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               "Height",
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
+                                color: colors.textPrimary,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             SizedBox(
-                              width: 100,
+                              width: 120,
                               child: TextField(
                                 enabled: !_isLoading,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
+                                textAlign: TextAlign.center,
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: Colors.grey[800],
+                                  fillColor: Colors.white.withOpacity(0.08),
                                   hintText: "cm",
-                                  hintStyle: const TextStyle(color: Colors.grey),
+                                  hintStyle: TextStyle(color: colors.textSecondary.withOpacity(0.5)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                   enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide.none,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderSide: const BorderSide(
-                                      color: Colors.orange,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: Color(0xFFFF7317), width: 1.5),
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
                                 ),
                                 controller: heightController,
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                                 ],
-                                onChanged: (value) {
-                                  // Changes are now handled by the controller listener
-                                },
                               ),
                             ),
                           ],
@@ -778,43 +810,40 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               "Weight",
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
+                                color: colors.textPrimary,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             SizedBox(
-                              width: 100,
+                              width: 120,
                               child: TextField(
                                 enabled: !_isLoading,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
+                                textAlign: TextAlign.center,
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: Colors.grey[800],
+                                  fillColor: Colors.white.withOpacity(0.08),
                                   hintText: "kg",
-                                  hintStyle: const TextStyle(color: Colors.grey),
+                                  hintStyle: TextStyle(color: colors.textSecondary.withOpacity(0.5)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                   enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide.none,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderSide: const BorderSide(
-                                      color: Colors.orange,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: Color(0xFFFF7317), width: 1.5),
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
                                 ),
                                 controller: weightController,
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                                 ],
-                                onChanged: (value) {
-                                  // Changes are now handled by the controller listener
-                                },
                               ),
                             ),
                           ],
@@ -826,11 +855,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               "Date of Birth",
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
+                                color: colors.textPrimary,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -838,45 +867,68 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                               onPressed: _isLoading
                                   ? null
                                   : () => _selectDate(context),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.08),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                                ),
+                              ),
                               child: Text(
                                 "${dob.year}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}",
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600),
                               ),
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 40),
 
                         // Next button
-                        SizedBox(
+                        Container(
                           width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF7317),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.5),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFF7317).withOpacity(0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _isLoading ? null : _saveProfileData,
+                              borderRadius: BorderRadius.circular(30),
+                              child: Center(
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                    : const Text(
+                                        "Next",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
-                            onPressed: _isLoading ? null : _saveProfileData,
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                                    ),
-                                  )
-                                : const Text(
-                                    "Next",
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
                           ),
                         ),
                         
@@ -905,11 +957,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                           },
                           child: Container(
                             padding: const EdgeInsets.all(8),
+                            alignment: Alignment.center,
                             child: Text(
                               'Version 1.0.1+2',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14,
+                              style: TextStyle(
+                                color: colors.textSecondary.withOpacity(0.5),
+                                fontSize: 13,
                               ),
                               textAlign: TextAlign.center,
                             ),

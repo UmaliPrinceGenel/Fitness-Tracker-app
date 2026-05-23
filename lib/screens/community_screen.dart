@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import 'package:chewie/chewie.dart';
 import 'community_member_profile_screen.dart';
 import 'photo_editing_screen.dart';
 import '../widgets/chatbot_launcher.dart';
+import '../theme/app_colors.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key, this.showChatbot = true});
@@ -307,16 +309,21 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.scaffold,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text(
-          "Community",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        backgroundColor: colors.scaffold,
+        toolbarHeight: 80,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 20),
+          child: Text(
+            "Community",
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         centerTitle: false,
@@ -325,6 +332,7 @@ class _CommunityScreenState extends State<CommunityScreen>
       body: Stack(
         children: [
           SafeArea(
+            bottom: false,
             child: RefreshIndicator(
               onRefresh: _refreshCommunityData,
               child: LayoutBuilder(
@@ -338,12 +346,12 @@ class _CommunityScreenState extends State<CommunityScreen>
                         Container(
                           margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF141414),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: Colors.white10),
+                            color: Colors.white.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withOpacity(0.08)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.28),
+                                color: Colors.black.withOpacity(0.3),
                                 blurRadius: 18,
                                 offset: const Offset(0, 8),
                               ),
@@ -466,11 +474,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                                               vertical: 14.0,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFF202020),
+                                              color: Colors.black.withOpacity(0.4),
                                               borderRadius:
                                                   BorderRadius.circular(18),
                                               border: Border.all(
-                                                color: Colors.white10,
+                                                color: Colors.white.withOpacity(0.05),
                                               ),
                                             ),
                                             child: Row(
@@ -574,7 +582,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                               }
 
                               return ListView.builder(
-                                padding: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.only(bottom: 120),
                                 itemCount: snapshot.data!.docs.length,
                                 itemBuilder: (context, index) {
                                   final post = snapshot.data!.docs[index];
@@ -603,10 +611,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                   return SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 16.0,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
                       child: Center(
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: 980),
@@ -620,15 +625,15 @@ class _CommunityScreenState extends State<CommunityScreen>
                                   children: [
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF141414),
-                                        borderRadius: BorderRadius.circular(22),
+                                        color: Colors.white.withOpacity(0.04),
+                                        borderRadius: BorderRadius.circular(24),
                                         border: Border.all(
-                                          color: Colors.white10,
+                                          color: Colors.white.withOpacity(0.08),
                                         ),
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black.withOpacity(
-                                              0.28,
+                                              0.3,
                                             ),
                                             blurRadius: 18,
                                             offset: const Offset(0, 8),
@@ -740,13 +745,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                                                       vertical: 18.0,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFF202020,
-                                                  ),
+                                                  color: Colors.black.withOpacity(0.4),
                                                   borderRadius:
                                                       BorderRadius.circular(18),
                                                   border: Border.all(
-                                                    color: Colors.white10,
+                                                    color: Colors.white.withOpacity(0.05),
                                                   ),
                                                 ),
                                                 child: Row(
@@ -1111,24 +1114,19 @@ class _PostCardState extends State<PostCard>
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white10),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: iconColor, size: 18),
+            Icon(icon, color: iconColor, size: 26),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -1157,15 +1155,10 @@ class _PostCardState extends State<PostCard>
           widget.onShowLikes(context, widget.postId);
         }
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white10),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedBuilder(
               animation: _likeScaleAnimation,
@@ -1178,7 +1171,7 @@ class _PostCardState extends State<PostCard>
               child: Icon(
                 showFilledHeart ? Icons.favorite : Icons.favorite_border,
                 color: showFilledHeart ? Colors.red : Colors.white,
-                size: 18,
+                size: 26,
               ),
             ),
             const SizedBox(width: 8),
@@ -1186,8 +1179,8 @@ class _PostCardState extends State<PostCard>
               '$likesCount',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -1209,12 +1202,12 @@ class _PostCardState extends State<PostCard>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white10),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.24),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1348,16 +1341,13 @@ class _PostCardState extends State<PostCard>
           if (allMedia.isNotEmpty)
             LayoutBuilder(
               builder: (context, constraints) {
-                final mediaHeight = kIsWeb
-                    ? (constraints.maxWidth * 9 / 16).clamp(200.0, 320.0)
-                    : 260.0;
                 return Container(
                   margin: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                   width: double.infinity,
-                  height: mediaHeight,
+                  height: 300.0,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    color: Colors.grey[850],
+                    color: Colors.black,
                   ),
               child: Stack(
                 children: [
@@ -1397,7 +1387,7 @@ class _PostCardState extends State<PostCard>
                               mediaUrl,
                               fit: BoxFit.cover,
                               width: double.infinity,
-                              height: 250,
+                              height: double.infinity,
                               loadingBuilder:
                                   (context, child, loadingProgress) {
                                     if (loadingProgress == null) return child;
@@ -1465,52 +1455,59 @@ class _PostCardState extends State<PostCard>
                     Positioned(
                       bottom: 12,
                       left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          children: [
-                            if (_isVideo(_currentMediaIndex))
-                              const Icon(
-                                Icons.videocam,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            if (_isVideo(_currentMediaIndex))
-                              const SizedBox(width: 4),
-                            if (_isVideo(_currentMediaIndex))
-                              const Text(
-                                "VIDEO",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            if (!_isVideo(_currentMediaIndex))
-                              const Icon(
-                                Icons.photo,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            if (!_isVideo(_currentMediaIndex))
-                              const SizedBox(width: 4),
-                            if (!_isVideo(_currentMediaIndex))
-                              const Text(
-                                "PHOTO",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                          ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              border: Border.all(color: Colors.white.withOpacity(0.15)),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_isVideo(_currentMediaIndex))
+                                  const Icon(
+                                    Icons.videocam,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                if (_isVideo(_currentMediaIndex))
+                                  const SizedBox(width: 4),
+                                if (_isVideo(_currentMediaIndex))
+                                  const Text(
+                                    "VIDEO",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                if (!_isVideo(_currentMediaIndex))
+                                  const Icon(
+                                    Icons.photo,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                if (!_isVideo(_currentMediaIndex))
+                                  const SizedBox(width: 4),
+                                if (!_isVideo(_currentMediaIndex))
+                                  const Text(
+                                    "PHOTO",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1521,26 +1518,22 @@ class _PostCardState extends State<PostCard>
             ),
           // Engagement metrics
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(8, 4, 16, 12),
             child: Row(
               children: [
-                Expanded(
-                  child: _buildLikeChip(
-                    user: user,
-                    isLiked: isLiked,
-                    likesCount: likesCount,
-                  ),
+                _buildLikeChip(
+                  user: user,
+                  isLiked: isLiked,
+                  likesCount: likesCount,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildActionChip(
-                    icon: Icons.mode_comment_outlined,
-                    iconColor: Colors.white,
-                    label: (widget.postData['commentCount'] ?? 0).toString(),
-                    onTap: () {
-                      widget.onComment(context, widget.postId);
-                    },
-                  ),
+                const SizedBox(width: 8),
+                _buildActionChip(
+                  icon: Icons.chat_bubble_outline,
+                  iconColor: Colors.white,
+                  label: (widget.postData['commentCount'] ?? 0).toString(),
+                  onTap: () {
+                    widget.onComment(context, widget.postId);
+                  },
                 ),
               ],
             ),
@@ -1759,8 +1752,8 @@ class _LikesBottomSheetState extends State<LikesBottomSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey,
-              borderRadius: BorderRadius.circular(2),
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(height: 16),
@@ -1867,8 +1860,9 @@ class _LikesBottomSheetState extends State<LikesBottomSheet> {
                             margin: const EdgeInsets.only(bottom: 8.0),
                             padding: const EdgeInsets.all(12.0),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white.withOpacity(0.04),
+                              border: Border.all(color: Colors.white.withOpacity(0.08)),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2031,7 +2025,16 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       children: [
         if (_thumbnailController != null &&
             _thumbnailController!.value.isInitialized)
-          VideoPlayer(_thumbnailController!),
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _thumbnailController!.value.size.width,
+                height: _thumbnailController!.value.size.height,
+                child: VideoPlayer(_thumbnailController!),
+              ),
+            ),
+          ),
 
         // Play button overlay
         Center(
@@ -2101,8 +2104,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey,
-              borderRadius: BorderRadius.circular(2),
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
             ),
           ),
           const SizedBox(height: 16),
@@ -2172,8 +2175,9 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         margin: const EdgeInsets.only(bottom: 8.0),
                         padding: const EdgeInsets.all(12.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF191919),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withOpacity(0.04),
+                          border: Border.all(color: Colors.white.withOpacity(0.08)),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2246,7 +2250,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
                   decoration: BoxDecoration(
-                    color: Colors.grey[800],
+                    color: Colors.white.withOpacity(0.05),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: TextField(
@@ -2270,12 +2275,23 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(2.0),
-                decoration: const BoxDecoration(
-                  color: Colors.orange,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF5200).withOpacity(0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.black, size: 18),
+                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 16),
                   onPressed: () {
                     final comment = widget.commentController.text.trim();
                     if (comment.isNotEmpty) {

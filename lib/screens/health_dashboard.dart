@@ -15,6 +15,9 @@ import 'login_screen.dart';
 import 'my_profile.dart';
 import 'workout_screen.dart';
 import 'community_screen.dart';
+import 'package:provider/provider.dart';
+import '../theme/theme_provider.dart';
+import '../theme/app_colors.dart';
 
 class HealthDashboard extends StatefulWidget {
   const HealthDashboard({super.key});
@@ -68,9 +71,12 @@ class _HealthDashboardState extends State<HealthDashboard>
   static const double _maxDisplayBmi = 80.0;
 
 
+  late final PageController _pageController;
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _checkDailyReset();
@@ -753,6 +759,7 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   @override
   void dispose() {
+    _pageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -778,13 +785,11 @@ class _HealthDashboardState extends State<HealthDashboard>
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    if (index == 0) {
-      _loadUserData();
-    }
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.fastOutSlowIn,
+    );
   }
 
   void _handleHealthDataChanged() {
@@ -805,8 +810,9 @@ class _HealthDashboardState extends State<HealthDashboard>
   }
 
   Widget _buildWebDashboard() {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.scaffold,
       body: SafeArea(
         child: Stack(
           children: [
@@ -877,8 +883,9 @@ class _HealthDashboardState extends State<HealthDashboard>
   }
 
   Widget _buildWebHealthPanel() {
+    final colors = AppColors.of(context);
     return Container(
-      color: Colors.black,
+      color: colors.scaffold,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
         child: LayoutBuilder(
@@ -890,12 +897,12 @@ class _HealthDashboardState extends State<HealthDashboard>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Health',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -1082,20 +1089,45 @@ class _HealthDashboardState extends State<HealthDashboard>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.15),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                  ),
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               const Text(
                 'Loading your health data...',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
               ),
               if (!_isTrackingSteps)
                 const Padding(
-                  padding: EdgeInsets.only(top: 10),
+                  padding: EdgeInsets.only(top: 14),
                   child: Text(
                     'Step tracking requires activity permission',
-                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                    style: TextStyle(color: Colors.orange, fontSize: 13),
                   ),
                 ),
             ],
@@ -1104,314 +1136,332 @@ class _HealthDashboardState extends State<HealthDashboard>
       );
     }
 
-    if (kIsWeb) {
+    if (kIsWeb && MediaQuery.of(context).size.width >= 800) {
       return _buildWebDashboard();
     }
 
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
-      bottomNavigationBar: SizedBox(
-        height: 87,
-        child: BottomNavigationBar(
-          backgroundColor: Colors.black,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.grey,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite, color: _getSelectedIconColor(0)),
-              label: "Health",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.directions_run, color: _getSelectedIconColor(1)),
-              label: "Workout",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.people, color: _getSelectedIconColor(2)),
-              label: "Community",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person, color: _getSelectedIconColor(3)),
-              label: "Profile",
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            IndexedStack(
-              index: _selectedIndex,
-              children: [
-            RefreshIndicator(
-              onRefresh: _loadUserData,
-              child: CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    backgroundColor: Colors.black,
-                    expandedHeight: 60,
-                    floating: false,
-                    pinned: true,
-                    automaticallyImplyLeading: false,
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(left: 10, top: 30),
-                          child: Text(
-                            "Health",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    centerTitle: false,
+      extendBody: true,
+      backgroundColor: colors.scaffold,
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.only(left: 60, right: 60, bottom: 20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(40),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.navBar.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(40),
+                border: Border.all(color: colors.cardBorder, width: 1.5),
+              ),
+              child: BottomNavigationBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: Colors.white,
+                unselectedItemColor: Colors.grey,
+                showSelectedLabels: false,
+                showUnselectedLabels: false,
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                items: [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.favorite, color: _getSelectedIconColor(0)),
+                    label: "Health",
                   ),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        const SizedBox(height: 10),
-
-                        // PROPERLY CENTERED: Semi-circle progress
-                        Container(
-                          width: double.infinity,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Centered semi-circle chart
-                              Container(
-                                constraints: BoxConstraints(
-                                  maxWidth:
-                                      MediaQuery.of(context).size.width * 0.85,
-                                  maxHeight: 180,
-                                ),
-                                child: SemiCircleProgress(
-                                  caloriesPercent:
-                                      (_weeklyCalories / _weeklyCaloriesGoal * 100).clamp(
-                                        0.0,
-                                        100.0,
-                                      ),
-                                  stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 100)
-                                      .clamp(0.0, 100.0),
-                                  movingPercent:
-                                      (_weeklyWorkoutsCount / _weeklyWorkoutsGoal * 100)
-                                          .clamp(0.0, 100.0),
-                                  caloriesValue: _weeklyCalories.toStringAsFixed(0),
-                                  caloriesGoal:
-                                      "/${_weeklyCaloriesGoal.toInt()} kcal",
-                                  stepsValue: _weeklyMinutes.toString(),
-                                  stepsGoal: "/$_weeklyMinutesGoal mins",
-                                  movingValue: _weeklyWorkoutsCount.toStringAsFixed(
-                                    0,
-                                  ),
-                                  movingGoal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 5),
-
-                        if (_isTrackingSteps)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(8),
-                            margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.green),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.directions_walk,
-                                  color: Colors.green,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                            ),
-                          ),
-
-                        // Responsive metrics container
-                        Container(
-                          width: double.infinity,
-                          constraints: BoxConstraints(
-                            minHeight: 180,
-                            maxHeight: 220,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF191919),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: LayoutBuilder(
-                              builder: (context, metricConstraints) {
-                                return Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Expanded(
-                                          child: _ModernMetricItem(
-                                            icon: Icons.local_fire_department,
-                                            iconColor: const Color(0xFFFF6B35),
-                                            label: "kcal",
-                                            value: _weeklyCalories.toStringAsFixed(0),
-                                            goal:
-                                                "/${_weeklyCaloriesGoal.toInt()} kcal",
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      DetailScreen(
-                                                        title: "kcal",
-                                                        currentValue: _weeklyCalories.toDouble(),
-                                                        goalValue: _weeklyCaloriesGoal.toDouble(),
-                                                        onDataSaved: _loadUserData,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: _ModernMetricItem(
-                                            icon: Icons.timer,
-                                            iconColor: const Color(0xFFFF9800),
-                                            label: "Minutes",
-                                            value: _weeklyMinutes.toString(),
-                                            goal: "/$_weeklyMinutesGoal mins",
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      DetailScreen(
-                                                        title: "Minutes",
-                                                        currentValue: _weeklyMinutes.toDouble(),
-                                                        goalValue: _weeklyMinutesGoal.toDouble(),
-                                                        onDataSaved: _loadUserData,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: _ModernMetricItem(
-                                            icon: Icons.fitness_center,
-                                            iconColor: const Color(0xFF2196F3),
-                                            label: "Workouts",
-                                            value: _weeklyWorkoutsCount.toStringAsFixed(0),
-                                            goal:
-                                                "/${_weeklyWorkoutsGoal.toInt()} workouts",
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      DetailScreen(
-                                                        title: "Workouts",
-                                                        currentValue: _weeklyWorkoutsCount.toDouble(),
-                                                        goalValue: _weeklyWorkoutsGoal.toDouble(),
-                                                        onDataSaved: _loadUserData,
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Data resets daily at midnight',
-                                      style: TextStyle(
-                                        color: Colors.grey[400],
-                                        fontSize: 12,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        _BmiSummaryStrip(
-                          bmi: _bmi,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DetailScreen(
-                                  title: "BMI",
-                                  currentValue: _bmi,
-                                  goalValue: 22.0,
-                                  onDataSaved: _loadUserData,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // UPDATED: Changed parameters to waistMeasurement and sleepHours
-                        _DraggableCardGrid(
-                          waistMeasurement: _waistMeasurement,
-                          weight: _weight,
-                          height: _height,
-                          sleepHours: _sleepHours,
-                          waistHistory: _waistHistory,
-                          weightHistory: _weightHistory,
-                          sleepHistory: _sleepHistory,
-                          onDataSaved: _handleHealthDataChanged,
-                        ),
-                      ]),
-                    ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.directions_run, color: _getSelectedIconColor(1)),
+                    label: "Workout",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.people, color: _getSelectedIconColor(2)),
+                    label: "Community",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person, color: _getSelectedIconColor(3)),
+                    label: "Profile",
                   ),
                 ],
               ),
             ),
-                const WorkoutScreen(showChatbot: false),
-                const CommunityScreen(showChatbot: false),
-                MyProfile(
-                  refreshVersion: _profileRefreshVersion,
-                  showChatbot: false,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+                if (index == 0) {
+                  _loadUserData();
+                }
+              },
+              children: [
+                KeepAlivePage(
+                  child: RefreshIndicator(
+                    onRefresh: _loadUserData,
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverAppBar(
+                          backgroundColor: colors.scaffold,
+                          toolbarHeight: 80,
+                          expandedHeight: 80,
+                          floating: false,
+                          pinned: true,
+                          automaticallyImplyLeading: false,
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 10, top: 30),
+                                child: Text(
+                                  "Health",
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          centerTitle: false,
+                        ),
+                        SliverPadding(
+                          padding: const EdgeInsets.all(16),
+                          sliver: SliverList(
+                            delegate: SliverChildListDelegate([
+                              const SizedBox(height: 10),
+
+                              // PROPERLY CENTERED: Semi-circle progress
+                              Container(
+                                width: double.infinity,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Centered semi-circle chart
+                                    Container(
+                                      constraints: BoxConstraints(
+                                        maxWidth: MediaQuery.of(context).size.width * 0.85,
+                                        maxHeight: 180,
+                                      ),
+                                      child: SemiCircleProgress(
+                                        caloriesPercent: (_weeklyCalories / _weeklyCaloriesGoal * 100).clamp(0.0, 100.0),
+                                        stepsPercent: (_weeklyMinutes / _weeklyMinutesGoal * 100).clamp(0.0, 100.0),
+                                        movingPercent: (_weeklyWorkoutsCount / _weeklyWorkoutsGoal * 100).clamp(0.0, 100.0),
+                                        caloriesValue: _weeklyCalories.toStringAsFixed(0),
+                                        caloriesGoal: "/${_weeklyCaloriesGoal.toInt()} kcal",
+                                        stepsValue: _weeklyMinutes.toString(),
+                                        stepsGoal: "/$_weeklyMinutesGoal mins",
+                                        movingValue: _weeklyWorkoutsCount.toStringAsFixed(0),
+                                        movingGoal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 5),
+
+                              if (_isTrackingSteps)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(8),
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.green),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.directions_walk,
+                                        color: Colors.green,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                  ),
+                                ),
+
+                              // Responsive metrics container
+                              Container(
+                                width: double.infinity,
+                                constraints: const BoxConstraints(
+                                  minHeight: 180,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.of(context).cardGradient,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: AppColors.of(context).cardBorder,
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.of(context).shadow,
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: LayoutBuilder(
+                                    builder: (context, metricConstraints) {
+                                      return Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                child: _ModernMetricItem(
+                                                  icon: Icons.local_fire_department,
+                                                  iconColor: const Color(0xFFFF6B35),
+                                                  label: "kcal",
+                                                  value: _weeklyCalories.toStringAsFixed(0),
+                                                  goal: "/${_weeklyCaloriesGoal.toInt()} kcal",
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => DetailScreen(
+                                                          title: "kcal",
+                                                          currentValue: _weeklyCalories.toDouble(),
+                                                          goalValue: _weeklyCaloriesGoal.toDouble(),
+                                                          onDataSaved: _loadUserData,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: _ModernMetricItem(
+                                                  icon: Icons.timer,
+                                                  iconColor: const Color(0xFFFF9800),
+                                                  label: "Minutes",
+                                                  value: _weeklyMinutes.toString(),
+                                                  goal: "/$_weeklyMinutesGoal mins",
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => DetailScreen(
+                                                          title: "Minutes",
+                                                          currentValue: _weeklyMinutes.toDouble(),
+                                                          goalValue: _weeklyMinutesGoal.toDouble(),
+                                                          onDataSaved: _loadUserData,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: _ModernMetricItem(
+                                                  icon: Icons.fitness_center,
+                                                  iconColor: const Color(0xFF2196F3),
+                                                  label: "Workouts",
+                                                  value: _weeklyWorkoutsCount.toStringAsFixed(0),
+                                                  goal: "/${_weeklyWorkoutsGoal.toInt()} workouts",
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => DetailScreen(
+                                                          title: "Workouts",
+                                                          currentValue: _weeklyWorkoutsCount.toDouble(),
+                                                          goalValue: _weeklyWorkoutsGoal.toDouble(),
+                                                          onDataSaved: _loadUserData,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Data resets daily at midnight',
+                                            style: TextStyle(
+                                              color: Colors.grey[400],
+                                              fontSize: 12,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              _BmiSummaryStrip(
+                                bmi: _bmi,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => DetailScreen(
+                                        title: "BMI",
+                                        currentValue: _bmi,
+                                        goalValue: 22.0,
+                                        onDataSaved: _loadUserData,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // UPDATED: Changed parameters to waistMeasurement and sleepHours
+                              _DraggableCardGrid(
+                                waistMeasurement: _waistMeasurement,
+                                weight: _weight,
+                                height: _height,
+                                sleepHours: _sleepHours,
+                                waistHistory: _waistHistory,
+                                weightHistory: _weightHistory,
+                                sleepHistory: _sleepHistory,
+                                onDataSaved: _handleHealthDataChanged,
+                              ),
+                            ]),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const KeepAlivePage(child: WorkoutScreen(showChatbot: false)),
+                const KeepAlivePage(child: CommunityScreen(showChatbot: false)),
+                KeepAlivePage(
+                  child: MyProfile(
+                    refreshVersion: _profileRefreshVersion,
+                    showChatbot: false,
+                  ),
                 ),
               ],
             ),
-            const ChatbotLauncher(title: 'Fitness Chat'),
+            const ChatbotLauncher(title: 'Fitness Chat', initialBottom: 90, minBottomOffset: 90),
           ],
         ),
       ),
@@ -1922,10 +1972,7 @@ class _ModernMetricItem extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1111),
-          borderRadius: BorderRadius.circular(12),
-        ),
+        color: Colors.transparent, // Ensures the whole area is tappable
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1934,42 +1981,47 @@ class _ModernMetricItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: iconColor!.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(14),
+                color: iconColor!.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: iconColor, size: 28),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               value,
               style: TextStyle(
                 color: iconColor,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
               goal,
-              style: const TextStyle(color: Colors.white54, fontSize: 13),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.55),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
         ),
-      )
+      ),
     );
- }
+  }
 }
 
 class _BmiSummaryStrip extends StatelessWidget {
@@ -1991,52 +2043,63 @@ class _BmiSummaryStrip extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white10),
+          gradient: AppColors.of(context).cardGradient,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppColors.of(context).cardBorder,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.of(context).shadow,
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: accent.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(14),
+                color: accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 Icons.monitor_heart,
                 color: accent,
-                size: 22,
+                size: 24,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               "BMI",
               style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.6,
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               displayValue,
               style: TextStyle(
                 color: accent,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+                fontSize: 34,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               bmi > 0 ? "$category • Goal 22" : "Tap to view BMI details",
               style: TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
@@ -2270,12 +2333,12 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
             (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
             crossAxisCount;
         final childAspectRatio = isWideScreen
-            ? 1.15
+            ? 1.4
             : isMediumScreen
-                ? 0.95
+                ? 1.2
                 : isVerySmallScreen
-                    ? 1.7
-                    : 0.85;
+                    ? 2.5
+                    : 1.1;
         final double cardHeight = cardWidth / childAspectRatio;
 
         return GridView.builder(
@@ -2374,13 +2437,21 @@ class _WaistCard extends StatelessWidget {
           ),
         );
       },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.of(context).cardGradient,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.of(context).shadow,
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(
-            12,
-          ), // Reduced padding for small screens
+          padding: const EdgeInsets.all(14),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final bool isSmallScreen = constraints.maxWidth < 160;
@@ -2391,56 +2462,67 @@ class _WaistCard extends StatelessWidget {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // UPDATED: Changed icon from Icons.opacity to Icons.straighten
-                      Icon(
-                        Icons.straighten,
-                        color: Colors.blue,
-                        size: isVerySmallScreen ? 20 : 24,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isVerySmallScreen ? 6 : 8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.straighten,
+                              color: Colors.blue,
+                              size: isVerySmallScreen ? 18 : 22,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Waist", // UPDATED: Changed label
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isVerySmallScreen ? 12 : 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      if (!isSmallScreen) ...[const Spacer()],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isVerySmallScreen ? 16 : 20,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Updated ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: isVerySmallScreen ? 8 : 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Waist", // UPDATED: Changed label
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 12 : 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "${waistMeasurement.toStringAsFixed(1)} cm", // UPDATED: Changed unit
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isVerySmallScreen ? 16 : 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Updated ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: isVerySmallScreen ? 8 : 10,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const Spacer(),
                   Container(
-                    height: 30, // Reduced height for small screens
+                    height: 35, 
                     decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.black.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: waistHistory.isNotEmpty
                         ? CustomPaint(
@@ -2518,13 +2600,21 @@ class _WeightCard extends StatelessWidget {
           ),
         );
       },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.of(context).cardGradient,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.of(context).shadow,
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(
-            12,
-          ), // Reduced padding for small screens
+          padding: const EdgeInsets.all(14),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final bool isSmallScreen = constraints.maxWidth < 160;
@@ -2535,55 +2625,67 @@ class _WeightCard extends StatelessWidget {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.monitor_weight,
-                        color: Colors.green,
-                        size: isVerySmallScreen ? 20 : 24,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isVerySmallScreen ? 6 : 8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.monitor_weight,
+                              color: Colors.green,
+                              size: isVerySmallScreen ? 18 : 22,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Weight",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isVerySmallScreen ? 12 : 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      if (!isSmallScreen) ...[const Spacer()],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            "${weight.toStringAsFixed(1)} kg",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isVerySmallScreen ? 16 : 20,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Updated ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: isVerySmallScreen ? 8 : 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Weight",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 12 : 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "${weight.toStringAsFixed(1)} kg",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isVerySmallScreen ? 16 : 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Updated ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: isVerySmallScreen ? 8 : 10,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const Spacer(),
                   Container(
-                    height: 30, // Reduced height for small screens
+                    height: 35, 
                     decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.black.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: weightHistory.isNotEmpty
                         ? CustomPaint(
@@ -2660,11 +2762,21 @@ class _HeightCard extends StatelessWidget {
           ),
         );
       },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.of(context).cardGradient,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.of(context).shadow,
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final bool isSmallScreen = constraints.maxWidth < 160;
@@ -2675,48 +2787,61 @@ class _HeightCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.height,
-                        color: accentColor,
-                        size: isVerySmallScreen ? 20 : 24,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isVerySmallScreen ? 6 : 8),
+                            decoration: BoxDecoration(
+                              color: accentColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.height,
+                              color: accentColor,
+                              size: isVerySmallScreen ? 18 : 22,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Height",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isVerySmallScreen ? 12 : 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      if (!isSmallScreen) ...[const Spacer()],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            "${height.toStringAsFixed(1)} cm",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isVerySmallScreen ? 16 : 20,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Current profile height",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: isVerySmallScreen ? 8 : 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Height",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isVerySmallScreen ? 12 : 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "${height.toStringAsFixed(1)} cm",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isVerySmallScreen ? 16 : 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Current profile height",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: isVerySmallScreen ? 8 : 10,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const Spacer(),
                   Container(
@@ -3015,48 +3140,81 @@ class _SleepCard extends StatelessWidget {
           ),
         );
       },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.of(context).cardGradient,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.of(context).shadow,
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.topLeft,
-                // UPDATED: Changed icon from Icons.person to Icons.bedtime
-                child: Icon(
-                  Icons.bedtime,
-                  color: Colors.purple,
-                  size: 28,
-                ), // Changed color to purple for sleep
-              ),
-              const SizedBox(height: 6),
-              Text(
-                "Sleep Hours", // UPDATED: Changed label
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
-                  style: const TextStyle(color: Colors.white70, fontSize: 18),
-                ),
-              ),
-              Text(
-                "${DateTime.now().day} ${_getMonthName(DateTime.now().month)}",
-                style: const TextStyle(color: Colors.white70, fontSize: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.bedtime,
+                          color: Colors.purple,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "Sleep Hours", // UPDATED: Changed label
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "${sleepHours.toStringAsFixed(1)} hrs", // UPDATED: Changed display
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${DateTime.now().day} ${_getMonthName(DateTime.now().month)}",
+                        style: const TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const Spacer(),
               Container(
-                height: 25,
-                decoration: BoxDecoration(color: Colors.grey[800]),
+                height: 35,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: CustomPaint(
                   painter: SleepGraphPainter(
                     data: sleepHistory,
@@ -3385,4 +3543,24 @@ class SleepGraphPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+class KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const KeepAlivePage({super.key, required this.child});
+
+  @override
+  State<KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }
