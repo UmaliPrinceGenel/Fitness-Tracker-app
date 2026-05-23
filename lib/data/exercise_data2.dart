@@ -57,7 +57,7 @@ List<Workout> exerciseWorkouts = [
       ),
     ],
   ),
- Workout(
+  Workout(
     id: "chest_002",
     title: "Chest Power Training MEDIUM",
     duration: "25 min",
@@ -132,206 +132,79 @@ List<Workout> exerciseWorkouts = [
     ],
   ),
 
-  // Back (Lats) Workouts
+  // Back (Lats) — 3 exercises matching assets/videos/Back/Lats/
   Workout(
     id: "back_lats_001",
-    title: "Back Lats Training HARD",
-    duration: "25 min",
-    exercises: "5 exercises",
-    level: "Hard",
-    bodyFocus: "Back",
-    videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Back/back_training_hard.png",
-    exerciseList: [
-      Exercise(
-        name: "Pull-ups Chin-ups",
-        baseCaloriesPerMinute: 9,
-        duration: 150, // 2.5 minutes
-        description: "Back Width (Lat Activation)",
-        requiresWeightInputOverride: false,
-      ),
-      Exercise(
-        name: "Lat Pulldowns",
-        baseCaloriesPerMinute: 7,
-        duration: 150, // 2.5 minutes
-        description: "Lat Isolation (Width)",
-      ),
-      Exercise(
-        name: "Single-Arm Dumbbell Rows",
-        baseCaloriesPerMinute: 8,
-        duration: 150, // 2.5 minutes
-        description: "Lats & Full Back Thickness",
-      ),
-      Exercise(
-        name: "Barbell Deadlift",
-        baseCaloriesPerMinute: 10,
-        duration: 150, // 2.5 minutes
-        description: "Full Body Strength (Targets Lats, Traps, Spinal Erectors)",
-      ),
-    ],
-  ),
-  Workout(
-    id: "back_lats_002",
-    title: "Back Lats Training MEDIUM",
+    title: "Back Lats Training",
     duration: "20 min",
-    exercises: "4 exercises",
+    exercises: "3 exercises",
     level: "Medium",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Back/back_training_medium.png",
+    thumbnailAsset: "assets/thumbnails/Traps/traps_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Lat Pulldowns",
         baseCaloriesPerMinute: 7,
-        duration: 120, // 2 minutes
+        duration: 150, // 2.5 minutes
         description: "Lat Isolation (Width)",
-      ),
-      Exercise(
-        name: "Single-Arm Dumbbell Rows",
-        baseCaloriesPerMinute: 8,
-        duration: 120, // 2 minutes
-        description: "Lats & Full Back Thickness",
       ),
       Exercise(
         name: "Pull-ups Chin-ups",
         baseCaloriesPerMinute: 9,
-        duration: 120, // 2 minutes
+        duration: 150, // 2.5 minutes
         description: "Back Width (Lat Activation)",
         requiresWeightInputOverride: false,
-      ),
-    ],
-  ),
-  Workout(
-    id: "back_lats_003",
-    title: "Back Lats Training EASY",
-    duration: "15 min",
-    exercises: "3 exercises",
-    level: "Easy",
-    bodyFocus: "Back",
-    videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Back/back_training_easy.png",
-    exerciseList: [
-      Exercise(
-        name: "Lat Pulldowns",
-        baseCaloriesPerMinute: 7,
-        duration: 90, // 1.5 minutes
-        description: "Lat Isolation (Width)",
       ),
       Exercise(
         name: "Single-Arm Dumbbell Rows",
         baseCaloriesPerMinute: 8,
-        duration: 90, // 1.5 minutes
+        duration: 150, // 2.5 minutes
         description: "Lats & Full Back Thickness",
       ),
     ],
   ),
 
-  // Back (Mid-Back) Workouts
+  // Back (Mid-Back) — 4 exercises matching assets/videos/Back/Mid-Back/
   Workout(
     id: "back_mid_01",
-    title: "Mid-Back Training HARD",
+    title: "Mid-Back Training",
     duration: "25 min",
-    exercises: "6 exercises",
-    level: "Hard",
-    bodyFocus: "Back",
-    videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Back/back_training_hard.png",
-    exerciseList: [
-      Exercise(
-        name: "Barbell Rows",
-        baseCaloriesPerMinute: 8,
-        duration: 150, // 2.5 minutes
-        description: "Overall Thickness & Strength",
-      ),
-      Exercise(
-        name: "Seated Cable Rows",
-        baseCaloriesPerMinute: 7,
-        duration: 150, // 2.5 minutes
-        description: "Horizontal Pull for Mid/Upper Back Thickness",
-      ),
-      Exercise(
-        name: "T-Bar Rows",
-        baseCaloriesPerMinute: 8,
-        duration: 150, // 2.5 minutes
-        description: "Mid-Back & Traps Thickness",
-      ),
-      Exercise(
-        name: "Face Pulls Back",
-        baseCaloriesPerMinute: 5,
-        duration: 150, // 2.5 minutes
-        description: "Rear Delts & Upper Back/Rotator Cuff Health",
-      ),
-      Exercise(
-        name: "Rack Pulls",
-        baseCaloriesPerMinute: 10,
-        duration: 150, // 2.5 minutes
-        description: "Upper Back Strength & Partial Deadlift",
-      ),
-    ],
-  ),
-  Workout(
-    id: "back_mid_02",
-    title: "Mid-Back Training MEDIUM",
-    duration: "20 min",
     exercises: "4 exercises",
     level: "Medium",
     bodyFocus: "Back",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Back/back_training_medium.png",
+    thumbnailAsset: "assets/thumbnails/Traps/traps_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Barbell Rows",
         baseCaloriesPerMinute: 8,
-        duration: 120, // 2 minutes
+        duration: 150, // 2.5 minutes
         description: "Overall Thickness & Strength",
+      ),
+      Exercise(
+        name: "Face Pulls",
+        baseCaloriesPerMinute: 5,
+        duration: 150, // 2.5 minutes
+        description: "Rear Delts & Upper Back/Rotator Cuff Health",
       ),
       Exercise(
         name: "Seated Cable Rows",
         baseCaloriesPerMinute: 7,
-        duration: 120, // 2 minutes
+        duration: 150, // 2.5 minutes
         description: "Horizontal Pull for Mid/Upper Back Thickness",
       ),
       Exercise(
         name: "T-Bar Rows",
         baseCaloriesPerMinute: 8,
-        duration: 120, // 2 minutes
+        duration: 150, // 2.5 minutes
         description: "Mid-Back & Traps Thickness",
-      ),
-      Exercise(
-        name: "Face Pulls Back",
-        baseCaloriesPerMinute: 5,
-        duration: 120, // 2 minutes
-        description: "Rear Delts & Upper Back/Rotator Cuff Health",
-      ),
-    ],
-  ),
-  Workout(
-    id: "back_mid_03",
-    title: "Mid-Back Training EASY",
-    duration: "15 min",
-    exercises: "3 exercises",
-    level: "Easy",
-    bodyFocus: "Back",
-    videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Back/back_training_easy.png",
-    exerciseList: [
-      Exercise(
-        name: "Seated Cable Rows",
-        baseCaloriesPerMinute: 7,
-        duration: 90, // 1.5 minutes
-        description: "Horizontal Pull for Mid/Upper Back Thickness",
-      ),
-      Exercise(
-        name: "Face Pulls Back",
-        baseCaloriesPerMinute: 5,
-        duration: 90, // 1.5 minutes
-        description: "Rear Delts & Upper Back/Rotator Cuff Health",
       ),
     ],
   ),
 
   // Traps Workouts
- Workout(
+  Workout(
     id: "traps_001",
     title: "Traps Training HARD",
     duration: "20 min",
@@ -345,7 +218,8 @@ List<Workout> exerciseWorkouts = [
         name: "Barbell Deadlift",
         baseCaloriesPerMinute: 10,
         duration: 120, // 2 minutes
-        description: "Full Body Strength (Targets Lats, Traps, Spinal Erectors)",
+        description:
+            "Full Body Strength (Targets Lats, Traps, Spinal Erectors)",
       ),
       Exercise(
         name: "Rack Pulls",
@@ -387,7 +261,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Shoulders Workouts
- Workout(
+  Workout(
     id: "shoulders_001",
     title: "Shoulders Training HARD",
     duration: "30 min",
@@ -509,7 +383,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Triceps Workouts
- Workout(
+  Workout(
     id: "triceps_001",
     title: "Triceps Training HARD",
     duration: "25 min",
@@ -601,7 +475,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Biceps Workouts
- Workout(
+  Workout(
     id: "biceps_001",
     title: "Biceps Training HARD",
     duration: "25 min",
@@ -731,7 +605,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Quads Workouts
- Workout(
+  Workout(
     id: "quads_001",
     title: "Quads Training HARD",
     duration: "30 min",
@@ -845,7 +719,8 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_hard.png",
+    thumbnailAsset:
+        "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Barbell Deadlift Glutes",
@@ -888,7 +763,8 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_medium.png",
+    thumbnailAsset:
+        "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Romanian Deadlifts",
@@ -925,7 +801,8 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Legs",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_easy.png",
+    thumbnailAsset:
+        "assets/thumbnails/Glutes & Hamstrings/glutes_hamstrings_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Glute Bridges",
@@ -1124,7 +1001,7 @@ List<Workout> exerciseWorkouts = [
   ),
 
   // Rotational / Anti-Rotation Workouts
- Workout(
+  Workout(
     id: "rotational_001",
     title: "Rotational Core Training HARD",
     duration: "25 min",
@@ -1132,7 +1009,8 @@ List<Workout> exerciseWorkouts = [
     level: "Hard",
     bodyFocus: "Core",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Rotational Core/rotational_core_training_hard.png",
+    thumbnailAsset:
+        "assets/thumbnails/Rotational Core/rotational_core_training_hard.png",
     exerciseList: [
       Exercise(
         name: "Russian Twists",
@@ -1151,7 +1029,8 @@ List<Workout> exerciseWorkouts = [
         name: "Pallof Press",
         baseCaloriesPerMinute: 4,
         duration: 150, // 2.5 minutes
-        description: "Anti-Rotation (Prevents twisting; excellent for stability)",
+        description:
+            "Anti-Rotation (Prevents twisting; excellent for stability)",
       ),
       Exercise(
         name: "Cable Woodchopper",
@@ -1182,7 +1061,8 @@ List<Workout> exerciseWorkouts = [
     level: "Medium",
     bodyFocus: "Core",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Rotational Core/rotational_core_training_medium.png",
+    thumbnailAsset:
+        "assets/thumbnails/Rotational Core/rotational_core_training_medium.png",
     exerciseList: [
       Exercise(
         name: "Russian Twists",
@@ -1201,7 +1081,8 @@ List<Workout> exerciseWorkouts = [
         name: "Pallof Press",
         baseCaloriesPerMinute: 4,
         duration: 120, // 2 minutes
-        description: "Anti-Rotation (Prevents twisting; excellent for stability)",
+        description:
+            "Anti-Rotation (Prevents twisting; excellent for stability)",
       ),
       Exercise(
         name: "Cable Woodchopper",
@@ -1219,7 +1100,8 @@ List<Workout> exerciseWorkouts = [
     level: "Easy",
     bodyFocus: "Core",
     videoAsset: "assets/defaultVid.jpg",
-    thumbnailAsset: "assets/thumbnails/Rotational Core/rotational_core_training_easy.png",
+    thumbnailAsset:
+        "assets/thumbnails/Rotational Core/rotational_core_training_easy.png",
     exerciseList: [
       Exercise(
         name: "Russian Twists",
@@ -1231,7 +1113,8 @@ List<Workout> exerciseWorkouts = [
         name: "Pallof Press",
         baseCaloriesPerMinute: 4,
         duration: 90, // 1.5 minutes
-        description: "Anti-Rotation (Prevents twisting; excellent for stability)",
+        description:
+            "Anti-Rotation (Prevents twisting; excellent for stability)",
       ),
     ],
   ),

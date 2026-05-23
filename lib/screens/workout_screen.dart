@@ -46,8 +46,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     0,
     0,
     0,
+    0,
   ]; // Total count for each category
   List<int> _monthlyCheatedCategoryCounts = [
+    0,
     0,
     0,
     0,
@@ -65,13 +67,15 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     "Core",
     "Lower Body",
     "Shoulders",
+    "Back",
   ];
   final List<Color> _categoryColors = [
-    Colors.red, // Chest
-    Colors.blue, // Arms
-    Colors.green, // Core
-    Colors.orange, // Lower Body
-    Colors.purple,   // Shoulders
+    Colors.red,                    // Chest
+    Colors.blue,                   // Arms
+    Colors.green,                  // Core
+    Colors.orange,                 // Lower Body
+    Colors.purple,                 // Shoulders
+    const Color(0xFF00BCD4),       // Back (cyan)
   ];
   final List<String> _monthlyJourneyTitles = const [
     'Weight Loss',
@@ -377,6 +381,11 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     if (normalizedFocus == "shoulders" || normalizedFocus == "traps") {
       return 4;
     }
+    if (normalizedFocus == "back" ||
+        normalizedFocus == "lats" ||
+        normalizedFocus == "mid-back") {
+      return 5;
+    }
     return null;
   }
 
@@ -437,16 +446,12 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   }) {
     final sections = <PieChartSectionData>[];
     final cleanRadius = compact ? 42.0 : 54.0;
-    final cheatedRadius = compact ? 34.0 : 44.0;
     final cleanFontSize = compact ? 12.0 : 14.0;
-    final cheatedFontSize = compact ? 10.0 : 12.0;
     final activeCounts = _activeMonthlyCounts;
-    final activeCheatedCounts = _activeMonthlyCheatedCounts;
     final activeColors = _activeMonthlyColors;
 
     for (int i = 0; i < activeCounts.length; i++) {
-      final cheatedCount = activeCheatedCounts[i];
-      final cleanCount = activeCounts[i] - cheatedCount;
+      final cleanCount = activeCounts[i];
 
       if (cleanCount > 0) {
         sections.add(
@@ -466,25 +471,6 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           ),
         );
       }
-
-      if (cheatedCount > 0) {
-        sections.add(
-          PieChartSectionData(
-            color: activeColors[i].withOpacity(0.4),
-            value: cheatedCount.toDouble(),
-            title: '!$cheatedCount',
-            radius: cheatedRadius,
-            titleStyle: TextStyle(
-              fontSize: cheatedFontSize,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFFFF5200),
-              shadows: const [
-                Shadow(color: Colors.black, blurRadius: 4),
-              ],
-            ),
-          ),
-        );
-      }
     }
 
     return sections;
@@ -492,8 +478,6 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   Widget _buildLegendItem(int index, {required bool compact}) {
     final totalCount = _activeMonthlyCounts[index];
-    final cheatedCount = _activeMonthlyCheatedCounts[index];
-    final cleanCount = totalCount - cheatedCount;
     final label = _activeMonthlyTitles[index];
     final color = _activeMonthlyColors[index];
 
@@ -538,41 +522,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (cheatedCount > 0)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF5200),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          '$cheatedCount cheated',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xFFFF5200),
-                            fontSize: compact ? 11 : 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  Text(
-                    '$cleanCount clean',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: compact ? 11 : 12,
-                    ),
+                Text(
+                  '$totalCount workouts',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: compact ? 11 : 12,
                   ),
+                ),
               ],
             ),
           ),
@@ -689,8 +645,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             .get();
 
         // Initialize category counts with zeros
-        List<int> categoryCounts = [0, 0, 0, 0, 0];
-        List<int> cheatedCategoryCounts = [0, 0, 0, 0, 0];
+        List<int> categoryCounts = [0, 0, 0, 0, 0, 0];
+        List<int> cheatedCategoryCounts = [0, 0, 0, 0, 0, 0];
         List<int> journeyCounts = [0, 0, 0, 0, 0];
         List<int> cheatedJourneyCounts = [0, 0, 0, 0, 0];
 
@@ -744,8 +700,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         });
       } else {
         setState(() {
-          _monthlyCategoryCounts = [0, 0, 0, 0, 0];
-          _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0];
+          _monthlyCategoryCounts = [0, 0, 0, 0, 0, 0];
+          _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0, 0];
           _monthlyJourneyCounts = [0, 0, 0, 0, 0];
           _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
           _isLoading = false;
@@ -754,8 +710,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     } catch (e) {
       print('Error loading monthly category data: $e');
       setState(() {
-        _monthlyCategoryCounts = [0, 0, 0, 0, 0];
-        _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0];
+        _monthlyCategoryCounts = [0, 0, 0, 0, 0, 0];
+        _monthlyCheatedCategoryCounts = [0, 0, 0, 0, 0, 0];
         _monthlyJourneyCounts = [0, 0, 0, 0, 0];
         _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
         _isLoading = false;
@@ -901,7 +857,12 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   return SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Padding(
-                      padding: EdgeInsets.all(horizontalPadding),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        horizontalPadding,
+                        horizontalPadding,
+                        120, // Extra bottom padding to clear the floating navbar
+                      ),
                       child: Center(
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: contentMaxWidth),
@@ -1181,29 +1142,6 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   }),
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.white38, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Solid slices = clean completions. Faded slices with ! = cheated completions.',
-                          style: TextStyle(
-                            color: Colors.white54,
-                            fontSize: compactCard ? 10 : 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -2001,6 +1939,10 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               bodyFocus == "glutes & hamstrings";
         case "shoulders":
           return bodyFocus == "shoulders" || bodyFocus == "traps";
+        case "back":
+          return bodyFocus == "back" ||
+              bodyFocus == "lats" ||
+              bodyFocus == "mid-back";
         default:
           return bodyFocus == selectedCategory;
       }
@@ -2157,7 +2099,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                           decoration: BoxDecoration(
-                            color: (isCheated ? Colors.red : Colors.green).withOpacity(0.9),
+                            color: Colors.green.withOpacity(0.9),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -2171,13 +2113,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isCheated ? Icons.warning_rounded : Icons.check_circle_rounded,
+                                Icons.check_circle_rounded,
                                 color: Colors.white,
                                 size: 14,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                isCheated ? "CHEATED" : "DONE",
+                                "DONE",
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
@@ -2197,7 +2139,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   child: _buildWorkoutDetails(
                     workout,
                     isCompleted: isCompleted,
-                    isCheated: isCheated,
+                    isCheated: false,
                   ),
                 );
 

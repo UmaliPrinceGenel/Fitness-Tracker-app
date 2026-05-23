@@ -1333,106 +1333,42 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
     }
 
-    final int parsedDurationSeconds = _parseDurationToSeconds(widget.workout.duration);
-    final int draftExpectedDurationSeconds = _calculateExpectedWorkoutDurationFromDrafts();
-    final int expectedDurationSeconds = draftExpectedDurationSeconds > 0
-        ? draftExpectedDurationSeconds
-        : (parsedDurationSeconds > 0 ? parsedDurationSeconds : 30 * 60);
-    final int minimumLegitDurationSeconds = ((expectedDurationSeconds * 0.75)
-                .round()
-                .clamp(60, expectedDurationSeconds)
-            as num)
-        .toInt();
-
-    // Determine if user might be cheating based on time
-    bool isCheating = expectedDurationSeconds > 0 &&
-        actualDurationSeconds < minimumLegitDurationSeconds;
-
-    if (isCheating) {
-      // Show "Are you sure you are not cheating?" popup
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: const Text(
-              "Are you sure?",
-              style: TextStyle(color: Colors.white),
-            ),
-            content: Text(
-              "Are you sure you are not cheating? Based on your exercise inputs, ${widget.workout.title} should take about ${_formatSecondsToMinutes(expectedDurationSeconds)}. We usually expect at least ${_formatSecondsToMinutes(minimumLegitDurationSeconds)}, but this run finished in ${_formatSecondsToMinutes(actualDurationSeconds)}.",
-              style: const TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Close dialog and do nothing
-                },
-                child: const Text(
-                  "Cancel",
-                  style: TextStyle(color: Colors.grey),
-                ),
+    // Show congratulations popup
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191919),
+          title: const Text(
+            "Congratulations!",
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            "Great job completing the ${widget.workout.title} workout in ${_formatSecondsToMinutes(actualDurationSeconds)}! Your progress has been saved.",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: _isSavingWorkoutCompletion
+                  ? null
+                  : () async {
+                      if (mounted) {
+                        setState(() {
+                          _isSavingWorkoutCompletion = true;
+                        });
+                      }
+                      Navigator.of(context).pop(); // Close dialog
+                      await _saveWorkoutCompletion();
+                    },
+              child: const Text(
+                "OK",
+                style: TextStyle(color: Colors.orange),
               ),
-              TextButton(
-                onPressed: _isSavingWorkoutCompletion
-                    ? null
-                    : () async {
-                        if (mounted) {
-                          setState(() {
-                            _isSavingWorkoutCompletion = true;
-                          });
-                        }
-                  // User confirms they're not cheating, save workout completion
-                        Navigator.of(context).pop(); // Close dialog
-                        await _saveWorkoutCompletion();
-                      },
-                child: const Text(
-                  "Yes, I'm sure",
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    } else {
-      // Show congratulations popup if workout was completed in expected time or more
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: const Text(
-              "Congratulations!",
-              style: TextStyle(color: Colors.white),
             ),
-            content: Text(
-              "Great job completing the ${widget.workout.title} workout in ${_formatSecondsToMinutes(actualDurationSeconds)}! Your progress has been saved.",
-              style: const TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: _isSavingWorkoutCompletion
-                    ? null
-                    : () async {
-                        if (mounted) {
-                          setState(() {
-                            _isSavingWorkoutCompletion = true;
-                          });
-                        }
-                  Navigator.of(context).pop(); // Close dialog
-                        await _saveWorkoutCompletion();
-                      },
-                child: const Text(
-                  "OK",
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    }
+          ],
+        );
+      },
+    );
   }
 
   void _onAgainWorkoutPressed() {
@@ -1723,7 +1659,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        // Check if workout was completed too quickly (potential cheating)
+        // Calculate duration
         int actualDurationSeconds = 0;
         if (_workoutStartTime != null) {
           actualDurationSeconds = DateTime.now().difference(_workoutStartTime!).inSeconds;
@@ -1735,11 +1671,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         final int expectedDurationSeconds = draftExpectedDurationSeconds > 0
             ? draftExpectedDurationSeconds
             : (parsedDurationSeconds > 0 ? parsedDurationSeconds : 30 * 60);
-        final int minimumLegitDurationSeconds = ((expectedDurationSeconds * 0.75)
-                    .round()
-                    .clamp(60, expectedDurationSeconds)
-                as num)
-            .toInt();
+
         final int workoutCalories =
             _calculateWorkoutCaloriesFromDrafts() > 0
                 ? _calculateWorkoutCaloriesFromDrafts()
@@ -1751,8 +1683,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         const int workoutCount = 1;
         final primaryGoal = inferPrimaryGoalForWorkout(widget.workout);
         final goalTags = inferGoalTagsForWorkout(widget.workout);
-        bool isCheated = expectedDurationSeconds > 0 &&
-            actualDurationSeconds < minimumLegitDurationSeconds;
 
         await _saveExerciseDraftsToFirebase(user);
 
@@ -1772,8 +1702,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           'completedAt': FieldValue.serverTimestamp(),
           'actualDuration': actualDurationSeconds, // Store actual duration for reference
           'expectedDuration': expectedDurationSeconds, // Store expected duration for reference
-          'minimumLegitDuration': minimumLegitDurationSeconds,
-          'isCheated': isCheated, // Flag to indicate if workout was potentially cheated
+          'isCheated': false, // Flag disabled as cheating detection is removed
           'recordedCalories': workoutCalories,
           'recordedMinutes': workoutMinutes,
           'recordedWorkoutCount': workoutCount,

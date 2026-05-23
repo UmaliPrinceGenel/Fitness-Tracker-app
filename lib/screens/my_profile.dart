@@ -1511,8 +1511,8 @@ class _MyProfileState extends State<MyProfile> {
                                 ),
                               ),
 
-                              // ✅ LOGOUT BUTTON - Mobile only
-                              if (!kIsWeb) ...[
+                              // ✅ LOGOUT BUTTON - Mobile + web-mobile view
+                              if (!kIsWeb || MediaQuery.of(context).size.width < 800) ...[
                                 const SizedBox(height: 10),
                                 Container(
                                   width: double.infinity,

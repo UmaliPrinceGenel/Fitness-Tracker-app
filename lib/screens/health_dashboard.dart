@@ -785,11 +785,19 @@ class _HealthDashboardState extends State<HealthDashboard>
   }
 
   void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    // Also animate the PageController for the mobile layout.
+    // On desktop the PageView is not rendered, so this is a no-op there.
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 400),
       curve: Curves.fastOutSlowIn,
     );
+    if (index == 0) {
+      _loadUserData();
+    }
   }
 
   void _handleHealthDataChanged() {
@@ -2334,13 +2342,14 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
         final double cardWidth =
             (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
             crossAxisCount;
+        // Use a more generous aspect ratio to prevent content overflow in small cards
         final childAspectRatio = isWideScreen
             ? 1.4
             : isMediumScreen
-                ? 1.2
+                ? 1.15
                 : isVerySmallScreen
-                    ? 2.5
-                    : 1.1;
+                    ? 2.2
+                    : 1.0;
         final double cardHeight = cardWidth / childAspectRatio;
 
         return GridView.builder(
@@ -2519,34 +2528,35 @@ class _WaistCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Spacer(),
-                  Container(
-                    height: 35, 
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: waistHistory.isNotEmpty
-                        ? CustomPaint(
-                            painter: LineChartPainter(
-                              data: waistHistory,
-                              dates: List.generate(
-                                waistHistory.length,
-                                (index) => DateTime.now()
-                                    .subtract(Duration(days: waistHistory.length - 1 - index)),
-                              ), // Add dates for proper charting
-                            ),
-                            size: const Size(double.infinity, 30),
-                          )
-                        : Center(
-                            child: Text(
-                              "No data",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: isVerySmallScreen ? 8 : 10,
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: waistHistory.isNotEmpty
+                          ? CustomPaint(
+                              painter: LineChartPainter(
+                                data: waistHistory,
+                                dates: List.generate(
+                                  waistHistory.length,
+                                  (index) => DateTime.now()
+                                      .subtract(Duration(days: waistHistory.length - 1 - index)),
+                                ), // Add dates for proper charting
+                              ),
+                              size: Size.infinite,
+                            )
+                          : Center(
+                              child: Text(
+                                "No data",
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: isVerySmallScreen ? 8 : 10,
+                                ),
                               ),
                             ),
-                          ),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -2682,34 +2692,35 @@ class _WeightCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Spacer(),
-                  Container(
-                    height: 35, 
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: weightHistory.isNotEmpty
-                        ? CustomPaint(
-                            painter: WeightLineChartPainter(
-                              data: weightHistory,
-                              dates: List.generate(
-                                weightHistory.length,
-                                (index) => DateTime.now()
-                                    .subtract(Duration(days: weightHistory.length - 1 - index)),
-                              ), // Add dates for proper charting
-                            ),
-                            size: const Size(double.infinity, 30),
-                          )
-                        : Center(
-                            child: Text(
-                              "No data",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: isVerySmallScreen ? 8 : 10,
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: weightHistory.isNotEmpty
+                          ? CustomPaint(
+                              painter: WeightLineChartPainter(
+                                data: weightHistory,
+                                dates: List.generate(
+                                  weightHistory.length,
+                                  (index) => DateTime.now()
+                                      .subtract(Duration(days: weightHistory.length - 1 - index)),
+                                ), // Add dates for proper charting
+                              ),
+                              size: Size.infinite,
+                            )
+                          : Center(
+                              child: Text(
+                                "No data",
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: isVerySmallScreen ? 8 : 10,
+                                ),
                               ),
                             ),
-                          ),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -2845,7 +2856,7 @@ class _HeightCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(
@@ -3210,23 +3221,24 @@ class _SleepCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const Spacer(),
-              Container(
-                height: 35,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: CustomPaint(
-                  painter: SleepGraphPainter(
-                    data: sleepHistory,
-                    dates: List.generate(
-                      sleepHistory.length,
-                      (index) => DateTime.now()
-                          .subtract(Duration(days: sleepHistory.length - 1 - index)),
-                    ), // Add dates for proper charting
-                  ), // UPDATED: Changed painter
-                  size: const Size(double.infinity, 40),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: CustomPaint(
+                    painter: SleepGraphPainter(
+                      data: sleepHistory,
+                      dates: List.generate(
+                        sleepHistory.length,
+                        (index) => DateTime.now()
+                            .subtract(Duration(days: sleepHistory.length - 1 - index)),
+                      ), // Add dates for proper charting
+                    ), // UPDATED: Changed painter
+                    size: Size.infinite,
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
