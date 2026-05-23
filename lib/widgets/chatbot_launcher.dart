@@ -116,16 +116,17 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
                       });
                     },
                     onPanUpdate: (details) {
+                      final currentPos = _SharedChatbotDockV2.position.value ?? position;
                       final nextBottomOffset =
-                          (position.bottomOffset - details.delta.dy)
+                          (currentPos.bottomOffset - details.delta.dy)
                               .clamp(widget.minBottomOffset, maxTravelBottom)
                               .toDouble();
                       final nextLeftOffset =
-                          (position.leftOffset + details.delta.dx)
+                          (currentPos.leftOffset + details.delta.dx)
                               .clamp(0.0, maxTravelLeft)
                               .toDouble();
 
-                      _SharedChatbotDockV2.position.value = position.copyWith(
+                      _SharedChatbotDockV2.position.value = currentPos.copyWith(
                         bottomOffset: nextBottomOffset,
                         leftOffset: nextLeftOffset,
                       );
@@ -134,11 +135,12 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
                       setState(() {
                         _isDragging = false;
                       });
-                      final snapLeft = position.leftOffset < maxTravelLeft / 2
+                      final currentPos = _SharedChatbotDockV2.position.value ?? position;
+                      final snapLeft = currentPos.leftOffset < maxTravelLeft / 2
                           ? _chatbotEdgeInset
                           : maxTravelLeft - _chatbotEdgeInset;
                       
-                      _SharedChatbotDockV2.position.value = position.copyWith(
+                      _SharedChatbotDockV2.position.value = currentPos.copyWith(
                         leftOffset: snapLeft,
                       );
                     },
