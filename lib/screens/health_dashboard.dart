@@ -1144,19 +1144,20 @@ class _HealthDashboardState extends State<HealthDashboard>
     return Scaffold(
       extendBody: true,
       backgroundColor: colors.scaffold,
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.only(left: 60, right: 60, bottom: 20),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(40),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: colors.navBar.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(40),
-                border: Border.all(color: colors.cardBorder, width: 1.5),
-              ),
-              child: BottomNavigationBar(
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.only(left: 60, right: 60, bottom: 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(40),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.navBar.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(40),
+                  border: Border.all(color: colors.cardBorder, width: 1.5),
+                ),
+                child: BottomNavigationBar(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 type: BottomNavigationBarType.fixed,
@@ -1188,6 +1189,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             ),
           ),
         ),
+      ),
       ),
       body: SafeArea(
         bottom: false,
@@ -1461,7 +1463,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                 ),
               ],
             ),
-            const ChatbotLauncher(title: 'Fitness Chat', initialBottom: 90, minBottomOffset: 90),
+            const ChatbotLauncher(title: 'Fitness Chat', initialBottom: 120, minBottomOffset: 120),
           ],
         ),
       ),

@@ -960,64 +960,14 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   // Body Focus Tabs Choices
   Widget _buildTab(String title, int index) {
-    final isSelected = _selectedTabIndex == index;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        gradient: isSelected
-            ? const LinearGradient(
-                colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: isSelected ? null : Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(24),
-        border: isSelected
-            ? Border.all(color: Colors.transparent, width: 1)
-            : Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFFF5200).withOpacity(0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () {
-            setState(() {
-              _selectedTabIndex = index;
-            });
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Center(
-              child: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                style: DefaultTextStyle.of(context).style.copyWith(
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.white.withOpacity(0.65),
-                  fontWeight: isSelected
-                      ? FontWeight.w900
-                      : FontWeight.w600,
-                  fontSize: 14,
-                  letterSpacing: 0.3,
-                ),
-                child: Text(title),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return _AnimatedCategoryTab(
+      title: title,
+      isSelected: _selectedTabIndex == index,
+      onTap: () {
+        setState(() {
+          _selectedTabIndex = index;
+        });
+      },
     );
   }
 
@@ -2367,4 +2317,117 @@ class FitnessJourneyPreview {
     required this.gradientStart,
     required this.gradientEnd,
   });
+}
+
+class _AnimatedCategoryTab extends StatefulWidget {
+  final String title;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AnimatedCategoryTab({
+    required this.title,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedCategoryTab> createState() => _AnimatedCategoryTabState();
+}
+
+class _AnimatedCategoryTabState extends State<_AnimatedCategoryTab> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.90).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails details) {
+    _controller.forward();
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    _controller.reverse();
+    widget.onTap();
+  }
+
+  void _handleTapCancel() {
+    _controller.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = widget.isSelected;
+    
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? const LinearGradient(
+                    colors: [Color(0xFFFF8C42), Color(0xFFFF5200)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.04),
+                      Colors.white.withOpacity(0.04),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.08),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected ? const Color(0xFFFF5200).withOpacity(0.35) : Colors.transparent,
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Center(
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                style: DefaultTextStyle.of(context).style.copyWith(
+                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.65),
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                  fontSize: 14,
+                  letterSpacing: 0.3,
+                ),
+                child: Text(widget.title),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
