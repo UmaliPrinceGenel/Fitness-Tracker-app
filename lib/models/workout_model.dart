@@ -4,6 +4,7 @@ class Exercise {
   final int duration; // Duration in seconds for this specific exercise
   final String description; // Description of the exercise
   final bool? requiresWeightInputOverride;
+  final String? customVideoAsset; // Custom video path/URL for the exercise
 
   Exercise({
     required this.name,
@@ -11,6 +12,7 @@ class Exercise {
     required this.duration,
     required this.description,
     this.requiresWeightInputOverride,
+    this.customVideoAsset,
   });
 
   bool get requiresWeightInput {
@@ -83,6 +85,7 @@ class Workout {
   final String bodyFocus;
   final String videoAsset;
   final String thumbnailAsset;
+  final String? description; // Workout description
   final String? journeyId;
   final String? journeyName;
   final int? journeyOrder;
@@ -99,6 +102,7 @@ class Workout {
     required this.bodyFocus,
     required this.videoAsset,
     required this.thumbnailAsset,
+    this.description,
     this.journeyId,
     this.journeyName,
     this.journeyOrder,

@@ -19,9 +19,11 @@ class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({
     super.key,
     this.showChatbot = true,
+    this.onDataChanged,
   });
 
   final bool showChatbot;
+  final VoidCallback? onDataChanged;
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -59,6 +61,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   List<int> _monthlyJourneyCounts = [0, 0, 0, 0, 0];
   List<int> _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
   bool _isLoading = true;
+  List<Workout> _customWorkouts = [];
 
   // List of tab titles and corresponding colors
   final List<String> _tabTitles = [
@@ -338,6 +341,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     super.initState();
     _loadMonthlyCategoryData();
     _loadSelectedJourney();
+    _loadCustomWorkouts();
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -355,6 +359,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       // Refresh data when the app resumes (e.g., when returning from workout detail screen)
       _loadMonthlyCategoryData();
       _loadSelectedJourney();
+      _loadCustomWorkouts();
     }
   }
 
@@ -374,6 +379,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
       return 2;
     }
     if (normalizedFocus == "legs" ||
+        normalizedFocus == "lower body" ||
         normalizedFocus == "calves" ||
         normalizedFocus == "glutes & hamstrings") {
       return 3;
@@ -716,6 +722,76 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         _monthlyJourneyCheatedCounts = [0, 0, 0, 0, 0];
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadCustomWorkouts() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final snapshot = await _firestore.collection('custom_workouts').get();
+      List<Workout> customWorkouts = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final assignToAll = data['assignToAll'] == true;
+        final assignedUserIds = (data['assignedUserIds'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+
+        if (assignToAll || assignedUserIds.contains(user.uid)) {
+          List<Exercise> exerciseList = [];
+          if (data['exercises'] != null) {
+            final exercisesData = data['exercises'] as List<dynamic>;
+            for (var exData in exercisesData) {
+              exerciseList.add(Exercise(
+                name: exData['name'] ?? 'Custom Exercise',
+                baseCaloriesPerMinute: 10,
+                duration: 300,
+                description: exData['description'] ?? '',
+                customVideoAsset: exData['videoAsset'],
+                requiresWeightInputOverride: exData['requiresWeightInput'] as bool?,
+              ));
+            }
+          } else {
+            // Fallback for older custom workouts that only had one video at the top level
+            exerciseList.add(Exercise(
+              name: data['title'] ?? 'Custom Workout',
+              baseCaloriesPerMinute: 10,
+              duration: 300,
+              description: data['description'] ?? '',
+              customVideoAsset: data['videoAsset'],
+            ));
+          }
+
+          int totalDurationMin = (exerciseList.length * 300) ~/ 60;
+          String durationLabel = '\$totalDurationMin min';
+
+          final workout = Workout(
+            id: doc.id,
+            title: data['title'] ?? 'Custom Workout',
+            duration: durationLabel,
+            exercises: '\${exerciseList.length}',
+            level: data['level'] ?? 'Medium',
+            bodyFocus: data['bodyFocus'] ?? 'Chest',
+            videoAsset: data['videoAsset'] ?? '', // Fallback
+            thumbnailAsset: data['thumbnailUrl'] ?? 'assets/thumbnails/custom_workout.jpg',
+            description: data['description'],
+            exerciseList: exerciseList,
+          );
+          customWorkouts.add(workout);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _customWorkouts = customWorkouts;
+        });
+      }
+    } catch (e) {
+      print('Error loading custom workouts: \$e');
     }
   }
 
@@ -1917,8 +1993,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   // Workout List Section - Filtered based on selected tab
   Widget _buildWorkoutList() {
+    List<Workout> combinedWorkouts = [
+      ...exerciseWorkouts,
+      ..._customWorkouts,
+    ];
+
     // Filter workouts based on selected tab
-    List<Workout> filteredWorkouts = exerciseWorkouts.where((workout) {
+    List<Workout> filteredWorkouts = combinedWorkouts.where((workout) {
       String bodyFocus = workout.bodyFocus.toLowerCase();
       String selectedCategory = _tabTitles[_selectedTabIndex].toLowerCase();
 
@@ -1928,6 +2009,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           return bodyFocus == "chest";
         case "arms":
           return bodyFocus == "arm" ||
+              bodyFocus == "arms" ||
               bodyFocus == "triceps" ||
               bodyFocus == "biceps" ||
               bodyFocus == "forearms";
@@ -1935,6 +2017,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           return bodyFocus == "abs" || bodyFocus == "core";
         case "lower body":
           return bodyFocus == "legs" ||
+              bodyFocus == "lower body" ||
               bodyFocus == "calves" ||
               bodyFocus == "glutes & hamstrings";
         case "shoulders":
@@ -2042,10 +2125,14 @@ class _WorkoutScreenState extends State<WorkoutScreen>
               MaterialPageRoute(
                 builder: (context) => WorkoutDetailScreen(
                   workout: workout,
-                  onWorkoutCompleted:
-                      _loadMonthlyCategoryData, // Pass callback to refresh data when workout is completed
-                  onWorkoutReset:
-                      _loadMonthlyCategoryData, // Pass callback to refresh data when workout is reset
+                  onWorkoutCompleted: () {
+                    _loadMonthlyCategoryData();
+                    widget.onDataChanged?.call();
+                  }, // Pass callback to refresh data when workout is completed
+                  onWorkoutReset: () {
+                    _loadMonthlyCategoryData();
+                    widget.onDataChanged?.call();
+                  }, // Pass callback to refresh data when workout is reset
                 ),
               ),
             );
@@ -2079,18 +2166,31 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                       borderRadius: isCompactCard
                           ? const BorderRadius.vertical(top: Radius.circular(21))
                           : const BorderRadius.horizontal(left: Radius.circular(21)),
-                      child: Image.asset(
-                        workout.thumbnailAsset,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[900],
-                            child: const Center(
-                              child: Icon(Icons.fitness_center, color: Colors.white24, size: 40),
+                      child: workout.thumbnailAsset.startsWith('http')
+                          ? Image.network(
+                              workout.thumbnailAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[900],
+                                  child: const Center(
+                                    child: Icon(Icons.fitness_center, color: Colors.white24, size: 40),
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              workout.thumbnailAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[900],
+                                  child: const Center(
+                                    child: Icon(Icons.fitness_center, color: Colors.white24, size: 40),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
                     ),
                     if (isCompleted)
                       Positioned(

@@ -10,6 +10,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_feedback_screen.dart';
 import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
+import 'admin_custom_workout_screen.dart';
 import 'community_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'login_screen.dart';
@@ -44,8 +45,10 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
       page = const AdminDashboardScreen();
     } else if (index == 1) {
       page = const AdminUsersScreen();
-    } else {
+    } else if (index == 3) {
       page = const AdminFeedbackScreen();
+    } else {
+      page = const AdminCustomWorkoutScreen();
     }
 
     Navigator.pushReplacement(
@@ -1015,6 +1018,11 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
             activeIcon: Icon(Icons.rate_review),
             label: 'Feedback',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center_outlined),
+            activeIcon: Icon(Icons.fitness_center),
+            label: 'Workout',
+          ),
         ],
       ),
     );
@@ -1112,6 +1120,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
           _buildSidebarNavItem('Users', 1, Icons.people_outline),
           _buildSidebarNavItem('Community', 2, Icons.forum_outlined),
           _buildSidebarNavItem('Feedback', 3, Icons.rate_review_outlined),
+          _buildSidebarNavItem('Custom Workout', 4, Icons.fitness_center),
           
           const Spacer(),
           

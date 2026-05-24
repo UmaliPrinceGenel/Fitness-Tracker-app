@@ -856,7 +856,10 @@ class _HealthDashboardState extends State<HealthDashboard>
       case 0:
         return _buildWebHealthPanel();
       case 1:
-        return const WorkoutScreen(showChatbot: false);
+        return WorkoutScreen(
+          showChatbot: false,
+          onDataChanged: _handleHealthDataChanged,
+        );
       case 2:
         return _buildWebCenteredPanel(
           const CommunityScreen(showChatbot: false),
@@ -1461,7 +1464,12 @@ class _HealthDashboardState extends State<HealthDashboard>
                     ),
                   ),
                 ),
-                const KeepAlivePage(child: WorkoutScreen(showChatbot: false)),
+                KeepAlivePage(
+                  child: WorkoutScreen(
+                    showChatbot: false,
+                    onDataChanged: _handleHealthDataChanged,
+                  ),
+                ),
                 const KeepAlivePage(child: CommunityScreen(showChatbot: false)),
                 KeepAlivePage(
                   child: MyProfile(

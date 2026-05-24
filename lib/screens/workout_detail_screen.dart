@@ -253,17 +253,29 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        widget.workout.thumbnailAsset,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.fitness_center,
-                            color: Colors.white,
-                            size: 60,
-                          );
-                        },
-                      ),
+                      child: widget.workout.thumbnailAsset.startsWith('http')
+                          ? Image.network(
+                              widget.workout.thumbnailAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.fitness_center,
+                                  color: Colors.white,
+                                  size: 60,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              widget.workout.thumbnailAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.fitness_center,
+                                  color: Colors.white,
+                                  size: 60,
+                                );
+                              },
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -384,7 +396,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
-                        "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exerciseList.length} exercises that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
+                        widget.workout.description != null && widget.workout.description!.isNotEmpty
+                            ? widget.workout.description!
+                            : "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exerciseList.length} exercises that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -573,17 +587,29 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        widget.workout.thumbnailAsset,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.fitness_center,
-                            color: Colors.white,
-                            size: 60,
-                          );
-                        },
-                      ),
+                      child: widget.workout.thumbnailAsset.startsWith('http')
+                          ? Image.network(
+                              widget.workout.thumbnailAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.fitness_center,
+                                  color: Colors.white,
+                                  size: 60,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              widget.workout.thumbnailAsset,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.fitness_center,
+                                  color: Colors.white,
+                                  size: 60,
+                                );
+                              },
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -710,7 +736,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
-                        "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exerciseList.length} exercises that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
+                        widget.workout.description != null && widget.workout.description!.isNotEmpty
+                            ? widget.workout.description!
+                            : "This ${widget.workout.level.toLowerCase()} level ${widget.workout.bodyFocus.toLowerCase()} workout is designed to help you build strength and improve your fitness. The routine includes ${widget.workout.exerciseList.length} exercises that target various muscle groups in the ${widget.workout.bodyFocus.toLowerCase()} area.",
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,

@@ -327,6 +327,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       candidates.add(path);
     }
 
+    if (exercise.customVideoAsset != null && exercise.customVideoAsset!.isNotEmpty) {
+      addCandidate(exercise.customVideoAsset);
+    }
+
     final mappedCandidates = VideoMappingService.getVideoCandidatePaths(
       exercise.name,
       journeyName: widget.workout.journeyName,

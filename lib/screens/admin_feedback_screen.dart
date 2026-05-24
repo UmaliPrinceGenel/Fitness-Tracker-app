@@ -8,6 +8,7 @@ import 'admin_community_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_route_utils.dart';
 import 'admin_users_screen.dart';
+import 'admin_custom_workout_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'login_screen.dart';
 
@@ -62,8 +63,10 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       page = const AdminDashboardScreen();
     } else if (index == 1) {
       page = const AdminUsersScreen();
-    } else {
+    } else if (index == 2) {
       page = const AdminCommunityScreen();
+    } else {
+      page = const AdminCustomWorkoutScreen();
     }
 
     Navigator.pushReplacement(
@@ -776,6 +779,7 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
           _buildSidebarNavItem('Users', 1, Icons.people_outline),
           _buildSidebarNavItem('Community', 2, Icons.forum_outlined),
           _buildSidebarNavItem('Feedback', 3, Icons.rate_review_outlined),
+          _buildSidebarNavItem('Custom Workout', 4, Icons.fitness_center),
           const Spacer(),
           InkWell(
             onTap: _logoutAdmin,
@@ -1262,6 +1266,11 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
             icon: Icon(Icons.rate_review_outlined),
             activeIcon: Icon(Icons.rate_review),
             label: 'Feedback',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center_outlined),
+            activeIcon: Icon(Icons.fitness_center),
+            label: 'Workout',
           ),
         ],
       ),

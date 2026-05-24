@@ -60,6 +60,7 @@ dependencies:
   provider: ^6.1.2
   llama_flutter_android: ^0.2.3
   flutter_markdown: ^0.7.2
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:

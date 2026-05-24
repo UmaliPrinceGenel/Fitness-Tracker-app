@@ -19,7 +19,6 @@ import 'screens/admin_dashboard_screen.dart';
 import 'theme/theme_provider.dart';
 import 'theme/app_theme.dart';
 
-// Remove the duplicate main function - keeping only one
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
