@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="rockies_fitness_app"
+        android:label="Rockies Fitness"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:extractNativeLibs="true"
