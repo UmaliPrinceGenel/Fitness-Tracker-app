@@ -1379,7 +1379,9 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
                 leading: data['thumbnailUrl'] != null 
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover),
+                      child: data['thumbnailUrl'].toString().startsWith('http')
+                          ? Image.network(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover)
+                          : Image.asset(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover),
                     )
                   : const Icon(Icons.fitness_center, color: Colors.orange, size: 40),
                 title: Text(data['title'] ?? 'Unknown Workout', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
