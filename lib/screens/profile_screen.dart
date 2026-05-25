@@ -31,8 +31,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
   final fbAuth.FirebaseAuth _firebaseAuth = fbAuth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Regular expression to validate decimal numbers with up to 2 decimal places
-  final RegExp _decimalValidator = RegExp(r'^\d*\.?\d{0,2}$');
+  // Regular expression to validate decimal numbers with up to 2 decimal places (allowing period or comma)
+  final RegExp _decimalValidator = RegExp(r'^\d*[\.,]?\d{0,2}$');
 
   void _handleBackNavigation() {
     if (Navigator.canPop(context)) {
@@ -101,7 +101,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
     // Check if the input matches the decimal pattern
     if (_decimalValidator.hasMatch(value)) {
       // Check if it's a valid number
-      double? parsedValue = double.tryParse(value);
+      double? parsedValue = double.tryParse(value.replaceAll(',', '.'));
       if (parsedValue != null) {
         // Limit to 3 digits for height (reasonable max 999 cm)
         if (value.length <= 6) { // Allow up to 6 characters (e.g., 999.99)
@@ -119,24 +119,24 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
     } else {
       // If invalid characters are entered, revert to last valid value
       String oldText = heightController.text;
-      String cleanedText = oldText.replaceAll(RegExp(r'[^0-9.]'), '');
+      String cleanedText = oldText.replaceAll(RegExp(r'[^0-9.,]'), '');
       
-      // Ensure only one decimal point
-      List<String> parts = cleanedText.split('.');
+      // Ensure only one decimal point/comma
+      List<String> parts = cleanedText.split(RegExp(r'[.,]'));
       if (parts.length > 2) {
         cleanedText = parts[0] + '.' + parts.sublist(1).join();
       }
       
       // Limit to 2 decimal places
-      if (cleanedText.contains('.')) {
-        parts = cleanedText.split('.');
+      if (cleanedText.contains('.') || cleanedText.contains(',')) {
+        parts = cleanedText.split(RegExp(r'[.,]'));
         if (parts[1].length > 2) {
           cleanedText = parts[0] + '.' + parts[1].substring(0, 2);
         }
       }
       
       if (cleanedText.isNotEmpty) {
-        double? parsedValue = double.tryParse(cleanedText);
+        double? parsedValue = double.tryParse(cleanedText.replaceAll(',', '.'));
         if (parsedValue != null) {
           setState(() {
             height = parsedValue;
@@ -145,7 +145,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
           heightController.selection = TextSelection.fromPosition(
             TextPosition(offset: cleanedText.length)
           );
-        } else if (cleanedText == '.') {
+        } else if (cleanedText == '.' || cleanedText == ',') {
           heightController.text = '0.';
           heightController.selection = TextSelection.fromPosition(
             TextPosition(offset: 2)
@@ -173,7 +173,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
     // Check if the input matches the decimal pattern
     if (_decimalValidator.hasMatch(value)) {
       // Check if it's a valid number
-      double? parsedValue = double.tryParse(value);
+      double? parsedValue = double.tryParse(value.replaceAll(',', '.'));
       if (parsedValue != null) {
         // Limit to 3 digits for weight (reasonable max 999 kg)
         if (value.length <= 6) { // Allow up to 6 characters (e.g., 999.99)
@@ -191,24 +191,24 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
     } else {
       // If invalid characters are entered, revert to last valid value
       String oldText = weightController.text;
-      String cleanedText = oldText.replaceAll(RegExp(r'[^0-9.]'), '');
+      String cleanedText = oldText.replaceAll(RegExp(r'[^0-9.,]'), '');
       
-      // Ensure only one decimal point
-      List<String> parts = cleanedText.split('.');
+      // Ensure only one decimal point/comma
+      List<String> parts = cleanedText.split(RegExp(r'[.,]'));
       if (parts.length > 2) {
         cleanedText = parts[0] + '.' + parts.sublist(1).join();
       }
       
       // Limit to 2 decimal places
-      if (cleanedText.contains('.')) {
-        parts = cleanedText.split('.');
+      if (cleanedText.contains('.') || cleanedText.contains(',')) {
+        parts = cleanedText.split(RegExp(r'[.,]'));
         if (parts[1].length > 2) {
           cleanedText = parts[0] + '.' + parts[1].substring(0, 2);
         }
       }
       
       if (cleanedText.isNotEmpty) {
-        double? parsedValue = double.tryParse(cleanedText);
+        double? parsedValue = double.tryParse(cleanedText.replaceAll(',', '.'));
         if (parsedValue != null) {
           setState(() {
             weight = parsedValue;
@@ -217,7 +217,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
           weightController.selection = TextSelection.fromPosition(
             TextPosition(offset: cleanedText.length)
           );
-        } else if (cleanedText == '.') {
+        } else if (cleanedText == '.' || cleanedText == ',') {
           weightController.text = '0.';
           weightController.selection = TextSelection.fromPosition(
             TextPosition(offset: 2)
@@ -513,7 +513,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                         decoration: _buildWebFieldDecoration('170 cm'),
                         inputFormatters: [
                           // Using TextInputFormatter to prevent invalid input
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
                         ],
                       ),
                     ),
@@ -530,7 +530,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                         ),
                         decoration: _buildWebFieldDecoration('60 kg'),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
                         ],
                       ),
                     ),
@@ -789,7 +789,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                 ),
                                 controller: heightController,
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
                                 ],
                               ),
                             ),
@@ -834,7 +834,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                                 ),
                                 controller: weightController,
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
                                 ],
                               ),
                             ),

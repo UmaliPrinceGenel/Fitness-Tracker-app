@@ -166,20 +166,26 @@ class PremiumCancelButton extends StatelessWidget {
           width: 1.0,
         ),
       ),
-      child: TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-        ),
-        child: Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: isEnabled ? Colors.white.withOpacity(0.85) : Colors.white.withOpacity(0.3),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
+      child: GestureDetector(
+        onTapDown: isEnabled ? (_) => onPressed?.call() : null,
+        behavior: HitTestBehavior.opaque,
+        child: IgnorePointer(
+          child: TextButton(
+            onPressed: isEnabled ? () {} : null,
+            style: TextButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+            ),
+            child: Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                color: isEnabled ? Colors.white.withOpacity(0.85) : Colors.white.withOpacity(0.3),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
         ),
       ),
@@ -226,25 +232,31 @@ class PremiumConfirmButton extends StatelessWidget {
               ]
             : null,
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          disabledBackgroundColor: Colors.transparent,
-          disabledForegroundColor: Colors.white38,
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-        ),
-        child: Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: isEnabled ? Colors.white : Colors.white.withOpacity(0.35),
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
+      child: GestureDetector(
+        onTapDown: isEnabled ? (_) => onPressed?.call() : null,
+        behavior: HitTestBehavior.opaque,
+        child: IgnorePointer(
+          child: ElevatedButton(
+            onPressed: isEnabled ? () {} : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              disabledBackgroundColor: Colors.transparent,
+              disabledForegroundColor: Colors.white38,
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+            ),
+            child: Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                color: isEnabled ? Colors.white : Colors.white.withOpacity(0.35),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
         ),
       ),

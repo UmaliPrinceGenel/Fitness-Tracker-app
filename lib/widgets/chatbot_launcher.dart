@@ -159,13 +159,6 @@ class _ChatbotLauncherState extends State<ChatbotLauncher> {
                                 colors: [Color(0xFFFF7A00), Color(0xFFFF4500)],
                               ),
                               borderRadius: BorderRadius.circular(18),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black45,
-                                  blurRadius: 12,
-                                  offset: Offset(0, 6),
-                                ),
-                              ],
                             ),
                             child: const Icon(
                               Icons.chat_bubble_rounded,

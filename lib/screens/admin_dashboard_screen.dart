@@ -17,7 +17,8 @@ import 'dart:ui' as ui;
 import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  final bool isInsideShell;
+  const AdminDashboardScreen({super.key, this.isInsideShell = false});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -570,15 +571,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.orange.withOpacity(0.15),
-                backgroundImage: (user['photoURL']?.toString().isNotEmpty ?? false)
-                    ? NetworkImage(user['photoURL'].toString())
-                    : null,
-                child: (user['photoURL']?.toString().isNotEmpty ?? false)
-                    ? null
-                    : const Icon(Icons.person, color: Colors.orange),
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: ClipOval(
+                  child: (user['photoURL']?.toString().isNotEmpty ?? false)
+                      ? Image.network(
+                          user['photoURL'].toString(),
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.orange.withOpacity(0.15),
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.person, color: Colors.orange),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.orange.withOpacity(0.15),
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.person, color: Colors.orange),
+                        ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -661,16 +677,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.orange.withOpacity(0.15),
-                backgroundImage:
-                    (post['profileImage']?.toString().isNotEmpty ?? false)
-                        ? NetworkImage(post['profileImage'].toString())
-                        : null,
-                child: (post['profileImage']?.toString().isNotEmpty ?? false)
-                    ? null
-                    : const Icon(Icons.person, color: Colors.orange),
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: ClipOval(
+                  child: (post['profileImage']?.toString().isNotEmpty ?? false)
+                      ? Image.network(
+                          post['profileImage'].toString(),
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.orange.withOpacity(0.15),
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.person, color: Colors.orange),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.orange.withOpacity(0.15),
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.person, color: Colors.orange),
+                        ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1153,14 +1183,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ============== MOBILE UI ==============
 
-  Widget _buildMobileLayout() {
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
+  Widget _buildMobileLayout({bool isInsideShell = false}) {
+    final bodyWidget = SafeArea(
+      bottom: false,
+      child: Stack(
+        children: [
             // Soft atmospheric glowing backdrops
             Positioned(
               top: -120,
@@ -1209,44 +1236,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       final isCompact = constraints.maxWidth < 600;
                       final statsAspectRatio = statsColumns == 4
                           ? 1.16
-                          : (isCompact ? 1.05 : 1.32);
+                          : (isCompact ? 1.28 : 1.32);
 
-                      return RefreshIndicator(
-                        onRefresh: () => _loadDashboardData(showLoader: false),
-                        child: SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Header (Typography based matching user dashboard)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            color: Colors.black,
+                            padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  DateFormat('EEEE, MMMM d').format(DateTime.now()).toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF7317),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Overview',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: RefreshIndicator(
+                              onRefresh: () => _loadDashboardData(showLoader: false),
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 120, top: 4),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      DateFormat('EEEE, MMMM d').format(DateTime.now()).toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Color(0xFFFF7317),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1.6,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      'Overview',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.8,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                               Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(20),
@@ -1307,6 +1339,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 label: 'Total Users',
                                 value: _users.length.toString(),
                                 subtitle: 'All user documents',
+                                compact: isCompact,
                               ),
                               _buildSummaryCard(
                                 icon: Icons.block,
@@ -1314,6 +1347,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 label: 'Banned Users',
                                 value: _bannedUsersCount.toString(),
                                 subtitle: 'Users currently blocked',
+                                compact: isCompact,
                               ),
                               _buildSummaryCard(
                                 icon: Icons.forum_outlined,
@@ -1321,22 +1355,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 label: 'Community Posts',
                                 value: _posts.length.toString(),
                                 subtitle: 'Posts available for review',
+                                compact: isCompact,
                               ),
                               _buildSummaryCard(
                                 icon: Icons.rate_review_outlined,
                                 iconColor: Colors.amber,
                                 label: 'Total Feedback',
                                 value: _totalFeedbackCount.toString(),
-                                subtitle: 'User ratings and comments received',
+                                subtitle: 'Ratings and reviews',
+                                compact: isCompact,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 16),
                           _buildSectionHeader(
                             'Admin Session',
                             'Securely end the current admin session.',
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(18),
@@ -1374,11 +1410,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Container(
                                   height: 50,
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
+                                    color: const Color(0xFFFF7317),
                                     borderRadius: BorderRadius.circular(25),
                                     boxShadow: [
                                       BoxShadow(
@@ -1412,16 +1444,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
           ],
         ),
-      ),
+      );
+
+    if (isInsideShell) {
+      return bodyWidget;
+    }
+
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.black,
+      body: bodyWidget,
       bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 0,
         onTap: _onNavTapped,
@@ -1441,6 +1484,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
     
     // Use mobile layout for mobile devices or small screens
-    return _buildMobileLayout();
+    return _buildMobileLayout(isInsideShell: widget.isInsideShell);
   }
 }

@@ -15,7 +15,8 @@ import '../widgets/admin_bottom_nav_bar.dart';
 import 'dart:ui' as ui;
 
 class AdminFeedbackScreen extends StatefulWidget {
-  const AdminFeedbackScreen({super.key});
+  final bool isInsideShell;
+  const AdminFeedbackScreen({super.key, this.isInsideShell = false});
 
   @override
   State<AdminFeedbackScreen> createState() => _AdminFeedbackScreenState();
@@ -249,8 +250,8 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
 
   Widget _buildStatChip(String label, String value, Color color, {IconData? icon}) {
     return Container(
-      height: 84,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 96,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -270,41 +271,30 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+          Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
-            child: Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -315,7 +305,7 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 420 ? 3 : width >= 280 ? 2 : 1;
+        final columns = cards.length;
         const spacing = 8.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
         return Wrap(
@@ -367,33 +357,33 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        splashColor: color.withOpacity(0.15),
-        highlightColor: color.withOpacity(0.08),
+        splashColor: Colors.white24,
+        highlightColor: Colors.white10,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color.withOpacity(0.12),
-                color.withOpacity(0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: color,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: color),
+              Icon(icon, size: 14, color: Colors.white),
               const SizedBox(width: 6),
               Text(
                 label,
-                style: TextStyle(
-                  color: color,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -776,28 +766,48 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                   padding: const EdgeInsets.all(2.5),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: isReviewed
-                          ? [const Color(0xFF4ADE80), const Color(0xFF22C55E)]
-                          : [const Color(0xFFFF7317), const Color(0xFFFF9E59)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: isReviewed
+                        ? const Color(0xFF4ADE80)
+                        : const Color(0xFFFF7317),
                   ),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: const Color(0xFF1A1A1A),
-                    backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
-                    child: hasPhoto
-                        ? null
-                        : Text(
-                            displayName[0].toUpperCase(),
-                            style: TextStyle(
-                              color: isReviewed ? const Color(0xFF4ADE80) : const Color(0xFFFF7317),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: ClipOval(
+                      child: hasPhoto
+                          ? Image.network(
+                              photoUrl,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: const Color(0xFF1A1A1A),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    displayName[0].toUpperCase(),
+                                    style: TextStyle(
+                                      color: isReviewed ? const Color(0xFF4ADE80) : const Color(0xFFFF7317),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
+                              color: const Color(0xFF1A1A1A),
+                              alignment: Alignment.center,
+                              child: Text(
+                                displayName[0].toUpperCase(),
+                                style: TextStyle(
+                                  color: isReviewed ? const Color(0xFF4ADE80) : const Color(0xFFFF7317),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
-                          ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1328,13 +1338,10 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       return _buildWebLayout();
     }
     
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
+    final bodyWidget = SafeArea(
+      bottom: false,
+      child: Stack(
+        children: [
             // Atmospheric glowing backdrops
             Positioned(
               top: -140,
@@ -1409,19 +1416,13 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                       ],
                     ),
                   )
-                : RefreshIndicator(
-                    color: const Color(0xFFFF7317),
-                    backgroundColor: const Color(0xFF1A1A1A),
-                    onRefresh: () => _loadFeedback(showLoader: false),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Column(
+                : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Premium Header
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                          Container(
+                            width: double.infinity,
+                            color: Colors.black,
+                            padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 8),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1464,6 +1465,17 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                               ],
                             ),
                           ),
+                          Expanded(
+                            child: RefreshIndicator(
+                              color: const Color(0xFFFF7317),
+                              backgroundColor: const Color(0xFF1A1A1A),
+                              onRefresh: () => _loadFeedback(showLoader: false),
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100, top: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
 
                           // Search Bar
                           Container(
@@ -1633,14 +1645,25 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                                 ),
                               ),
                           ],
-                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
                   ),
+                ),
+              ],
+            ),
           ],
         ),
-      ),
+      );
+
+    if (widget.isInsideShell) {
+      return bodyWidget;
+    }
+
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.black,
+      body: bodyWidget,
       bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 3,
         onTap: _onNavTapped,

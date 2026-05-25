@@ -65,7 +65,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   double _parseDoubleValue(dynamic value) {
     if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
+    if (value is String) return double.tryParse(value.replaceAll(',', '.')) ?? 0.0;
     return 0.0;
   }
 
@@ -927,7 +927,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 controller: controller,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
                 ],
                 style: const TextStyle(color: Colors.white, fontSize: 15),
                 decoration: InputDecoration(
@@ -958,7 +958,7 @@ class _DetailScreenState extends State<DetailScreen> {
               label: "Save",
               gradientColors: [_getThemeColor(), _getThemeColor().withOpacity(0.8)],
               onPressed: () async {
-                final value = double.tryParse(controller.text);
+                final value = double.tryParse(controller.text.replaceAll(',', '.'));
                 if (value == null || value <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1107,7 +1107,7 @@ class _DetailScreenState extends State<DetailScreen> {
               label: 'Save',
               gradientColors: const [Color(0xFF2ECC71), Color(0xFF27AE60)],
               onPressed: () async {
-                final goal = double.tryParse(controller.text);
+                final goal = double.tryParse(controller.text.replaceAll(',', '.'));
                 if (goal == null || goal <= 0 || goal > 500) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1195,12 +1195,10 @@ class _DetailScreenState extends State<DetailScreen> {
           }, SetOptions(merge: true));
 
       await _firestore.collection('users').doc(user.uid).set({
-        'profile': {
-          'weight': _weight,
-          'height': newValue,
-          'bmi': updatedBmi,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        },
+        'profile.weight': _weight,
+        'profile.height': newValue,
+        'profile.bmi': updatedBmi,
+        'profile.lastUpdated': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
@@ -1236,14 +1234,12 @@ class _DetailScreenState extends State<DetailScreen> {
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
-      // Update in user profile
+      // Update in user profile with dot notation to avoid overwriting the whole profile map
       await _firestore.collection('users').doc(user.uid).set({
-        'profile': {
-          'weight': newValue,
-          'height': _height,
-          'bmi': updatedBmi,
-          'lastUpdated': FieldValue.serverTimestamp(),
-        },
+        'profile.weight': newValue,
+        'profile.height': _height,
+        'profile.bmi': updatedBmi,
+        'profile.lastUpdated': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 

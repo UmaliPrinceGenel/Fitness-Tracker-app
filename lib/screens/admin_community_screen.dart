@@ -18,7 +18,8 @@ import '../widgets/admin_bottom_nav_bar.dart';
 import 'dart:ui' as ui;
 
 class AdminCommunityScreen extends StatefulWidget {
-  const AdminCommunityScreen({super.key});
+  final bool isInsideShell;
+  const AdminCommunityScreen({super.key, this.isInsideShell = false});
 
   @override
   State<AdminCommunityScreen> createState() => _AdminCommunityScreenState();
@@ -346,8 +347,8 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
   
   Widget _buildStatChip(String label, String value, Color color, {IconData? icon}) {
     return Container(
-      height: 84,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 96,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -367,41 +368,30 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+          Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
-            child: Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -412,7 +402,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 420 ? 3 : width >= 280 ? 2 : 1;
+        final columns = cards.length;
         const spacing = 8.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
@@ -467,33 +457,33 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        splashColor: color.withOpacity(0.15),
-        highlightColor: color.withOpacity(0.08),
+        splashColor: Colors.white24,
+        highlightColor: Colors.white10,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color.withOpacity(0.12),
-                color.withOpacity(0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: color,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: color),
+              Icon(icon, size: 14, color: Colors.white),
               const SizedBox(width: 6),
               Text(
                 label,
-                style: TextStyle(
-                  color: color,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   letterSpacing: 0.2,
                 ),
               ),
@@ -541,30 +531,48 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(2.5),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: Color(0xFFFF7317),
                   ),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: const Color(0xFF1A1A1A),
-                    backgroundImage: hasProfile
-                        ? NetworkImage(post['profileImage'].toString())
-                        : null,
-                    child: hasProfile
-                        ? null
-                        : Text(
-                            (post['username']?.toString() ?? 'U')[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFFFF7317),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: ClipOval(
+                      child: hasProfile
+                          ? Image.network(
+                              post['profileImage'].toString(),
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: const Color(0xFF1A1A1A),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    (post['username']?.toString() ?? 'U')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Color(0xFFFF7317),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
+                              color: const Color(0xFF1A1A1A),
+                              alignment: Alignment.center,
+                              child: Text(
+                                (post['username']?.toString() ?? 'U')[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Color(0xFFFF7317),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
-                          ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -820,16 +828,30 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: compact ? 20 : 22,
-                backgroundColor: Colors.orange.withOpacity(0.15),
-                backgroundImage:
-                    (post['profileImage']?.toString().isNotEmpty ?? false)
-                        ? NetworkImage(post['profileImage'].toString())
-                        : null,
-                child: (post['profileImage']?.toString().isNotEmpty ?? false)
-                    ? null
-                    : const Icon(Icons.person, color: Colors.orange),
+              SizedBox(
+                width: compact ? 40 : 44,
+                height: compact ? 40 : 44,
+                child: ClipOval(
+                  child: (post['profileImage']?.toString().isNotEmpty ?? false)
+                      ? Image.network(
+                          post['profileImage'].toString(),
+                          width: compact ? 40 : 44,
+                          height: compact ? 40 : 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.orange.withOpacity(0.15),
+                              alignment: Alignment.center,
+                              child: const Icon(Icons.person, color: Colors.orange),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.orange.withOpacity(0.15),
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.person, color: Colors.orange),
+                        ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1002,16 +1024,13 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     );
   }
 
-  Widget _buildMobileLayout() {
+  Widget _buildMobileLayout({bool isInsideShell = false}) {
     final imagePostCount = _posts.where((p) => (p['postImages'] as List<String>).isNotEmpty).length;
     final videoPostCount = _posts.where((p) => (p['postVideos'] as List<String>).isNotEmpty).length;
 
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
+    final bodyWidget = SafeArea(
+      bottom: false,
+      child: Stack(
           children: [
             // Atmospheric glowing backdrops
             Positioned(
@@ -1089,61 +1108,66 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                   )
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      return RefreshIndicator(
-                        color: const Color(0xFFFF7317),
-                        backgroundColor: const Color(0xFF1A1A1A),
-                        onRefresh: () => _loadPosts(showLoader: false),
-                        child: SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Premium Header
-                              Padding(
-                                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            color: Colors.black,
+                            padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF7317).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFFF7317).withOpacity(0.2)),
+                                  ),
+                                  child: const Text(
+                                    'FEED MODERATION',
+                                    style: TextStyle(
+                                      color: Color(0xFFFF7317),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.8,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Community',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Review posts, manage content & member activity',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.45),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: RefreshIndicator(
+                              color: const Color(0xFFFF7317),
+                              backgroundColor: const Color(0xFF1A1A1A),
+                              onRefresh: () => _loadPosts(showLoader: false),
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100, top: 4),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFF7317).withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: const Color(0xFFFF7317).withOpacity(0.2)),
-                                      ),
-                                      child: const Text(
-                                        'FEED MODERATION',
-                                        style: TextStyle(
-                                          color: Color(0xFFFF7317),
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 1.8,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      'Community',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 34,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -1.0,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Review posts, manage content & member activity',
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.45),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
 
                               // Search Bar
                               Container(
@@ -1313,17 +1337,28 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
                                         ),
                                       )
                                       .toList(),
-                                ),
-                              const SizedBox(height: 100),
+                                  ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+              ],
+            );
+          },
+        ),
           ],
         ),
-      ),
+      );
+
+    if (isInsideShell) {
+      return bodyWidget;
+    }
+
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.black,
+      body: bodyWidget,
       bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 2,
         onTap: _onNavTapped,
@@ -1741,7 +1776,7 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     }
     
     // Use mobile layout for mobile devices or small screens
-    return _buildMobileLayout();
+    return _buildMobileLayout(isInsideShell: widget.isInsideShell);
   }
 }
 

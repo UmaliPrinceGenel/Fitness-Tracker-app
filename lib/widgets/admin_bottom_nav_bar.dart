@@ -15,7 +15,7 @@ class AdminBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
-        margin: const EdgeInsets.only(left: 30, right: 30, bottom: 25),
+        margin: const EdgeInsets.only(left: 14, right: 14, bottom: 25),
         decoration: BoxDecoration(
           color: const Color(0xFF161618).withOpacity(0.7),
           borderRadius: BorderRadius.circular(35),
@@ -44,85 +44,92 @@ class AdminBottomNavBar extends StatelessWidget {
             filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: BottomNavigationBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: Colors.orange,
-                unselectedItemColor: Colors.white54,
-                showSelectedLabels: true,
-                showUnselectedLabels: true,
-                selectedLabelStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                  height: 1.4,
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
                 ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.normal,
-                  color: Colors.white54,
-                  height: 1.4,
+                child: BottomNavigationBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  type: BottomNavigationBarType.fixed,
+                  selectedItemColor: Colors.orange,
+                  unselectedItemColor: Colors.white54,
+                  showSelectedLabels: true,
+                  showUnselectedLabels: true,
+                  selectedLabelStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                    height: 1.4,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    color: Colors.white54,
+                    height: 1.4,
+                  ),
+                  currentIndex: currentIndex,
+                  onTap: onTap,
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.dashboard_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.dashboard),
+                      ),
+                      label: 'Overview',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.people_outline),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.people),
+                      ),
+                      label: 'Users',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.forum_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.forum),
+                      ),
+                      label: 'Community',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.rate_review_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.rate_review),
+                      ),
+                      label: 'Feedback',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.fitness_center_outlined),
+                      ),
+                      activeIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.fitness_center),
+                      ),
+                      label: 'Workout',
+                    ),
+                  ],
                 ),
-                currentIndex: currentIndex,
-                onTap: onTap,
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.dashboard_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.dashboard),
-                    ),
-                    label: 'Overview',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.people_outline),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.people),
-                    ),
-                    label: 'Users',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.forum_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.forum),
-                    ),
-                    label: 'Community',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.rate_review_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.rate_review),
-                    ),
-                    label: 'Feedback',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.fitness_center_outlined),
-                    ),
-                    activeIcon: Padding(
-                      padding: EdgeInsets.only(bottom: 2.0),
-                      child: Icon(Icons.fitness_center),
-                    ),
-                    label: 'Workout',
-                  ),
-                ],
               ),
             ),
           ),

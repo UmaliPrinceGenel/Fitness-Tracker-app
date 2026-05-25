@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_dashboard_screen.dart';
+import 'admin_shell_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -34,7 +35,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         // Navigate to admin dashboard
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+          MaterialPageRoute(builder: (context) => const AdminShellScreen()),
         );
       } else {
         // Show error message

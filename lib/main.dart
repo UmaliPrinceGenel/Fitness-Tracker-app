@@ -16,6 +16,7 @@ import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_shell_screen.dart';
 import 'theme/theme_provider.dart';
 import 'theme/app_theme.dart';
 
@@ -206,7 +207,7 @@ class _MyAppState extends State<MyApp> {
   Widget _buildHomeScreen() {
     if (_firebaseUser != null) {
       if (_isAdminSession) {
-        return const AdminDashboardScreen();
+        return const AdminShellScreen();
       }
       if (_hasCompletedProfile) {
         // User is logged in AND has completed profile - go to Health Dashboard

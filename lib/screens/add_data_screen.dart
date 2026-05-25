@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -31,7 +32,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
 
   double _parseDoubleValue(dynamic value) {
     if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
+    if (value is String) return double.tryParse(value.replaceAll(',', '.')) ?? 0.0;
     return 0.0;
   }
 
@@ -74,7 +75,7 @@ class _AddDataScreenState extends State<AddDataScreen> {
       return;
     }
 
-    final value = double.tryParse(_valueController.text);
+    final value = double.tryParse(_valueController.text.replaceAll(',', '.'));
     if (value == null || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -160,12 +161,10 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 }, SetOptions(merge: true));
 
             await _firestore.collection('users').doc(user.uid).set({
-              'profile': {
-                'weight': currentWeight,
-                'height': value,
-                'bmi': updatedHeightBmi,
-                'lastUpdated': FieldValue.serverTimestamp(),
-              },
+              'profile.weight': currentWeight,
+              'profile.height': value,
+              'profile.bmi': updatedHeightBmi,
+              'profile.lastUpdated': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
             break;
@@ -212,14 +211,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                   'updatedAt': FieldValue.serverTimestamp(),
                 }, SetOptions(merge: true));
 
-            // Update in user profile
+            // Update in user profile with dot notation to avoid overwriting the whole profile map
             await _firestore.collection('users').doc(user.uid).set({
-              'profile': {
-                'weight': value,
-                'height': currentHeight,
-                'bmi': updatedBmi,
-                'lastUpdated': FieldValue.serverTimestamp(),
-              },
+              'profile.weight': value,
+              'profile.height': currentHeight,
+              'profile.bmi': updatedBmi,
+              'profile.lastUpdated': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true));
 
@@ -352,6 +349,9 @@ class _AddDataScreenState extends State<AddDataScreen> {
                     TextField(
                       controller: _valueController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
+                      ],
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         hintText: hintText,

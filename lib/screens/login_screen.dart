@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/admin_dashboard_screen.dart';
+import '../screens/admin_shell_screen.dart';
 import '../screens/health_dashboard.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/signup_screen.dart';
@@ -112,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (normalizedEmail == 'admin@gmail.com') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+          MaterialPageRoute(builder: (context) => const AdminShellScreen()),
         );
         return;
       }

@@ -17,7 +17,8 @@ import '../widgets/admin_bottom_nav_bar.dart';
 import 'dart:ui' as ui;
 
 class AdminCustomWorkoutScreen extends StatefulWidget {
-  const AdminCustomWorkoutScreen({super.key});
+  final bool isInsideShell;
+  const AdminCustomWorkoutScreen({super.key, this.isInsideShell = false});
 
   @override
   State<AdminCustomWorkoutScreen> createState() =>
@@ -1518,13 +1519,10 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
       );
     }
 
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
+    final bodyWidget = SafeArea(
+      bottom: false,
+      child: Stack(
+        children: [
             // Soft atmospheric glowing backdrops
             Positioned(
               top: -120,
@@ -1562,7 +1560,16 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
             _buildBody(),
           ],
         ),
-      ),
+      );
+
+    if (widget.isInsideShell) {
+      return bodyWidget;
+    }
+
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.black,
+      body: bodyWidget,
       bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 4,
         onTap: _onNavTapped,

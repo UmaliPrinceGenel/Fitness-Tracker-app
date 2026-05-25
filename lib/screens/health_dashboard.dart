@@ -245,7 +245,7 @@ class _HealthDashboardState extends State<HealthDashboard>
 
   double _parseDoubleValue(dynamic value) {
     if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
+    if (value is String) return double.tryParse(value.replaceAll(',', '.')) ?? 0.0;
     return 0.0;
   }
 
@@ -674,11 +674,9 @@ class _HealthDashboardState extends State<HealthDashboard>
 
         if (weight != null && weight != _weight) {
           await _firestore.collection('users').doc(user.uid).set({
-            'profile': {
-              'weight': weight,
-              'bmi': _bmi,
-              'lastUpdated': FieldValue.serverTimestamp(),
-            },
+            'profile.weight': weight,
+            'profile.bmi': _bmi,
+            'profile.lastUpdated': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
@@ -1187,58 +1185,65 @@ class _HealthDashboardState extends State<HealthDashboard>
               filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
-                child: BottomNavigationBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  type: BottomNavigationBarType.fixed,
-                  selectedItemColor: Colors.orange,
-                  unselectedItemColor: colors.navInactive,
-                  showSelectedLabels: true,
-                  showUnselectedLabels: true,
-                  selectedLabelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                    height: 1.4,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
                   ),
-                  unselectedLabelStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
-                    color: colors.navInactive,
-                    height: 1.4,
+                  child: BottomNavigationBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    type: BottomNavigationBarType.fixed,
+                    selectedItemColor: Colors.orange,
+                    unselectedItemColor: colors.navInactive,
+                    showSelectedLabels: true,
+                    showUnselectedLabels: true,
+                    selectedLabelStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                      height: 1.4,
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                      color: colors.navInactive,
+                      height: 1.4,
+                    ),
+                    currentIndex: _selectedIndex,
+                    onTap: _onItemTapped,
+                    items: const [
+                      BottomNavigationBarItem(
+                        icon: Padding(
+                          padding: EdgeInsets.only(bottom: 2.0),
+                          child: Icon(Icons.favorite),
+                        ),
+                        label: "Health",
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Padding(
+                          padding: EdgeInsets.only(bottom: 2.0),
+                          child: Icon(Icons.directions_run),
+                        ),
+                        label: "Workout",
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Padding(
+                          padding: EdgeInsets.only(bottom: 2.0),
+                          child: Icon(Icons.people),
+                        ),
+                        label: "Community",
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Padding(
+                          padding: EdgeInsets.only(bottom: 2.0),
+                          child: Icon(Icons.person),
+                        ),
+                        label: "Profile",
+                      ),
+                    ],
                   ),
-                  currentIndex: _selectedIndex,
-                  onTap: _onItemTapped,
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Padding(
-                        padding: EdgeInsets.only(bottom: 2.0),
-                        child: Icon(Icons.favorite),
-                      ),
-                      label: "Health",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Padding(
-                        padding: EdgeInsets.only(bottom: 2.0),
-                        child: Icon(Icons.directions_run),
-                      ),
-                      label: "Workout",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Padding(
-                        padding: EdgeInsets.only(bottom: 2.0),
-                        child: Icon(Icons.people),
-                      ),
-                      label: "Community",
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Padding(
-                        padding: EdgeInsets.only(bottom: 2.0),
-                        child: Icon(Icons.person),
-                      ),
-                      label: "Profile",
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -1614,7 +1619,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                 controller: controller,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d{0,2}')),
                 ],
                 style: const TextStyle(color: Colors.white, fontSize: 15),
                 decoration: InputDecoration(
@@ -1646,7 +1651,7 @@ class _HealthDashboardState extends State<HealthDashboard>
             PremiumConfirmButton(
               label: 'Update',
               onPressed: () {
-                final newValue = double.tryParse(controller.text) ?? 0.0;
+                final newValue = double.tryParse(controller.text.replaceAll(',', '.')) ?? 0.0;
                 final minValue = type == 'Height' ? _minValidHeightCm : 0.0;
                 final invalidHeightForCurrentWeight =
                     type == 'Height' &&
@@ -1702,11 +1707,9 @@ class _HealthDashboardState extends State<HealthDashboard>
 
           // Update user profile with height AND recalculated BMI
           await _firestore.collection('users').doc(user.uid).set({
-            'profile': {
-              'height': newValue,
-              'bmi': _bmi,
-              'lastUpdated': FieldValue.serverTimestamp(),
-            },
+            'profile.height': newValue,
+            'profile.bmi': _bmi,
+            'profile.lastUpdated': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
@@ -1734,12 +1737,10 @@ class _HealthDashboardState extends State<HealthDashboard>
 
           // Update user profile with weight AND recalculated BMI
           await _firestore.collection('users').doc(user.uid).set({
-            'profile': {
-              'weight': newValue,
-              'height': _height,
-              'bmi': _bmi, // Use the locally calculated BMI
-              'lastUpdated': FieldValue.serverTimestamp(),
-            },
+            'profile.weight': newValue,
+            'profile.height': _height,
+            'profile.bmi': _bmi, // Use the locally calculated BMI
+            'profile.lastUpdated': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
