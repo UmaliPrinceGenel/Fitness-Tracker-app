@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/login_screen.dart';
 import '../screens/terms_and_conditions_screen.dart';
 import '../widgets/web_auth_shell.dart';
+import '../widgets/premium_back_button.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -505,7 +506,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -520,25 +521,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 20),
                       Align(
                         alignment: Alignment.topLeft,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(30),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.2),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                onPressed: _isLoading ? null : () => Navigator.pop(context),
-                              ),
-                            ),
-                          ),
+                        child: PremiumBackButton(
+                          onPressed: _isLoading ? null : () => Navigator.pop(context),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -575,9 +559,10 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                             child: Form(
                               key: _formKey,
-                              child: SingleChildScrollView(
+                              child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     const SizedBox(height: 20),

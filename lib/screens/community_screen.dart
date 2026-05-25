@@ -10,6 +10,7 @@ import 'community_member_profile_screen.dart';
 import 'photo_editing_screen.dart';
 import '../widgets/chatbot_launcher.dart';
 import '../theme/app_colors.dart';
+import '../widgets/premium_dialog.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key, this.showChatbot = true});
@@ -92,16 +93,18 @@ class _CommunityScreenState extends State<CommunityScreen>
       if (user == null) return;
 
       if (isLiking) {
-        // Like the post - add user ID and increment likes
+        // Like the post - add user ID, increment likes, default reaction to ❤️
         await _firestore.collection('community_posts').doc(postId).update({
           'likes': FieldValue.increment(1),
           'likedBy': FieldValue.arrayUnion([user.uid]),
+          'reactions.${user.uid}': '❤️',
         });
       } else {
-        // Unlike the post - remove user ID and decrement likes
+        // Unlike the post - remove user ID, decrement likes, and clear reaction
         await _firestore.collection('community_posts').doc(postId).update({
           'likes': FieldValue.increment(-1),
           'likedBy': FieldValue.arrayRemove([user.uid]),
+          'reactions.${user.uid}': FieldValue.delete(),
         });
       }
     } catch (e) {
@@ -151,34 +154,21 @@ class _CommunityScreenState extends State<CommunityScreen>
       final shouldDelete = await showDialog<bool>(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: const Text(
-              "Delete Post",
-              style: TextStyle(color: Colors.white),
-            ),
+          return PremiumDialog(
+            title: "Delete Post",
+            icon: Icons.delete_forever_rounded,
+            iconColor: const Color(0xFFFF4B4B),
             content: const Text(
               "Are you sure you want to delete this post? This action cannot be undone.",
-              style: TextStyle(color: Colors.white70),
             ),
             actions: [
-              TextButton(
+              PremiumCancelButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text(
-                  "CANCEL",
-                  style: TextStyle(color: Colors.grey),
-                ),
               ),
-              ElevatedButton(
+              PremiumConfirmButton(
+                label: "Delete",
+                gradientColors: const [Color(0xFFFF4B4B), Color(0xFFFF7B7B)],
                 onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text(
-                  "DELETE",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
             ],
           );
@@ -346,200 +336,224 @@ class _CommunityScreenState extends State<CommunityScreen>
                         Container(
                           margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.04),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.06),
+                                Colors.white.withOpacity(0.02),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withOpacity(0.08)),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.08),
+                              width: 1.0,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
+                                color: Colors.black.withOpacity(0.4),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
-                          child: GestureDetector(
-                            onTap: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const PhotoEditingScreen(),
-                                ),
-                              );
-
-                              if (result != null && result['success'] == true) {
-                                setState(() {});
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(14.0),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      // ✅ Profile avatar with user's photoURL
-                                      Container(
-                                        width: 46,
-                                        height: 46,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.grey[800],
-                                          border: Border.all(
-                                            color: Colors.white12,
-                                          ),
-                                        ),
-                                        child: _isLoadingUser
-                                            ? const Center(
-                                                child: SizedBox(
-                                                  width: 20,
-                                                  height: 20,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<
-                                                          Color
-                                                        >(Colors.white),
-                                                  ),
-                                                ),
-                                              )
-                                            : _profileImageUrl != null
+                          child: Container(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                // ✅ Profile avatar with glowing gradient border
+                                Container(
+                                  padding: const EdgeInsets.all(2.5),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF3EA6FF),
+                                        Color(0xFFFF6B6B),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF3EA6FF).withOpacity(0.35),
+                                        blurRadius: 10,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.black,
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: _isLoadingUser
+                                        ? const Center(
+                                            child: SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<Color>(
+                                                        Colors.white),
+                                              ),
+                                            ),
+                                          )
+                                        : _profileImageUrl != null
                                             ? ClipOval(
                                                 child: Image.network(
                                                   _profileImageUrl!,
                                                   fit: BoxFit.cover,
-                                                  width: 46,
-                                                  height: 46,
+                                                  width: 44,
+                                                  height: 44,
                                                   loadingBuilder: (context, child, loadingProgress) {
-                                                    if (loadingProgress == null)
-                                                      return child;
+                                                    if (loadingProgress == null) return child;
                                                     return Center(
                                                       child: CircularProgressIndicator(
-                                                        value:
-                                                            loadingProgress
-                                                                    .expectedTotalBytes !=
-                                                                null
-                                                            ? loadingProgress
-                                                                      .cumulativeBytesLoaded /
-                                                                  loadingProgress
-                                                                      .expectedTotalBytes!
+                                                        value: loadingProgress.expectedTotalBytes != null
+                                                            ? loadingProgress.cumulativeBytesLoaded /
+                                                                loadingProgress.expectedTotalBytes!
                                                             : null,
-                                                        valueColor:
-                                                            const AlwaysStoppedAnimation<
-                                                              Color
-                                                            >(Colors.blue),
+                                                        valueColor: const AlwaysStoppedAnimation<Color>(
+                                                            Color(0xFF3EA6FF)),
                                                       ),
                                                     );
                                                   },
-                                                  errorBuilder:
-                                                      (
-                                                        context,
-                                                        error,
-                                                        stackTrace,
-                                                      ) {
-                                                        return const Icon(
-                                                          Icons.person,
-                                                          color: Colors.white,
-                                                          size: 20,
-                                                        );
-                                                      },
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    return const Icon(
+                                                      Icons.person,
+                                                      color: Colors.white70,
+                                                      size: 20,
+                                                    );
+                                                  },
                                                 ),
                                               )
                                             : const Icon(
                                                 Icons.person,
-                                                color: Colors.white,
+                                                color: Colors.white70,
                                                 size: 20,
                                               ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      // Text input with gallery icon inside
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () async {
-                                            final result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const PhotoEditingScreen(),
-                                              ),
-                                            );
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                // Text input with premium design
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const PhotoEditingScreen(),
+                                        ),
+                                      );
 
-                                            if (result != null &&
-                                                result['success'] == true) {
-                                              setState(() {});
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16.0,
-                                              vertical: 14.0,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withOpacity(0.4),
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              border: Border.all(
-                                                color: Colors.white.withOpacity(0.05),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                const Expanded(
-                                                  child: Text(
-                                                    "What's on your mind?",
-                                                    style: TextStyle(
-                                                      color: Colors.white70,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Container(
-                                                  width: 30,
-                                                  height: 30,
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFF3EA6FF,
-                                                    ).withOpacity(0.14),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          999,
-                                                        ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.image_outlined,
-                                                    color: Color(0xFF3EA6FF),
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  width: 30,
-                                                  height: 30,
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFFFF6B6B,
-                                                    ).withOpacity(0.14),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          999,
-                                                        ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.videocam_outlined,
-                                                    color: Color(0xFFFF6B6B),
-                                                    size: 18,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
+                                      if (result != null && result['success'] == true) {
+                                        setState(() {});
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0,
+                                        vertical: 13.0,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.04),
+                                            Colors.white.withOpacity(0.01),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(99),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.06),
                                         ),
                                       ),
-                                    ],
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.edit_outlined,
+                                            color: Colors.white.withOpacity(0.4),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              "What's on your mind?",
+                                              style: TextStyle(
+                                                color: Colors.white.withOpacity(0.65),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w400,
+                                                letterSpacing: 0.1,
+                                              ),
+                                            ),
+                                          ),
+                                          // Gallery / Image Icon
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  const Color(0xFF3EA6FF).withOpacity(0.18),
+                                                  const Color(0xFF3EA6FF).withOpacity(0.08),
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: const Color(0xFF3EA6FF).withOpacity(0.25),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.image_outlined,
+                                              color: Color(0xFF3EA6FF),
+                                              size: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          // Video Icon
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  const Color(0xFFFF6B6B).withOpacity(0.18),
+                                                  const Color(0xFFFF6B6B).withOpacity(0.08),
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: const Color(0xFFFF6B6B).withOpacity(0.25),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.videocam_outlined,
+                                              color: Color(0xFFFF6B6B),
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -742,68 +756,103 @@ class _CommunityScreenState extends State<CommunityScreen>
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                       horizontal: 16.0,
-                                                      vertical: 18.0,
+                                                      vertical: 14.0,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.4),
-                                                  borderRadius:
-                                                      BorderRadius.circular(18),
-                                                  border: Border.all(
-                                                    color: Colors.white.withOpacity(0.05),
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      Colors.white.withOpacity(0.06),
+                                                      Colors.white.withOpacity(0.02),
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
                                                   ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(99),
+                                                  border: Border.all(
+                                                    color: Colors.white.withOpacity(0.08),
+                                                  ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black.withOpacity(0.3),
+                                                      blurRadius: 18,
+                                                      offset: const Offset(0, 6),
+                                                    ),
+                                                  ],
                                                 ),
                                                 child: Row(
                                                   children: [
-                                                    const Expanded(
+                                                    Icon(
+                                                      Icons.edit_outlined,
+                                                      color: Colors.white.withOpacity(0.4),
+                                                      size: 18,
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
                                                       child: Text(
                                                         "What's on your mind?",
                                                         style: TextStyle(
-                                                          color: Colors.white70,
+                                                          color: Colors.white.withOpacity(0.65),
                                                           fontSize: 15,
                                                           fontWeight:
-                                                              FontWeight.w500,
+                                                              FontWeight.w400,
+                                                          letterSpacing: 0.1,
                                                         ),
                                                       ),
                                                     ),
+                                                    // Gallery / Image Icon
                                                     Container(
                                                       width: 36,
                                                       height: 36,
                                                       decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFF3EA6FF,
-                                                        ).withOpacity(0.14),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              999,
-                                                            ),
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            const Color(0xFF3EA6FF).withOpacity(0.18),
+                                                            const Color(0xFF3EA6FF).withOpacity(0.08),
+                                                          ],
+                                                          begin: Alignment.topLeft,
+                                                          end: Alignment.bottomRight,
+                                                        ),
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: const Color(0xFF3EA6FF).withOpacity(0.25),
+                                                          width: 0.8,
+                                                        ),
                                                       ),
                                                       child: const Icon(
                                                         Icons.image_outlined,
                                                         color: Color(
                                                           0xFF3EA6FF,
                                                         ),
-                                                        size: 20,
+                                                        size: 18,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 12),
+                                                    const SizedBox(width: 10),
+                                                    // Video Icon
                                                     Container(
                                                       width: 36,
                                                       height: 36,
                                                       decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFFFF6B6B,
-                                                        ).withOpacity(0.14),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              999,
-                                                            ),
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            const Color(0xFFFF6B6B).withOpacity(0.18),
+                                                            const Color(0xFFFF6B6B).withOpacity(0.08),
+                                                          ],
+                                                          begin: Alignment.topLeft,
+                                                          end: Alignment.bottomRight,
+                                                        ),
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: const Color(0xFFFF6B6B).withOpacity(0.25),
+                                                          width: 0.8,
+                                                        ),
                                                       ),
                                                       child: const Icon(
                                                         Icons.videocam_outlined,
                                                         color: Color(
                                                           0xFFFF6B6B,
                                                         ),
-                                                        size: 20,
+                                                        size: 18,
                                                       ),
                                                     ),
                                                   ],
@@ -969,6 +1018,7 @@ class _PostCardState extends State<PostCard>
     with SingleTickerProviderStateMixin {
   int _currentMediaIndex = 0;
   bool _likePulseActive = false;
+  bool _showReactionPanel = false;
   late final AnimationController _likeAnimationController;
   late final Animation<double> _likeScaleAnimation;
 
@@ -1022,6 +1072,33 @@ class _PostCardState extends State<PostCard>
     if (difference.inDays < 1) return '${difference.inHours}h ago';
     if (difference.inDays < 7) return '${difference.inDays}d ago';
     return '${(difference.inDays / 7).floor()}w ago';
+  }
+
+  String? _getUserReaction() {
+    final user = fbAuth.FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    final reactions = widget.postData['reactions'] as Map<String, dynamic>?;
+    return reactions?[user.uid] as String?;
+  }
+
+  Future<void> _reactToPost(fbAuth.User? user, String emoji, bool isLiked) async {
+    if (user == null) return;
+    try {
+      final docRef = FirebaseFirestore.instance.collection('community_posts').doc(widget.postId);
+      if (!isLiked) {
+        await docRef.update({
+          'likes': FieldValue.increment(1),
+          'likedBy': FieldValue.arrayUnion([user.uid]),
+          'reactions.${user.uid}': emoji,
+        });
+      } else {
+        await docRef.update({
+          'reactions.${user.uid}': emoji,
+        });
+      }
+    } catch (e) {
+      print('Error reacting to post: $e');
+    }
   }
 
   bool _getIsLiked() {
@@ -1114,22 +1191,78 @@ class _PostCardState extends State<PostCard>
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 26),
+            Icon(icon, color: iconColor, size: 20),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReactionPanel(fbAuth.User? user) {
+    final isLiked = _getIsLiked();
+    final emojis = ['❤️', '💪', '🔥', '👏', '👑', '🎯'];
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E24).withOpacity(0.85),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: emojis.map((emoji) {
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showReactionPanel = false;
+                  });
+                  _reactToPost(user, emoji, isLiked);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    emoji,
+                    style: const TextStyle(fontSize: 26),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -1141,26 +1274,30 @@ class _PostCardState extends State<PostCard>
     required int likesCount,
   }) {
     final showFilledHeart = isLiked || _likePulseActive;
+    final userReaction = _getUserReaction();
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _handleLikeTap(user: user, isLiked: isLiked),
-      onLongPress: () {
-        if (likesCount > 0) {
-          widget.onShowLikes(context, widget.postId);
-        }
-      },
-      onSecondaryTap: () {
-        if (likesCount > 0) {
-          widget.onShowLikes(context, widget.postId);
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedBuilder(
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _handleLikeTap(user: user, isLiked: isLiked),
+            onLongPress: () {
+              setState(() {
+                _showReactionPanel = true;
+              });
+            },
+            child: AnimatedBuilder(
               animation: _likeScaleAnimation,
               builder: (context, child) {
                 return Transform.scale(
@@ -1168,23 +1305,70 @@ class _PostCardState extends State<PostCard>
                   child: child,
                 );
               },
-              child: Icon(
-                showFilledHeart ? Icons.favorite : Icons.favorite_border,
-                color: showFilledHeart ? Colors.red : Colors.white,
-                size: 26,
-              ),
+              child: userReaction != null
+                  ? Text(
+                      userReaction,
+                      style: const TextStyle(fontSize: 20),
+                    )
+                  : Icon(
+                      showFilledHeart ? Icons.favorite : Icons.favorite_border,
+                      color: showFilledHeart ? Colors.red : Colors.white,
+                      size: 20,
+                    ),
             ),
-            const SizedBox(width: 8),
-            Text(
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              if (likesCount > 0) {
+                widget.onShowLikes(context, widget.postId);
+              }
+            },
+            child: Text(
               '$likesCount',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaptionWithHashtags(String caption) {
+    final List<InlineSpan> spans = [];
+    final words = caption.split(' ');
+
+    for (int i = 0; i < words.length; i++) {
+      final word = words[i];
+      final spacing = i == words.length - 1 ? "" : " ";
+
+      if (word.startsWith('#') && word.length > 1) {
+        spans.add(
+          TextSpan(
+            text: '$word$spacing',
+            style: const TextStyle(
+              color: Colors.orange,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      } else {
+        spans.add(TextSpan(text: '$word$spacing'));
+      }
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          height: 1.55,
         ),
+        children: spans,
       ),
     );
   }
@@ -1213,9 +1397,12 @@ class _PostCardState extends State<PostCard>
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // Post header
           Container(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
@@ -1229,8 +1416,14 @@ class _PostCardState extends State<PostCard>
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.grey[800],
-                      border: Border.all(color: Colors.white12),
+                      color: Colors.grey[900],
+                      border: Border.all(color: Colors.orange.withOpacity(0.5), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.orange.withOpacity(0.15),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
                     child: widget.postData['profileImage'] != null
                         ? ClipOval(
@@ -1266,8 +1459,9 @@ class _PostCardState extends State<PostCard>
                           widget.postData['username'] ?? 'User',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.1,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1328,14 +1522,7 @@ class _PostCardState extends State<PostCard>
               widget.postData['caption'].isNotEmpty)
             Container(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: Text(
-                widget.postData['caption'],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  height: 1.45,
-                ),
-              ),
+              child: _buildCaptionWithHashtags(widget.postData['caption']),
             ),
           // Post media
           if (allMedia.isNotEmpty)
@@ -1540,7 +1727,15 @@ class _PostCardState extends State<PostCard>
           ),
         ],
       ),
-    );
+      if (_showReactionPanel)
+        Positioned(
+          bottom: 48,
+          left: 12,
+          child: _buildReactionPanel(user),
+        ),
+    ],
+  ),
+);
   }
 }
 
@@ -2082,6 +2277,42 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
 
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late Stream<DocumentSnapshot> _postStream;
+  late Stream<QuerySnapshot> _commentsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _postStream = _firestore
+        .collection('community_posts')
+        .doc(widget.postId)
+        .snapshots();
+    _commentsStream = _firestore
+        .collection('community_posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Future<void> _toggleCommentLike(String commentId, List<dynamic> likedBy, String currentUserId) async {
+    final postRef = _firestore.collection('community_posts').doc(widget.postId);
+    final isLiked = likedBy.contains(currentUserId);
+
+    try {
+      if (isLiked) {
+        await postRef.update({
+          'reactions.comment_${commentId}_$currentUserId': FieldValue.delete(),
+        });
+      } else {
+        await postRef.update({
+          'reactions.comment_${commentId}_$currentUserId': true,
+        });
+      }
+    } catch (e) {
+      print('Error liking comment: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2099,150 +2330,192 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         height: sheetHeight,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(4),
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Comments",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            const Text(
+              "Comments",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('community_posts')
-                  .doc(widget.postId)
-                  .collection('comments')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  );
-                }
+            const SizedBox(height: 16),
+            Expanded(
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: _postStream,
+                builder: (context, postSnapshot) {
+                  final postData = postSnapshot.data?.data() as Map<String, dynamic>?;
+                  final reactions = postData?['reactions'] as Map<String, dynamic>? ?? {};
 
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                    ),
-                  );
-                }
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: _commentsStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "No comments yet",
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                    ),
-                  );
-                }
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                          ),
+                        );
+                      }
 
-                return ListView.builder(
-                  reverse: true,
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final comment = snapshot.data!.docs[index];
-                    final commentData = comment.data() as Map<String, dynamic>;
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            "No comments yet",
+                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        );
+                      }
 
-                    return GestureDetector(
-                      onTap: () {
-                        final userId = commentData['userId']?.toString() ?? '';
-                        final username = commentData['username']?.toString();
-                        final profileImage = commentData['profileImage']
-                            ?.toString();
-                        Navigator.of(context).pop();
-                        Future.delayed(Duration.zero, () {
-                          widget.onOpenProfile(userId, username, profileImage);
-                        });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8.0),
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.04),
-                          border: Border.all(color: Colors.white.withOpacity(0.08)),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey[700],
-                              ),
-                              child: commentData['profileImage'] != null
-                                  ? ClipOval(
-                                      child: Image.network(
-                                        commentData['profileImage'],
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return const Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 16,
-                                              );
-                                            },
+                      return ListView.builder(
+                        itemCount: snapshot.data!.docs.length,
+                        itemBuilder: (context, index) {
+                          final comment = snapshot.data!.docs[index];
+                          final commentData = comment.data() as Map<String, dynamic>;
+                          final currentUserId = fbAuth.FirebaseAuth.instance.currentUser?.uid ?? '';
+                          
+                          final likedBy = <String>[];
+                          reactions.forEach((key, value) {
+                            final prefix = 'comment_${comment.id}_';
+                            if (key.startsWith(prefix) && value == true) {
+                              likedBy.add(key.substring(prefix.length));
+                            }
+                          });
+                          final isCommentLiked = likedBy.contains(currentUserId);
+                          final commentLikesCount = likedBy.length;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12.0),
+                            padding: const EdgeInsets.all(12.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.03),
+                              border: Border.all(color: Colors.white.withOpacity(0.06)),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    final userId = commentData['userId']?.toString() ?? '';
+                                    final username = commentData['username']?.toString();
+                                    final profileImage = commentData['profileImage']?.toString();
+                                    Navigator.of(context).pop();
+                                    Future.delayed(Duration.zero, () {
+                                      widget.onOpenProfile(userId, username, profileImage);
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.grey[800],
+                                      border: Border.all(color: Colors.white10),
+                                    ),
+                                    child: commentData['profileImage'] != null
+                                        ? ClipOval(
+                                            child: Image.network(
+                                              commentData['profileImage'],
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                );
+                                              },
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            commentData['username'] ?? 'User',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          GestureDetector(
+                                            onTap: () => _toggleCommentLike(comment.id, likedBy, currentUserId),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  isCommentLiked ? Icons.favorite : Icons.favorite_border,
+                                                  color: isCommentLiked ? Colors.red : Colors.white60,
+                                                  size: 16,
+                                                ),
+                                                if (commentLikesCount > 0) ...[
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    '$commentLikesCount',
+                                                    style: const TextStyle(
+                                                      color: Colors.white70,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    )
-                                  : const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    commentData['username'] ?? 'User',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        commentData['comment'],
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    commentData['comment'],
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           Row(
             children: [

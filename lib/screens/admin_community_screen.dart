@@ -14,6 +14,8 @@ import 'admin_custom_workout_screen.dart';
 import 'community_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'login_screen.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
+import 'dart:ui' as ui;
 
 class AdminCommunityScreen extends StatefulWidget {
   const AdminCommunityScreen({super.key});
@@ -342,34 +344,64 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
 
   // ============== MOBILE UI METHODS ==============
   
-  Widget _buildStatChip(String label, String value, Color color) {
+  Widget _buildStatChip(String label, String value, Color color, {IconData? icon}) {
     return Container(
-      height: 92,
-      padding: const EdgeInsets.all(14),
+      height: 84,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withOpacity(0.28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.12),
+            color.withOpacity(0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -380,8 +412,8 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 560 ? 3 : width >= 320 ? 2 : 1;
-        const spacing = 10.0;
+        final columns = width >= 420 ? 3 : width >= 280 ? 2 : 1;
+        const spacing = 8.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
         return Wrap(
@@ -395,21 +427,31 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     );
   }
 
-  Widget _buildStatusPill(String label, Color color) {
+  Widget _buildStatusPill(String label, Color color, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color.withOpacity(0.8)),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withOpacity(0.9),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -420,30 +462,43 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withOpacity(0.28)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: color.withOpacity(0.15),
+        highlightColor: color.withOpacity(0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.12),
+                color.withOpacity(0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -453,194 +508,293 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
     final imageUrls = (post['postImages'] as List<String>);
     final videoUrls = (post['postVideos'] as List<String>);
     final allMediaCount = imageUrls.length + videoUrls.length;
+    final hasProfile = post['profileImage']?.toString().isNotEmpty ?? false;
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.06),
+            Colors.white.withOpacity(0.015),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.orange.withOpacity(0.15),
-                backgroundImage:
-                    (post['profileImage']?.toString().isNotEmpty ?? false)
+          // Post header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    backgroundImage: hasProfile
                         ? NetworkImage(post['profileImage'].toString())
                         : null,
-                child: (post['profileImage']?.toString().isNotEmpty ?? false)
-                    ? null
-                    : const Icon(Icons.person, color: Colors.orange),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post['username']?.toString() ?? 'Unknown user',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
+                    child: hasProfile
+                        ? null
+                        : Text(
+                            (post['username']?.toString() ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Color(0xFFFF7317),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post['username']?.toString() ?? 'Unknown user',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
                       ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 11, color: Colors.white.withOpacity(0.35)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatTimestamp(post['timePosted']),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _deletePost(post),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.withOpacity(0.15)),
+                      ),
+                      child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatTimestamp(post['timePosted']),
-                      style:
-                          const TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Caption
+          if ((post['caption']?.toString().trim().isNotEmpty ?? false)) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Text(
+                post['caption'].toString(),
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 14,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+          // Media gallery
+          if (allMediaCount > 0) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                height: 160,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (int index = 0; index < imageUrls.length; index++)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () => _showImageGallery(imageUrls, index),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: SizedBox(
+                              width: 200,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(
+                                    imageUrls[index],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        Container(
+                                      color: Colors.white.withOpacity(0.03),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.image_not_supported_outlined,
+                                          color: Colors.white.withOpacity(0.25),
+                                          size: 30,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Subtle gradient overlay at bottom
+                                  Positioned(
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 40,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.black.withOpacity(0.6),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 8,
+                                    left: 10,
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.image_outlined, size: 12, color: Colors.white.withOpacity(0.7)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${index + 1}/${imageUrls.length}',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.8),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    for (int index = 0; index < videoUrls.length; index++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          right: index == videoUrls.length - 1 ? 0 : 8,
+                        ),
+                        child: GestureDetector(
+                          onTap: () => _showVideoPlayer(videoUrls[index]),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: SizedBox(
+                              width: 200,
+                              child: VideoThumbnailWidget(
+                                videoUrl: videoUrls[index],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => _deletePost(post),
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-              ),
-            ],
-          ),
-          if ((post['caption']?.toString().trim().isNotEmpty ?? false)) ...[
-            const SizedBox(height: 12),
-            Text(
-              post['caption'].toString(),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                height: 1.45,
-              ),
             ),
           ],
-          if (allMediaCount > 0) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 168,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (int index = 0; index < imageUrls.length; index++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: GestureDetector(
-                        onTap: () => _showImageGallery(imageUrls, index),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            width: 210,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.network(
-                                  imageUrls[index],
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Container(
-                                    color: Colors.black26,
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.image_not_supported_outlined,
-                                        color: Colors.white38,
-                                        size: 34,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 10,
-                                  right: 10,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      'Image ${index + 1}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  for (int index = 0; index < videoUrls.length; index++)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        right: index == videoUrls.length - 1 ? 0 : 10,
-                      ),
-                      child: GestureDetector(
-                        onTap: () => _showVideoPlayer(videoUrls[index]),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SizedBox(
-                            width: 210,
-                            child: VideoThumbnailWidget(
-                              videoUrl: videoUrls[index],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              GestureDetector(
-                onTap: () => _showLikesBottomSheet(post['id'].toString()),
-                child: _buildStatusPill('${post['likes']} likes', Colors.orange),
-              ),
-              GestureDetector(
-                onTap: () => _showCommentsBottomSheet(post['id'].toString()),
-                child: _buildStatusPill(
-                  '${post['commentCount']} comments',
-                  Colors.blue,
+          // Engagement stats
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                GestureDetector(
+                  onTap: () => _showLikesBottomSheet(post['id'].toString()),
+                  child: _buildStatusPill('${post['likes']} likes', const Color(0xFFFF7317), icon: Icons.favorite_outline),
                 ),
-              ),
-              if (imageUrls.isNotEmpty)
-                _buildStatusPill('${imageUrls.length} image(s)', Colors.green),
-              if (videoUrls.isNotEmpty)
-                _buildStatusPill('${videoUrls.length} video(s)', Colors.purple),
-            ],
+                GestureDetector(
+                  onTap: () => _showCommentsBottomSheet(post['id'].toString()),
+                  child: _buildStatusPill(
+                    '${post['commentCount']} comments',
+                    const Color(0xFF4DA6FF),
+                    icon: Icons.chat_bubble_outline,
+                  ),
+                ),
+                if (imageUrls.isNotEmpty)
+                  _buildStatusPill('${imageUrls.length} img', const Color(0xFF4ADE80), icon: Icons.image_outlined),
+                if (videoUrls.isNotEmpty)
+                  _buildStatusPill('${videoUrls.length} vid', Colors.purple, icon: Icons.videocam_outlined),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildActionChip(
-                label: 'View Profile',
-                icon: Icons.person_outline,
-                color: Colors.blue,
-                onTap: () => _openUserProfile(post),
+          // Action bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.02),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
-              _buildActionChip(
-                label: 'Delete Post',
-                icon: Icons.delete_outline,
-                color: Colors.red,
-                onTap: () => _deletePost(post),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.05)),
               ),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildActionChip(
+                    label: 'View Profile',
+                    icon: Icons.person_outline,
+                    color: const Color(0xFF4DA6FF),
+                    onTap: () => _openUserProfile(post),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionChip(
+                    label: 'Delete Post',
+                    icon: Icons.delete_outline,
+                    color: Colors.red,
+                    onTap: () => _deletePost(post),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -849,181 +1003,330 @@ class _AdminCommunityScreenState extends State<AdminCommunityScreen> {
   }
 
   Widget _buildMobileLayout() {
+    final imagePostCount = _posts.where((p) => (p['postImages'] as List<String>).isNotEmpty).length;
+    final videoPostCount = _posts.where((p) => (p['postVideos'] as List<String>).isNotEmpty).length;
+
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Admin Community',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+        bottom: false,
+        child: Stack(
+          children: [
+            // Atmospheric glowing backdrops
+            Positioned(
+              top: -140,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF7317).withOpacity(0.07),
                 ),
-              )
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return RefreshIndicator(
-                    onRefresh: () => _loadPosts(showLoader: false),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF111111),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Community Moderation',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Review feed activity, open member profiles, and remove posts that should not stay visible.',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    height: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 16),
-                                  child: TextField(
-                                    onChanged: _applyFilter,
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Search posts or usernames...',
-                                      hintStyle:
-                                          TextStyle(color: Colors.white38),
-                                      border: InputBorder.none,
-                                      prefixIcon: Icon(
-                                        Icons.search,
-                                        color: Colors.orange,
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 300,
+              left: -150,
+              child: Container(
+                width: 260,
+                height: 260,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue.withOpacity(0.05),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 60,
+              right: -80,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.green.withOpacity(0.04),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+
+            _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7317)),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading posts...',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      return RefreshIndicator(
+                        color: const Color(0xFFFF7317),
+                        backgroundColor: const Color(0xFF1A1A1A),
+                        onRefresh: () => _loadPosts(showLoader: false),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Premium Header
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFF7317).withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFFF7317).withOpacity(0.2)),
+                                      ),
+                                      child: const Text(
+                                        'FEED MODERATION',
+                                        style: TextStyle(
+                                          color: Color(0xFFFF7317),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 1.8,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                _buildStatsGrid(
-                                  [
-                                    _buildStatChip(
-                                      'Total Posts',
-                                      _posts.length.toString(),
-                                      Colors.blue,
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Community',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 34,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -1.0,
+                                      ),
                                     ),
-                                    _buildStatChip(
-                                      'Image Posts',
-                                      _posts
-                                          .where((post) =>
-                                              (post['postImages'] as List<String>)
-                                                  .isNotEmpty)
-                                          .length
-                                          .toString(),
-                                      Colors.green,
-                                    ),
-                                    _buildStatChip(
-                                      'Video Posts',
-                                      _posts
-                                          .where((post) =>
-                                              (post['postVideos'] as List<String>)
-                                                  .isNotEmpty)
-                                          .length
-                                          .toString(),
-                                      Colors.purple,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Review posts, manage content & member activity',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.45),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          if (_filteredPosts.isEmpty)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24),
-                                child: Text(
-                                  'No community posts matched your search.',
-                                  style: TextStyle(color: Colors.white54),
+                              ),
+
+                              // Search Bar
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.06),
+                                      Colors.white.withOpacity(0.025),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.07)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: TextField(
+                                  onChanged: _applyFilter,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search posts or usernames...',
+                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    prefixIcon: ShaderMask(
+                                      shaderCallback: (bounds) => const LinearGradient(
+                                        colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
+                                      ).createShader(bounds),
+                                      child: const Icon(Icons.search, color: Colors.white, size: 22),
+                                    ),
+                                    suffixIcon: _query.isNotEmpty
+                                        ? IconButton(
+                                            icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.4), size: 18),
+                                            onPressed: () {
+                                              _applyFilter('');
+                                            },
+                                          )
+                                        : null,
+                                  ),
                                 ),
                               ),
-                            )
-                          else
-                            Column(
-                              children: _filteredPosts
-                                  .map(
-                                    (post) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 12),
-                                      child: _buildPostCard(post),
+                              const SizedBox(height: 16),
+
+                              // Stats Row
+                              _buildStatsGrid([
+                                _buildStatChip(
+                                  'Total Posts',
+                                  _posts.length.toString(),
+                                  const Color(0xFF4DA6FF),
+                                  icon: Icons.article_outlined,
+                                ),
+                                _buildStatChip(
+                                  'Images',
+                                  imagePostCount.toString(),
+                                  const Color(0xFF4ADE80),
+                                  icon: Icons.image_outlined,
+                                ),
+                                _buildStatChip(
+                                  'Videos',
+                                  videoPostCount.toString(),
+                                  Colors.purple,
+                                  icon: Icons.videocam_outlined,
+                                ),
+                              ]),
+                              const SizedBox(height: 22),
+
+                              // Posts list header
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, bottom: 12),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      _query.isEmpty
+                                          ? 'Recent Posts'
+                                          : '${_filteredPosts.length} Result${_filteredPosts.length == 1 ? '' : 's'}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.3,
+                                      ),
                                     ),
-                                  )
-                                  .toList(),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        _filteredPosts.length.toString(),
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.5),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (_isRefreshing)
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.white.withOpacity(0.4),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+
+                              if (_filteredPosts.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 48),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(20),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.04),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.forum_outlined,
+                                            size: 40,
+                                            color: Colors.white.withOpacity(0.3),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No posts found',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.5),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Try a different search term',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.3),
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else
+                                Column(
+                                  children: _filteredPosts
+                                      .map(
+                                        (post) => Padding(
+                                          padding: const EdgeInsets.only(bottom: 12),
+                                          child: _buildPostCard(post),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                              const SizedBox(height: 100),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ],
+        ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 2,
         onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F0F0F),
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.white54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Overview',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            activeIcon: Icon(Icons.rate_review),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Workout',
-          ),
-        ],
       ),
     );
   }

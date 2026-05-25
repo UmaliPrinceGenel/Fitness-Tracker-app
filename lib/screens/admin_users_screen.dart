@@ -11,6 +11,8 @@ import 'admin_route_utils.dart';
 import 'admin_custom_workout_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'login_screen.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
+import 'dart:ui' as ui;
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -531,30 +533,43 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withOpacity(0.28)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: color.withOpacity(0.15),
+        highlightColor: color.withOpacity(0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.12),
+                color.withOpacity(0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -562,18 +577,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   Widget _buildStatusPill(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: color,
-          fontSize: 12,
+          color: color.withOpacity(0.9),
+          fontSize: 11,
           fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
         ),
       ),
     );
@@ -585,88 +601,211 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     final email = user['email']?.toString().isNotEmpty == true
         ? user['email'].toString()
         : 'No email';
+    final hasPhoto = user['photoURL']?.toString().isNotEmpty ?? false;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.06),
+            Colors.white.withOpacity(0.015),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(
+          color: isBanned
+              ? Colors.red.withOpacity(0.15)
+              : Colors.white.withOpacity(0.07),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.orange.withOpacity(0.15),
-                backgroundImage: (user['photoURL']?.toString().isNotEmpty ?? false)
-                    ? NetworkImage(user['photoURL'].toString())
-                    : null,
-                child: (user['photoURL']?.toString().isNotEmpty ?? false)
-                    ? null
-                    : const Icon(Icons.person, color: Colors.orange),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user['displayName']?.toString() ?? 'No name',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+          // Main content area
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Avatar with status ring
+                Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: isBanned
+                          ? [Colors.red.withOpacity(0.8), Colors.red.withOpacity(0.3)]
+                          : [const Color(0xFFFF7317), const Color(0xFFFF9E59)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      email,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (isBanned) _buildStatusPill('Banned', Colors.red),
-                        if (isDeleted)
-                          _buildStatusPill('Deleted', Colors.deepOrange),
-                        _buildStatusPill(
-                          'Joined ${_formatTimestamp(user['createdAt'])}',
-                          Colors.blueGrey,
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    backgroundImage: hasPhoto
+                        ? NetworkImage(user['photoURL'].toString())
+                        : null,
+                    child: hasPhoto
+                        ? null
+                        : Text(
+                            (user['displayName']?.toString() ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Color(0xFFFF7317),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                // User details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              user['displayName']?.toString() ?? 'No name',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isBanned)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.red.withOpacity(0.25)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.block, color: Colors.red, size: 10),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    'BANNED',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (isDeleted)
+                            Container(
+                              margin: EdgeInsets.only(left: isBanned ? 6 : 0),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.deepOrange.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.deepOrange.withOpacity(0.25)),
+                              ),
+                              child: const Text(
+                                'DELETED',
+                                style: TextStyle(
+                                  color: Colors.deepOrange,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.email_outlined, size: 12, color: Colors.white.withOpacity(0.35)),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.55),
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today_outlined, size: 11, color: Colors.white.withOpacity(0.3)),
+                          const SizedBox(width: 5),
+                          Text(
+                            _formatTimestamp(user['createdAt']),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildActionChip(
-                label: 'View Profile',
-                icon: Icons.visibility_outlined,
-                color: Colors.blue,
-                onTap: () => _openUserProfile(user),
+          // Action bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.02),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
-              _buildActionChip(
-                label: isBanned ? 'Unban' : 'Ban',
-                icon: isBanned ? Icons.lock_open : Icons.block,
-                color: isBanned ? Colors.green : Colors.orange,
-                onTap: () => isBanned
-                    ? _unbanAccount(user['id'], email)
-                    : _banAccount(user['id'], email),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.05)),
               ),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildActionChip(
+                    label: 'View Profile',
+                    icon: Icons.person_outline,
+                    color: const Color(0xFF4DA6FF),
+                    onTap: () => _openUserProfile(user),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionChip(
+                    label: isBanned ? 'Unban' : 'Ban',
+                    icon: isBanned ? Icons.lock_open_outlined : Icons.block_outlined,
+                    color: isBanned ? Colors.green : const Color(0xFFFF7317),
+                    onTap: () => isBanned
+                        ? _unbanAccount(user['id'], email)
+                        : _banAccount(user['id'], email),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -717,34 +856,64 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   // ============== MOBILE UI (UNCHANGED) ==============
 
-  Widget _buildStatChip(String label, String value, Color color) {
+  Widget _buildStatChip(String label, String value, Color color, {IconData? icon}) {
     return Container(
-      height: 92,
-      padding: const EdgeInsets.all(14),
+      height: 84,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withOpacity(0.28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.12),
+            color.withOpacity(0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -755,8 +924,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 560 ? 3 : width >= 320 ? 2 : 1;
-        const spacing = 10.0;
+        final columns = width >= 420 ? 3 : width >= 280 ? 2 : 1;
+        const spacing = 8.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
         return Wrap(
@@ -795,151 +964,320 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Widget _buildMobileLayout() {
+    final activeCount = _users.where((u) => u['isBanned'] != true).length;
+
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Admin Users',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+        bottom: false,
+        child: Stack(
+          children: [
+            // Atmospheric glowing backdrops
+            Positioned(
+              top: -140,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF7317).withOpacity(0.07),
                 ),
-              )
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return RefreshIndicator(
-                    onRefresh: () => _loadUsers(showLoader: false),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF111111),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'User Management',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Monitor all users, open their profile, and control access with ban and unban actions.',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    height: 1.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF191919),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: TextField(
-                                    onChanged: _applyFilter,
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Search users...',
-                                      hintStyle: TextStyle(color: Colors.white38),
-                                      border: InputBorder.none,
-                                      prefixIcon: Icon(Icons.search, color: Colors.orange),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 280,
+              left: -150,
+              child: Container(
+                width: 260,
+                height: 260,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue.withOpacity(0.05),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 60,
+              right: -80,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.purple.withOpacity(0.04),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+
+            _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7317)),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading users...',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      return RefreshIndicator(
+                        color: const Color(0xFFFF7317),
+                        backgroundColor: const Color(0xFF1A1A1A),
+                        onRefresh: () => _loadUsers(showLoader: false),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Premium Header
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFF7317).withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFFF7317).withOpacity(0.2)),
+                                      ),
+                                      child: const Text(
+                                        'USER MODERATION',
+                                        style: TextStyle(
+                                          color: Color(0xFFFF7317),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 1.8,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                _buildStatsGrid(
-                                  [
-                                    _buildStatChip(
-                                      'Total Users',
-                                      _users.length.toString(),
-                                      Colors.blue,
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Users',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 34,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -1.0,
+                                      ),
                                     ),
-                                    _buildStatChip(
-                                      'Banned',
-                                      _bannedCount.toString(),
-                                      Colors.orange,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Manage accounts, profiles & access control',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.45),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          if (_filteredUsers.isEmpty)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24),
-                                child: Text(
-                                  'No users matched your search.',
-                                  style: TextStyle(color: Colors.white54),
+                              ),
+
+                              // Search Bar
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.06),
+                                      Colors.white.withOpacity(0.025),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withOpacity(0.07)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: TextField(
+                                  onChanged: _applyFilter,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search by name or email...',
+                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                    prefixIcon: ShaderMask(
+                                      shaderCallback: (bounds) => const LinearGradient(
+                                        colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
+                                      ).createShader(bounds),
+                                      child: const Icon(Icons.search, color: Colors.white, size: 22),
+                                    ),
+                                    suffixIcon: _query.isNotEmpty
+                                        ? IconButton(
+                                            icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.4), size: 18),
+                                            onPressed: () {
+                                              _applyFilter('');
+                                            },
+                                          )
+                                        : null,
+                                  ),
                                 ),
                               ),
-                            )
-                          else
-                            _buildUserCardsGrid(_filteredUsers),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+                              const SizedBox(height: 16),
+
+                              // Stats Row
+                              _buildStatsGrid([
+                                _buildStatChip(
+                                  'Total Users',
+                                  _users.length.toString(),
+                                  const Color(0xFF4DA6FF),
+                                  icon: Icons.people_alt_outlined,
+                                ),
+                                _buildStatChip(
+                                  'Active',
+                                  activeCount.toString(),
+                                  const Color(0xFF4ADE80),
+                                  icon: Icons.verified_user_outlined,
+                                ),
+                                _buildStatChip(
+                                  'Banned',
+                                  _bannedCount.toString(),
+                                  const Color(0xFFFF7317),
+                                  icon: Icons.block_outlined,
+                                ),
+                              ]),
+                              const SizedBox(height: 22),
+
+                              // Users list header
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, bottom: 12),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      _query.isEmpty
+                                          ? 'All Users'
+                                          : '${_filteredUsers.length} Result${_filteredUsers.length == 1 ? '' : 's'}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        _filteredUsers.length.toString(),
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.5),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (_isRefreshing)
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.white.withOpacity(0.4),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+
+                              if (_filteredUsers.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 48),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(20),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.04),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.person_search_outlined,
+                                            size: 40,
+                                            color: Colors.white.withOpacity(0.3),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No users found',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.5),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Try a different search term',
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.3),
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else
+                                _buildUserCardsGrid(_filteredUsers),
+                              const SizedBox(height: 100),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ],
+        ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 1,
         onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F0F0F),
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.white54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Overview',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            activeIcon: Icon(Icons.rate_review),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Workout',
-          ),
-        ],
       ),
     );
   }

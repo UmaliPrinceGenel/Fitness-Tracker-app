@@ -13,6 +13,8 @@ import 'admin_custom_workout_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'community_screen.dart';
 import 'login_screen.dart';
+import 'dart:ui' as ui;
+import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -440,47 +442,87 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required String label,
     required String value,
     required String subtitle,
+    bool compact = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.07),
+            Colors.white.withOpacity(0.02),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(compact ? 8 : 10),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.16),
-              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                colors: [
+                  iconColor.withOpacity(0.25),
+                  iconColor.withOpacity(0.08),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: iconColor.withOpacity(0.3),
+                width: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: iconColor.withOpacity(0.15),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: compact ? 18 : 20),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: compact ? 8 : 14),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
+              fontSize: compact ? 22 : 26,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: compact ? 12 : 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.45),
+              fontSize: compact ? 10 : 11,
+              height: 1.3,
+            ),
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1113,50 +1155,119 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildMobileLayout() {
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Admin Dashboard',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+        bottom: false,
+        child: Stack(
+          children: [
+            // Soft atmospheric glowing backdrops
+            Positioned(
+              top: -120,
+              right: -80,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF7317).withOpacity(0.08),
                 ),
-              )
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  final statsColumns = constraints.maxWidth >= 1100
-                      ? 4
-                      : constraints.maxWidth >= 700
-                          ? 2
-                          : 1;
-                  final statsAspectRatio = statsColumns == 1
-                      ? 1.6
-                      : statsColumns == 2
-                          ? 1.32
-                          : 1.16;
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 80,
+              left: -120,
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue.withOpacity(0.06),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
 
-                  return RefreshIndicator(
-                    onRefresh: () => _loadDashboardData(showLoader: false),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
+            _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final statsColumns = constraints.maxWidth >= 1100
+                          ? 4
+                          : 2;
+                      final isCompact = constraints.maxWidth < 600;
+                      final statsAspectRatio = statsColumns == 4
+                          ? 1.16
+                          : (isCompact ? 1.05 : 1.32);
+
+                      return RefreshIndicator(
+                        onRefresh: () => _loadDashboardData(showLoader: false),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Premium Header (Typography based matching user dashboard)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      DateFormat('EEEE, MMMM d').format(DateTime.now()).toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Color(0xFFFF7317),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.6,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Overview',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.8,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF111111),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.06),
+                                  Colors.white.withOpacity(0.02),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                               borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.white10),
+                              border: Border.all(color: Colors.white.withOpacity(0.08)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1230,9 +1341,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white10),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.05),
+                                  Colors.white.withOpacity(0.01),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: Colors.white.withOpacity(0.06)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1246,25 +1371,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
+                                Container(
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(25),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFFF7317).withOpacity(0.35),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
                                   child: ElevatedButton.icon(
                                     onPressed: _logoutAdmin,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                      foregroundColor: Colors.black,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 14,
-                                      ),
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(25),
                                       ),
                                     ),
-                                    icon: const Icon(Icons.logout),
+                                    icon: const Icon(Icons.logout, color: Colors.white),
                                     label: const Text(
-                                      'Log Out',
+                                      'LOG OUT SESSION',
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w800,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                        letterSpacing: 0.8,
                                       ),
                                     ),
                                   ),
@@ -1272,47 +1412,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
                   );
                 },
               ),
+          ],
+        ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 0,
         onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F0F0F),
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.white54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Overview',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            activeIcon: Icon(Icons.rate_review),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Workout',
-          ),
-        ],
       ),
     );
   }

@@ -13,6 +13,8 @@ import 'admin_feedback_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_route_utils.dart';
 import 'login_screen.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
+import 'dart:ui' as ui;
 
 class AdminCustomWorkoutScreen extends StatefulWidget {
   const AdminCustomWorkoutScreen({super.key});
@@ -1361,34 +1363,51 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
         final workouts = snapshot.data!.docs;
 
         return ListView.builder(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
           itemCount: workouts.length,
           itemBuilder: (context, index) {
             final doc = workouts[index];
             final data = doc.data() as Map<String, dynamic>;
             
-            return Card(
-              color: const Color(0xFF191919),
+            return Container(
               margin: const EdgeInsets.only(bottom: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.white.withOpacity(0.05)),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.04),
+                    Colors.white.withOpacity(0.005),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: data['thumbnailUrl'] != null 
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: data['thumbnailUrl'].toString().startsWith('http')
-                          ? Image.network(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover)
-                          : Image.asset(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover),
-                    )
-                  : const Icon(Icons.fitness_center, color: Colors.orange, size: 40),
-                title: Text(data['title'] ?? 'Unknown Workout', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                subtitle: Text('${data['bodyFocus'] ?? ''} • ${data['level'] ?? ''}', style: const TextStyle(color: Colors.white54)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteWorkout(doc.id),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: data['thumbnailUrl'] != null 
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: data['thumbnailUrl'].toString().startsWith('http')
+                            ? Image.network(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover)
+                            : Image.asset(data['thumbnailUrl'], width: 60, height: 60, fit: BoxFit.cover),
+                      )
+                    : const Icon(Icons.fitness_center, color: Colors.orange, size: 40),
+                  title: Text(data['title'] ?? 'Unknown Workout', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Text('${data['bodyFocus'] ?? ''} • ${data['level'] ?? ''}', style: const TextStyle(color: Colors.white54)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteWorkout(doc.id),
+                  ),
                 ),
               ),
             );
@@ -1400,13 +1419,27 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
 
   Widget _buildCreateTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: const Color(0xFF191919),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white10),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.04),
+              Colors.white.withOpacity(0.005),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: _buildForm(),
       ),
@@ -1419,23 +1452,29 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: const Column(
+          const Padding(
+            padding: EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 20),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'WORKOUT BUILDER',
+                  style: TextStyle(
+                    color: Color(0xFFFF7317),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.6,
+                  ),
+                ),
+                SizedBox(height: 6),
                 Text(
                   'Custom Workouts',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
                   ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Manage your custom workouts or create new ones.',
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
                 ),
               ],
             ),
@@ -1480,52 +1519,53 @@ class _AdminCustomWorkoutScreenState extends State<AdminCustomWorkoutScreen> {
     }
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Customize Workout',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            // Soft atmospheric glowing backdrops
+            Positioned(
+              top: -120,
+              right: -80,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF7317).withOpacity(0.08),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 80,
+              left: -120,
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue.withOpacity(0.06),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+
+            _buildBody(),
+          ],
         ),
       ),
-      body: SafeArea(
-        child: _buildBody(),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 4,
         onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F0F0F),
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.white54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Overview',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            activeIcon: Icon(Icons.rate_review),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Workout',
-          ),
-        ],
       ),
     );
   }

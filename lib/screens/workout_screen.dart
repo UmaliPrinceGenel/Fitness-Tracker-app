@@ -2253,7 +2253,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                   );
                 }
 
-                return IntrinsicHeight(
+                return SizedBox(
+                  height: 130,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

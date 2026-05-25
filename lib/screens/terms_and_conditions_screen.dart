@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/web_auth_shell.dart';
 import '../theme/app_colors.dart';
+import '../widgets/premium_back_button.dart';
 
 class TermsAndConditionsScreen extends StatelessWidget {
   const TermsAndConditionsScreen({super.key});
@@ -139,16 +140,9 @@ class TermsAndConditionsScreen extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 20, bottom: 8),
                     child: Row(
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: colors.cardAlt,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: colors.cardBorder),
-                          ),
-                          child: IconButton(
-                            icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-                            onPressed: () => Navigator.pop(context),
-                          ),
+                        PremiumBackButton(
+                          iconColor: colors.textPrimary,
+                          onPressed: () => Navigator.pop(context),
                         ),
                         const SizedBox(width: 16),
                         Expanded(

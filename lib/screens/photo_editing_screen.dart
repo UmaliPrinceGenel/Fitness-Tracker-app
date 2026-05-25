@@ -11,6 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path/path.dart' as path;
 import 'package:universal_html/html.dart' as html;
 import 'package:video_player/video_player.dart'; // Added for video thumbnail
+import '../widgets/premium_dialog.dart';
 
 class PhotoEditingScreen extends StatefulWidget {
   const PhotoEditingScreen({super.key});
@@ -116,28 +117,26 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
   Future<void> _showMediaTypeSelection() async {
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF191919),
-        title: const Text(
-          "Select Media Type",
-          style: TextStyle(color: Colors.white),
-        ),
+      builder: (context) => PremiumDialog(
+        title: "Select Media Type",
+        icon: Icons.perm_media_rounded,
+        iconColor: const Color(0xFF3EA6FF),
         content: const Text(
           "Choose what type of media you want to select:",
-          style: TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'image'),
-            child: const Text("Photos", style: TextStyle(color: Colors.orange)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'video'),
-            child: const Text("Videos", style: TextStyle(color: Colors.orange)),
-          ),
-          TextButton(
+          PremiumCancelButton(
+            label: "Cancel",
             onPressed: () => Navigator.pop(context, 'cancel'),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          PremiumConfirmButton(
+            label: "Photos",
+            onPressed: () => Navigator.pop(context, 'image'),
+          ),
+          PremiumConfirmButton(
+            label: "Videos",
+            gradientColors: const [Color(0xFFFF9800), Color(0xFFFF5722)],
+            onPressed: () => Navigator.pop(context, 'video'),
           ),
         ],
       ),
@@ -827,68 +826,80 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     if (totalMedia == 0) {
       return Container(
         width: double.infinity,
-        height: 300,
+        height: 280,
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-          color: Colors.transparent,
-          border: const Border(bottom: BorderSide(color: Colors.white10, width: 1)),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.02),
+              Colors.white.withOpacity(0.05),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 82,
-              height: 82,
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.orange.withOpacity(0.2),
+                    Colors.deepOrange.withOpacity(0.1),
+                  ],
+                ),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white10),
+                border: Border.all(
+                  color: Colors.orange.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.orange.withOpacity(0.15),
+                    blurRadius: 16,
+                  ),
+                ],
               ),
               child: const Icon(
-                Icons.perm_media_outlined,
-                color: Colors.white70,
-                size: 38,
+                Icons.add_photo_alternate_rounded,
+                color: Colors.orange,
+                size: 34,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             const Text(
-              "No media selected",
+              "Add photos or videos",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              "Choose photos or videos for your post preview",
-              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              "Supports multiple high-quality images and videos",
+              style: TextStyle(color: Colors.white54, fontSize: 13),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.orange.withOpacity(0.25)),
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white10),
               ),
               child: const Text(
                 "Max video size: 30MB",
                 style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 12,
+                  color: Colors.white70,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            if (kIsWeb)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  "Supports: .jpg, .png, .mp4, .mov, .avi",
-                  style: TextStyle(color: Colors.orange, fontSize: 11),
-                ),
-              ),
           ],
         ),
       );
@@ -897,39 +908,42 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     return Container(
       width: double.infinity,
       height: 300,
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        color: const Color(0xFF242424),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        color: Color(0xFF1A1A1A),
       ),
       child: Stack(
         children: [
-          PageView.builder(
-            itemCount: totalMedia,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              if (index < _selectedImages.length) {
-                // It's an image
-                return Image.memory(
-                  _selectedImages[index],
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: 300,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Center(
-                      child: Icon(Icons.error, color: Colors.grey[600], size: 60),
-                    );
-                  },
-                );
-              } else {
-                // It's a video - get the video index
-                final videoIndex = index - _selectedImages.length;
-                return _buildVideoPreview(videoIndex);
-              }
-            },
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: PageView.builder(
+              itemCount: totalMedia,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                if (index < _selectedImages.length) {
+                  // It's an image
+                  return Image.memory(
+                    _selectedImages[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 300,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Icon(Icons.error, color: Colors.grey[600], size: 60),
+                      );
+                    },
+                  );
+                } else {
+                  // It's a video - get the video index
+                  final videoIndex = index - _selectedImages.length;
+                  return _buildVideoPreview(videoIndex);
+                }
+              },
+            ),
           ),
 
           // Media counter
@@ -943,15 +957,16 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white10),
                 ),
                 child: Text(
                   '${_currentPage + 1}/$totalMedia',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -968,35 +983,38 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white10),
                 ),
                 child: Row(
                   children: [
                     if (_currentPage < _selectedImages.length)
-                      const Icon(Icons.photo, color: Colors.white, size: 16),
+                      const Icon(Icons.photo_rounded, color: Color(0xFF3EA6FF), size: 16),
                     if (_currentPage < _selectedImages.length)
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                     if (_currentPage < _selectedImages.length)
                       const Text(
                         "PHOTO",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     if (_currentPage >= _selectedImages.length)
-                      const Icon(Icons.videocam, color: Colors.white, size: 16),
+                      const Icon(Icons.videocam_rounded, color: Color(0xFFFF6B6B), size: 16),
                     if (_currentPage >= _selectedImages.length)
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                     if (_currentPage >= _selectedImages.length)
                       const Text(
                         "VIDEO",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
                         ),
                       ),
                   ],
@@ -1008,17 +1026,18 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
           if (totalMedia > 0)
             Positioned(
               top: 16,
-              right: 60, // Moved to avoid overlap with type indicator
+              right: totalMedia > 1 ? 64 : 16, // Adjust layout based on sibling visibility
               child: GestureDetector(
                 onTap: _removeCurrentMedia,
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withOpacity(0.75),
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white10),
                   ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
                 ),
               ),
             ),
@@ -1034,35 +1053,42 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
       appBar: AppBar(
         toolbarHeight: 80,
         backgroundColor: Colors.black,
+        elevation: 0,
         title: const Text(
           "Create Post",
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () {
-            _showDiscardDialog(context);
-          },
+        leading: Container(
+          margin: const EdgeInsets.only(left: 12),
+          child: IconButton(
+            icon: const Icon(Icons.close_rounded, color: Colors.white70),
+            onPressed: () {
+              _showDiscardDialog(context);
+            },
+          ),
         ),
         actions: [
           _isUploading
               ? const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                  padding: EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                      ),
                     ),
                   ),
                 )
               : Container(
-                  margin: const EdgeInsets.only(right: 8, top: 10, bottom: 10),
+                  margin: const EdgeInsets.only(right: 16, top: 18, bottom: 18),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
@@ -1072,16 +1098,16 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF5200).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        color: const Color(0xFFFF5200).withOpacity(0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: TextButton(
                     onPressed: _handlePost,
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -1090,17 +1116,17 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                       "Post",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
@@ -1109,144 +1135,273 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Share your workout moment",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "Add photos or videos, then write a short caption for your community post.",
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 13,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.24),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      _buildMediaPreview(),
-                      // Gallery button only
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.vertical(
-                            bottom: Radius.circular(22),
-                          ),
-                        ),
-                        child: _buildMediaButton(
-                          icon: Icons.photo_library,
-                          label: "Gallery",
-                          subLabel: "Select photos and videos\nMax 30MB per video",
-                          onTap: _selectMediaFromGallery,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Caption",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _captionController,
-                        decoration: const InputDecoration(
-                          hintText: "Write a caption...",
-                          hintStyle: TextStyle(color: Colors.white70),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                        maxLines: null,
-                      ),
-                    ],
-                  ),
-                ),
-                if (_selectedImages.isNotEmpty || _selectedVideos.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Container(
+                    Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF141414),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white10),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.orange.withOpacity(0.12),
+                            Colors.deepOrange.withOpacity(0.04),
+                            Colors.black.withOpacity(0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(0.04),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSummaryPill(
-                            icon: Icons.photo_outlined,
-                            label: '${_selectedImages.length} photo(s)',
-                            accent: const Color(0xFF3EA6FF),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.bolt_rounded,
+                                  color: Colors.orange,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                "Share your workout moment",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          _buildSummaryPill(
-                            icon: Icons.videocam_outlined,
-                            label: '${_selectedVideos.length} video(s)',
-                            accent: const Color(0xFFFF6B6B),
-                          ),
-                          if (kIsWeb)
-                            _buildSummaryPill(
-                              icon: Icons.tips_and_updates_outlined,
-                              label: 'You can select multiple files at once',
-                              accent: Colors.orange,
+                          const SizedBox(height: 12),
+                          Text(
+                            "Add photos or videos, then write a short caption for your community post.",
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 13,
+                              height: 1.4,
                             ),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 20),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withOpacity(0.06)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildMediaPreview(),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            child: _buildMediaButton(
+                              icon: Icons.photo_library_rounded,
+                              label: "Gallery",
+                              subLabel: "Select photos and videos\nMax 30MB per video",
+                              onTap: _selectMediaFromGallery,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.06),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.notes_rounded,
+                                    color: Colors.orange,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    "Caption",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _captionController,
+                                builder: (context, value, child) {
+                                  return Text(
+                                    '${value.text.length} chars',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withOpacity(0.04)),
+                            ),
+                            child: TextField(
+                              controller: _captionController,
+                              decoration: const InputDecoration(
+                                hintText: "Write a caption...",
+                                hintStyle: TextStyle(color: Colors.white38),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                height: 1.4,
+                              ),
+                              maxLines: 4,
+                              minLines: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_selectedImages.isNotEmpty || _selectedVideos.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withOpacity(0.06)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Selected Media",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  _buildSummaryPill(
+                                    icon: Icons.photo_rounded,
+                                    label: '${_selectedImages.length} photo(s)',
+                                    accent: const Color(0xFF3EA6FF),
+                                  ),
+                                  _buildSummaryPill(
+                                    icon: Icons.videocam_rounded,
+                                    label: '${_selectedVideos.length} video(s)',
+                                    accent: const Color(0xFFFF6B6B),
+                                  ),
+                                ],
+                              ),
+                              if (kIsWeb) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.orange.withOpacity(0.15),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.15),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.lightbulb_outline_rounded,
+                                          color: Colors.orange,
+                                          size: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          "Tip: You can select multiple files at once in the explorer window.",
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -1266,24 +1421,49 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.06)),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.05),
+              Colors.white.withOpacity(0.02),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF5200).withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
+              child: Icon(icon, color: Colors.white, size: 26),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1293,7 +1473,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1302,17 +1482,24 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
                     style: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 12,
-                      height: 1.35,
+                      height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white38,
-              size: 16,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.orange,
+                size: 18,
+              ),
             ),
           ],
         ),
@@ -1326,11 +1513,11 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     required Color accent,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: accent.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: accent.withOpacity(0.22)),
+        border: Border.all(color: accent.withOpacity(0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1342,7 +1529,7 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
             style: TextStyle(
               color: accent,
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -1354,32 +1541,27 @@ class _PhotoEditingScreenState extends State<PhotoEditingScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            "Discard Post",
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Discard Post",
+          icon: Icons.delete_sweep_rounded,
+          iconColor: const Color(0xFFFF4B4B),
           content: const Text(
             "Are you sure you want to discard this post?",
-            style: TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
+              label: "Keep Editing",
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text(
-                "Continue Editing",
-                style: TextStyle(color: Colors.orange),
-              ),
             ),
-            TextButton(
+            PremiumConfirmButton(
+              label: "Discard",
+              gradientColors: const [Color(0xFFFF4B4B), Color(0xFFFF7B7B)],
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
               },
-              child: const Text("Discard", style: TextStyle(color: Colors.red)),
             ),
           ],
         );

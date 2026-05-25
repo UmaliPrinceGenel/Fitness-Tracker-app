@@ -12,6 +12,8 @@ import 'login_screen.dart';
 import '../widgets/chatbot_launcher.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
+import '../widgets/premium_dialog.dart';
+import '../widgets/premium_snackbar.dart';
 import '../theme/app_colors.dart';
 
 class MyProfile extends StatefulWidget {
@@ -444,11 +446,10 @@ class _MyProfileState extends State<MyProfile> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile picture updated successfully!'),
-              backgroundColor: Colors.green,
-            ),
+          PremiumSnackBar.show(
+            context,
+            message: 'Profile picture updated successfully!',
+            type: 'success',
           );
         }
 
@@ -461,11 +462,10 @@ class _MyProfileState extends State<MyProfile> {
     } catch (e) {
       print('Error changing profile picture: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update profile picture: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        PremiumSnackBar.show(
+          context,
+          message: 'Failed to update profile picture: ${e.toString()}',
+          type: 'error',
         );
       }
     } finally {
@@ -486,34 +486,42 @@ class _MyProfileState extends State<MyProfile> {
     await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            "Change Display Name",
-            style: TextStyle(color: Colors.white),
-          ),
-          content: TextField(
-            controller: nameController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: "Enter your display name",
-              hintStyle: const TextStyle(color: Colors.white70),
-              enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.orange),
-                borderRadius: BorderRadius.circular(8),
+        return PremiumDialog(
+          title: "Change Display Name",
+          icon: Icons.edit_rounded,
+          iconColor: const Color(0xFF3EA6FF),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: "Enter your display name",
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.04),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFF3EA6FF), width: 1.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.orange),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            ],
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
             ),
-            ElevatedButton(
+            PremiumConfirmButton(
+              label: "Save",
               onPressed: () async {
                 final newName = nameController.text.trim();
                 if (newName.isEmpty) {
@@ -529,14 +537,6 @@ class _MyProfileState extends State<MyProfile> {
                 Navigator.of(context).pop();
                 await _updateDisplayName(newName);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text(
-                "SAVE",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ],
         );
@@ -568,11 +568,10 @@ class _MyProfileState extends State<MyProfile> {
           _userData = {...?_userData, 'displayName': newName};
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Display name updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        PremiumSnackBar.show(
+          context,
+          message: 'Display name updated successfully!',
+          type: 'success',
         );
       }
 
@@ -584,11 +583,10 @@ class _MyProfileState extends State<MyProfile> {
     } catch (e) {
       print('Error updating display name: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update display name: $e'),
-            backgroundColor: Colors.red,
-          ),
+        PremiumSnackBar.show(
+          context,
+          message: 'Failed to update display name: $e',
+          type: 'error',
         );
       }
     } finally {
@@ -616,11 +614,10 @@ class _MyProfileState extends State<MyProfile> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(value ? 'Account is now private.' : 'Account is now public.'),
-            backgroundColor: Colors.green,
-          ),
+        PremiumSnackBar.show(
+          context,
+          message: value ? 'Account is now private.' : 'Account is now public.',
+          type: 'success',
         );
       }
     } catch (e) {
@@ -629,11 +626,10 @@ class _MyProfileState extends State<MyProfile> {
         setState(() {
           _isPrivateAccount = !value; // Revert on error
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update privacy settings: $e'),
-            backgroundColor: Colors.red,
-          ),
+        PremiumSnackBar.show(
+          context,
+          message: 'Failed to update privacy settings: $e',
+          type: 'error',
         );
       }
     }
@@ -719,34 +715,24 @@ class _MyProfileState extends State<MyProfile> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            "Logout",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+        return PremiumDialog(
+          title: "Logout",
+          icon: Icons.logout_rounded,
+          iconColor: const Color(0xFFE53935),
           content: const Text(
             "Are you sure you want to logout?",
-            style: TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
             ),
-            ElevatedButton(
+            PremiumConfirmButton(
+              label: "Logout",
+              gradientColors: const [Color(0xFFE53935), Color(0xFFB71C1C)],
               onPressed: () async {
                 Navigator.of(context).pop();
                 await _performLogout();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text(
-                "LOGOUT",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ],
         );
@@ -950,8 +936,30 @@ class _MyProfileState extends State<MyProfile> {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 30),
-                              Center(
+                              const SizedBox(height: 20),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.05),
+                                      Colors.white.withOpacity(0.02),
+                                      Colors.black.withOpacity(0.4),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.5),
+                                      blurRadius: 25,
+                                      offset: const Offset(0, 12),
+                                    ),
+                                  ],
+                                ),
                                 child: Column(
                                   children: [
                                     GestureDetector(
@@ -959,21 +967,33 @@ class _MyProfileState extends State<MyProfile> {
                                       child: Stack(
                                         children: [
                                           Container(
-                                            width: 100,
-                                            height: 100,
+                                            width: 104,
+                                            height: 104,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white.withOpacity(0.15), width: 3),
+                                              gradient: const LinearGradient(
+                                                colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.orange.withOpacity(0.15),
-                                                  blurRadius: 24,
-                                                  spreadRadius: 4,
+                                                  color: const Color(0xFFFF5200).withOpacity(0.25),
+                                                  blurRadius: 20,
+                                                  spreadRadius: 2,
                                                 ),
                                               ],
                                             ),
-                                            child: ClipOval(
-                                              child: _buildProfileAvatar(100),
+                                            padding: const EdgeInsets.all(3),
+                                            child: Container(
+                                              decoration: const BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.black,
+                                              ),
+                                              padding: const EdgeInsets.all(2),
+                                              child: ClipOval(
+                                                child: _buildProfileAvatar(100),
+                                              ),
                                             ),
                                           ),
                                           Positioned(
@@ -997,7 +1017,7 @@ class _MyProfileState extends State<MyProfile> {
                                               child: const Icon(
                                                 Icons.edit_rounded,
                                                 color: Colors.white,
-                                                size: 16,
+                                                size: 14,
                                               ),
                                             ),
                                           ),
@@ -1036,15 +1056,16 @@ class _MyProfileState extends State<MyProfile> {
                                                   _userData?['displayName'] ?? 'User',
                                                   style: const TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 28,
-                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 26,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 0.5,
                                                   ),
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
-                                              const SizedBox(width: 10),
+                                              const SizedBox(width: 8),
                                               Container(
-                                                padding: const EdgeInsets.all(6),
+                                                padding: const EdgeInsets.all(5),
                                                 decoration: BoxDecoration(
                                                   color: Colors.white.withOpacity(0.08),
                                                   shape: BoxShape.circle,
@@ -1052,59 +1073,62 @@ class _MyProfileState extends State<MyProfile> {
                                                 child: const Icon(
                                                   Icons.edit_rounded,
                                                   color: Colors.orange,
-                                                  size: 14,
+                                                  size: 12,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
+                                          const SizedBox(height: 12),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
                                             children: [
-                                              Text(
-                                                _userData?['profile']?['gender'] ?? 'Not set',
-                                                style: const TextStyle(color: Colors.white60, fontSize: 14),
+                                              _buildProfileMetaChip(
+                                                icon: Icons.face_rounded,
+                                                label: _userData?['profile']?['gender'] ?? 'Not set',
+                                                accentColor: const Color(0xFF3EA6FF),
                                               ),
-                                              const Text(
-                                                "  |  ",
-                                                style: TextStyle(color: Colors.white38, fontSize: 14),
-                                              ),
-                                              Text(
-                                                _formatProfileMetric('height', 'cm'),
-                                                style: const TextStyle(color: Colors.white60, fontSize: 14),
-                                              ),
-                                              const Text(
-                                                "  |  ",
-                                                style: TextStyle(color: Colors.white38, fontSize: 14),
-                                              ),
-                                              Text(
-                                                "${_calculateAge()?.toString() ?? '?'} yrs",
-                                                style: const TextStyle(color: Colors.white60, fontSize: 14),
+                                              _buildProfileMetaChip(
+                                                icon: Icons.cake_rounded,
+                                                label: "${_calculateAge()?.toString() ?? '?'} yrs",
+                                                accentColor: const Color(0xFFFF6B6B),
                                               ),
                                             ],
                                           ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(height: 30),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 10),
-                              const Padding(
-                                padding: EdgeInsets.only(
-                                  left: 8.0,
-                                  bottom: 8.0,
-                                ),
-                                child: Text(
-                                  "Health Stats",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                              const SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    "Health Stats",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: 14),
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceEvenly,
@@ -1112,45 +1136,45 @@ class _MyProfileState extends State<MyProfile> {
                                   _buildHealthCard(
                                     value: _formatProfileMetric('weight', 'kg'),
                                     label: "Weight",
-                                    icon: Icons.monitor_weight,
+                                    icon: Icons.monitor_weight_rounded,
                                     progressValue: _weightProgress(),
-                                    color: Colors.green,
+                                    color: const Color(0xFF63D471),
                                   ),
                                   const SizedBox(width: 12),
                                   _buildHealthCard(
                                     value: _formatProfileMetric('height', 'cm'),
                                     label: "Height",
-                                    icon: Icons.height,
+                                    icon: Icons.height_rounded,
                                     progressValue: _heightProgress(),
-                                    color: Colors.blue,
+                                    color: const Color(0xFF4FC3F7),
                                   ),
                                   const SizedBox(width: 12),
                                   _buildHealthCard(
                                     value: _calculateBMI()?.toString() ?? '0',
                                     label: "BMI",
-                                    icon: Icons.monitor_heart,
+                                    icon: Icons.favorite_rounded,
                                     progressValue: _bmiProgress(),
                                     color: Colors.orange,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 24),
                               // Progress Album card
                               Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.04),
-                                  borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                  color: Colors.white.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.white.withOpacity(0.06)),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 8),
                                     ),
                                   ],
                                 ),
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(18),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -1162,32 +1186,28 @@ class _MyProfileState extends State<MyProfile> {
                                           child: Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(
-                                                  10,
-                                                ),
+                                                padding: const EdgeInsets.all(10),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue
-                                                      .withOpacity(0.14),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
+                                                  color: const Color(0xFF3EA6FF).withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(14),
                                                   border: Border.all(
-                                                    color: Colors.blue
-                                                        .withOpacity(0.22),
+                                                    color: const Color(0xFF3EA6FF).withOpacity(0.2),
+                                                    width: 1,
                                                   ),
                                                 ),
                                                 child: const Icon(
-                                                  Icons.photo_library_outlined,
-                                                  color: Colors.blue,
+                                                  Icons.photo_library_rounded,
+                                                  color: Color(0xFF3EA6FF),
                                                   size: 22,
                                                 ),
                                               ),
-                                              const SizedBox(width: 12),
+                                              const SizedBox(width: 14),
                                               const Flexible(
                                                 child: Text(
                                                   "Progress Album",
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 20,
+                                                    fontSize: 18,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -1199,8 +1219,8 @@ class _MyProfileState extends State<MyProfile> {
                                           onTap: _navigateToProgressAlbum,
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 8,
+                                              horizontal: 18,
+                                              vertical: 10,
                                             ),
                                             decoration: BoxDecoration(
                                               gradient: const LinearGradient(
@@ -1209,13 +1229,10 @@ class _MyProfileState extends State<MyProfile> {
                                                   Color(0xFF67C3FF),
                                                 ],
                                               ),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
+                                              borderRadius: BorderRadius.circular(22),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: const Color(
-                                                    0xFF3EA6FF,
-                                                  ).withOpacity(0.22),
+                                                  color: const Color(0xFF3EA6FF).withOpacity(0.3),
                                                   blurRadius: 8,
                                                   offset: const Offset(0, 4),
                                                 ),
@@ -1226,13 +1243,14 @@ class _MyProfileState extends State<MyProfile> {
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
+                                                fontSize: 13,
                                               ),
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 16),
                                     Text(
                                       "Latest photo from your album",
                                       style: TextStyle(
@@ -1240,15 +1258,15 @@ class _MyProfileState extends State<MyProfile> {
                                         fontSize: 13,
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
+                                    const SizedBox(height: 14),
                                     Container(
                                       width: double.infinity,
-                                      height: 208,
+                                      height: 340,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF202020),
-                                        borderRadius: BorderRadius.circular(18),
+                                        color: Colors.white.withOpacity(0.01),
+                                        borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: Colors.white10,
+                                          color: Colors.white.withOpacity(0.06),
                                         ),
                                         boxShadow: [
                                           BoxShadow(
@@ -1513,39 +1531,56 @@ class _MyProfileState extends State<MyProfile> {
 
                               // ✅ LOGOUT BUTTON - Mobile + web-mobile view
                               if (!kIsWeb || MediaQuery.of(context).size.width < 800) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  width: double.infinity,
-                                  margin: const EdgeInsets.only(bottom: 20),
-                                  child: ElevatedButton(
-                                    onPressed: _logout,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.withOpacity(
-                                        0.85,
+                                const SizedBox(height: 14),
+                                Center(
+                                  child: Container(
+                                    width: 220,
+                                    margin: const EdgeInsets.only(bottom: 20),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      elevation: 4,
-                                    ),
-                                    child: const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.logout, size: 22),
-                                        SizedBox(width: 12),
-                                        Text(
-                                          "Logout",
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      borderRadius: BorderRadius.circular(28),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFE53935).withOpacity(0.25),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
                                         ),
                                       ],
+                                    ),
+                                    child: ElevatedButton(
+                                      onPressed: _logout,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.transparent,
+                                        shadowColor: Colors.transparent,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 18,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(28),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.logout_rounded, size: 20, color: Colors.white),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            "Logout",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1676,9 +1711,11 @@ class _MyProfileState extends State<MyProfile> {
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            children: List.generate(5, (index) {
+          Center(
+            child: Wrap(
+              spacing: 4,
+              alignment: WrapAlignment.center,
+              children: List.generate(5, (index) {
               final ratingValue = index + 1;
               final isSelected = ratingValue <= _selectedFeedbackRating;
 
@@ -1690,39 +1727,18 @@ class _MyProfileState extends State<MyProfile> {
                           _selectedFeedbackRating = ratingValue;
                         });
                       },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Colors.orange.withOpacity(0.15)
-                        : Colors.white.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected ? Colors.orange.withOpacity(0.6) : Colors.transparent,
-                      width: 1.5,
-                    ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: Colors.orange.withOpacity(0.25),
-                              blurRadius: 12,
-                              offset: const Offset(0, 3),
-                            )
-                          ]
-                        : null,
-                  ),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
                   child: Icon(
                     isSelected ? Icons.star_rounded : Icons.star_outline_rounded,
                     color: isSelected ? Colors.orange : Colors.white38,
-                    size: 32,
+                    size: 26,
                   ),
                 ),
               );
             }),
+          ),
           ),
           const SizedBox(height: 18),
           TextField(
@@ -1753,47 +1769,78 @@ class _MyProfileState extends State<MyProfile> {
             ),
           ),
           const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF5200).withOpacity(0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+          Center(
+            child: Container(
+              width: 160,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
                 ),
-              ],
-            ),
-            child: ElevatedButton.icon(
-              onPressed: _isSubmittingFeedback ? null : _submitFeedback,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white70,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF5200).withOpacity(0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              icon: _isSubmittingFeedback
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+              child: ElevatedButton(
+                onPressed: _isSubmittingFeedback ? null : _submitFeedback,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white70,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                child: _isSubmittingFeedback
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                        ),
+                      )
+                    : const Text(
+                        'Submit',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                    )
-                  : const Icon(Icons.send_rounded),
-              label: Text(
-                _isSubmittingFeedback ? 'Submitting...' : 'Submit',
-                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileMetaChip({
+    required IconData icon,
+    required String label,
+    required Color accentColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: accentColor.withOpacity(0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: accentColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: accentColor.withOpacity(0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -1812,49 +1859,74 @@ class _MyProfileState extends State<MyProfile> {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.04),
+              Colors.white.withOpacity(0.01),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 8,
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
         child: Column(
           children: [
             Stack(
               alignment: Alignment.center,
               children: [
-                Container(
+                SizedBox(
                   width: 80,
                   height: 80,
                   child: CircularProgressIndicator(
                     value: progressValue,
-                    strokeWidth: 8.0,
-                    backgroundColor: Colors.grey.withOpacity(0.3),
+                    strokeWidth: 6.0,
+                    backgroundColor: Colors.white.withOpacity(0.06),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
-                Icon(icon, color: Colors.white, size: 30),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.1),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 24),
+                ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
             ),
           ],
         ),
@@ -1870,31 +1942,60 @@ class _MyProfileState extends State<MyProfile> {
     Widget? trailing,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.04),
+            Colors.white.withOpacity(0.01),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withOpacity(0.2), width: 1),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 16),
           Text(
             title,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const Spacer(),
           trailing ??
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 16),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.orange,
+                  size: 14,
+                ),
+              ),
         ],
       ),
     );

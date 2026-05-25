@@ -10,6 +10,7 @@ import 'package:intl/intl.dart'; // Add this import for DateFormat
 import 'dart:ui' as ui; // Add this import for ui.TextStyle
 import '../widgets/semi_circle_progress.dart';
 import '../widgets/chatbot_launcher.dart';
+import '../widgets/premium_dialog.dart';
 import 'detail_screen.dart';
 import 'login_screen.dart';
 import 'my_profile.dart';
@@ -1157,50 +1158,92 @@ class _HealthDashboardState extends State<HealthDashboard>
       backgroundColor: colors.scaffold,
       bottomNavigationBar: SafeArea(
         child: Container(
-          margin: const EdgeInsets.only(left: 60, right: 60, bottom: 20),
+          margin: const EdgeInsets.only(left: 30, right: 30, bottom: 25),
+          decoration: BoxDecoration(
+            color: colors.navBar.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(35),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.06),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow.withOpacity(0.45),
+                blurRadius: 32,
+                spreadRadius: 2,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: Colors.white.withOpacity(0.03),
+                blurRadius: 12,
+                spreadRadius: 1,
+                offset: const Offset(0, -1),
+              ),
+            ],
+          ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(40),
+            borderRadius: BorderRadius.circular(35),
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.navBar.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(40),
-                  border: Border.all(color: colors.cardBorder, width: 1.5),
-                ),
+              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: BottomNavigationBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: Colors.white,
-                unselectedItemColor: Colors.grey,
-                showSelectedLabels: false,
-                showUnselectedLabels: false,
-                currentIndex: _selectedIndex,
-                onTap: _onItemTapped,
-                items: [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.favorite, color: _getSelectedIconColor(0)),
-                    label: "Health",
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  type: BottomNavigationBarType.fixed,
+                  selectedItemColor: Colors.orange,
+                  unselectedItemColor: colors.navInactive,
+                  showSelectedLabels: true,
+                  showUnselectedLabels: true,
+                  selectedLabelStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                    height: 1.4,
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.directions_run, color: _getSelectedIconColor(1)),
-                    label: "Workout",
+                  unselectedLabelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                    color: colors.navInactive,
+                    height: 1.4,
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.people, color: _getSelectedIconColor(2)),
-                    label: "Community",
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person, color: _getSelectedIconColor(3)),
-                    label: "Profile",
-                  ),
-                ],
+                  currentIndex: _selectedIndex,
+                  onTap: _onItemTapped,
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.favorite),
+                      ),
+                      label: "Health",
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.directions_run),
+                      ),
+                      label: "Workout",
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.people),
+                      ),
+                      label: "Community",
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Padding(
+                        padding: EdgeInsets.only(bottom: 2.0),
+                        child: Icon(Icons.person),
+                      ),
+                      label: "Profile",
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
       ),
       body: SafeArea(
         bottom: false,
@@ -1225,6 +1268,7 @@ class _HealthDashboardState extends State<HealthDashboard>
                       slivers: [
                         SliverAppBar(
                           backgroundColor: colors.scaffold,
+                          surfaceTintColor: Colors.transparent,
                           toolbarHeight: 80,
                           expandedHeight: 80,
                           floating: false,
@@ -1490,32 +1534,60 @@ class _HealthDashboardState extends State<HealthDashboard>
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            'Update Health Data',
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Update Health Data",
+          icon: Icons.monitor_weight_rounded,
+          iconColor: const Color(0xFF3EA6FF),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.height, color: Colors.blue),
-                title: const Text(
-                  'Update Height',
-                  style: TextStyle(color: Colors.white),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.08),
+                  ),
                 ),
-                subtitle: const Text(
-                  'Manual height input',
-                  style: TextStyle(color: Colors.white70),
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3EA6FF).withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.height_rounded, color: Color(0xFF3EA6FF)),
+                    ),
+                    title: const Text(
+                      'Update Height',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                    subtitle: Text(
+                      'Change manual height metric',
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    ),
+                    trailing: Icon(Icons.chevron_right_rounded, color: Colors.white.withOpacity(0.4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showUpdateDialog('Height', _height, 250.0);
+                    },
+                  ),
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showUpdateDialog('Height', _height, 250.0);
-                },
               ),
             ],
           ),
+          actions: [
+            PremiumCancelButton(
+              label: "Close",
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
         );
       },
     );
@@ -1529,41 +1601,50 @@ class _HealthDashboardState extends State<HealthDashboard>
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: Text(
-            'Update $type',
-            style: const TextStyle(color: Colors.white),
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        return PremiumDialog(
+          title: 'Update $type',
+          icon: type == 'Height' ? Icons.height_rounded : Icons.edit_rounded,
+          iconColor: const Color(0xFF3EA6FF),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+                decoration: InputDecoration(
+                  labelText: type == 'Height'
+                      ? 'New Height Value (cm)'
+                      : 'New $type Value',
+                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                  hintText: 'e.g. 175.5',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.04),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFF3EA6FF), width: 1.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ],
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: type == 'Height'
-                  ? 'New Height Value (cm)'
-                  : 'New $type Value',
-              labelStyle: const TextStyle(color: Colors.white70),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.orange),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.orange),
-              ),
-            ),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.orange),
-              ),
             ),
-            ElevatedButton(
+            PremiumConfirmButton(
+              label: 'Update',
               onPressed: () {
                 final newValue = double.tryParse(controller.text) ?? 0.0;
                 final minValue = type == 'Height' ? _minValidHeightCm : 0.0;
@@ -1597,11 +1678,6 @@ class _HealthDashboardState extends State<HealthDashboard>
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text(
-                'Update',
-                style: TextStyle(color: Colors.black),
-              ),
             ),
           ],
         );
@@ -2092,7 +2168,7 @@ class _BmiSummaryStrip extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
+            const Text(
               "BMI",
               style: TextStyle(
                 color: Colors.white70,
@@ -2121,83 +2197,9 @@ class _BmiSummaryStrip extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
-            Container(
-              height: 16,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                color: const Color(0xFF202020),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  final indicatorLeft = _calculateBmiStripPosition(width, bmi);
-
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Row(
-                        children: const [
-                          Expanded(
-                            flex: 14,
-                            child: _BmiScaleSegment(color: Colors.blue),
-                          ),
-                          Expanded(
-                            flex: 26,
-                            child: _BmiScaleSegment(color: Colors.green),
-                          ),
-                          Expanded(
-                            flex: 20,
-                            child: _BmiScaleSegment(color: Colors.orange),
-                          ),
-                          Expanded(
-                            flex: 40,
-                            child: _BmiScaleSegment(color: Colors.deepOrange),
-                          ),
-                        ],
-                      ),
-                      Positioned(
-                        left: indicatorLeft,
-                        top: -4,
-                        bottom: -4,
-                        child: Container(
-                          width: 3,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black54,
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                return SizedBox(
-                  height: 14,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _buildBmiLabel("15", 0, width),
-                      _buildBmiLabel("18.5", 18.5, width),
-                      _buildBmiLabel("25", 25, width),
-                      _buildBmiLabel("30", 30, width),
-                      _buildBmiLabel("40+", 40, width),
-                    ],
-                  ),
-                );
-              },
-            ),
+            const SizedBox(height: 16),
+            // Use the new premium responsive BMI indicator
+            ResponsiveBMIIndicator(bmi: bmi),
           ],
         ),
       ),
@@ -2218,51 +2220,6 @@ class _BmiSummaryStrip extends StatelessWidget {
     if (bmi < 25) return Colors.green;
     if (bmi < 30) return Colors.orange;
     return Colors.deepOrange;
-  }
-
-  static double _calculateBmiStripPosition(double width, double bmi) {
-    if (width <= 0) return 0;
-    final clamped = bmi <= 0 ? 15.0 : bmi.clamp(15.0, 40.0);
-    final percentage = (clamped - 15.0) / 25.0;
-    return (percentage * width).clamp(0.0, width - 3.0);
-  }
-
-  Widget _buildBmiLabel(String text, double value, double width) {
-    final left = _calculateBmiStripPosition(width, value);
-    final alignment = value <= 15
-        ? -1.0
-        : value >= 40
-            ? 1.0
-            : 0.0;
-    final resolvedLeft = value <= 15 ? 0.0 : left - 14;
-
-    return Positioned(
-      left: value >= 40 ? null : resolvedLeft,
-      right: value >= 40 ? 0 : null,
-      child: SizedBox(
-        width: 28,
-        child: Text(
-          text,
-          style: TextStyle(color: Colors.grey[500], fontSize: 10),
-          textAlign: alignment < 0
-              ? TextAlign.left
-              : alignment > 0
-                  ? TextAlign.right
-                  : TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
-
-class _BmiScaleSegment extends StatelessWidget {
-  final Color color;
-
-  const _BmiScaleSegment({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(color: color);
   }
 }
 
@@ -2293,6 +2250,7 @@ class _DraggableCardGrid extends StatefulWidget {
 
 class _DraggableCardGridState extends State<_DraggableCardGrid> {
   List<Widget> cards = [];
+  final List<String> _cardOrder = ['waist', 'weight', 'height', 'sleep'];
 
   @override
   void initState() {
@@ -2301,28 +2259,31 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
   }
 
   void _initializeCards() {
-    // UPDATED: Changed to WaistCard and SleepCard
-    cards = [
-      _WaistCard(
+    final Map<String, Widget> cardMap = {
+      'waist': _WaistCard(
         waistMeasurement: widget.waistMeasurement,
         waistHistory: widget.waistHistory,
-        onDataSaved: widget.onDataSaved, // ADD THIS
+        onDataSaved: widget.onDataSaved,
       ),
-      _WeightCard(
+      'weight': _WeightCard(
         weight: widget.weight,
         weightHistory: widget.weightHistory,
         onDataSaved: widget.onDataSaved,
-      ), // ADD THIS
-      _HeightCard(
+      ),
+      'height': _HeightCard(
         height: widget.height,
         onDataSaved: widget.onDataSaved,
       ),
-      _SleepCard(
+      'sleep': _SleepCard(
         sleepHours: widget.sleepHours,
         sleepHistory: widget.sleepHistory,
-        onDataSaved: widget.onDataSaved, // ADD THIS
+        onDataSaved: widget.onDataSaved,
       ),
-    ];
+    };
+
+    setState(() {
+      cards = _cardOrder.map((type) => cardMap[type]!).toList();
+    });
   }
 
   @override
@@ -2350,7 +2311,6 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
         final double cardWidth =
             (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
             crossAxisCount;
-        // Use a more generous aspect ratio to prevent content overflow in small cards
         final childAspectRatio = isWideScreen
             ? 1.4
             : isMediumScreen
@@ -2371,55 +2331,99 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
           ),
           itemCount: cards.length,
           itemBuilder: (BuildContext context, int index) {
+            final Widget currentCard = cards[index];
             return SizedBox(
+              key: ValueKey(_cardOrder[index]),
               height: cardHeight,
-              child: LongPressDraggable<int>(
-                data: index,
-                feedback: Material(
-                  elevation: 8,
-                  child: Container(
-                    width: cardWidth,
-                    height: cardHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Opacity(opacity: 0.8, child: cards[index]),
+              child: LongPressDraggable<Widget>(
+                data: currentCard,
+                feedback: Transform.scale(
+                  scale: 1.06,
+                  child: Material(
+                    color: Colors.transparent,
+                    elevation: 16,
+                    shadowColor: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: cardWidth,
+                      height: cardHeight,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1C1C1E).withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFF3EA6FF).withOpacity(0.4),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3EA6FF).withOpacity(0.2),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Center(
+                          child: Opacity(
+                            opacity: 0.9,
+                            child: currentCard,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                childWhenDragging: Container(
+                childWhenDragging: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Card(
-                    color: const Color(0xFF191919),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    color: Colors.white.withOpacity(0.01),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.06),
+                      width: 1.5,
+                      style: BorderStyle.solid,
                     ),
-                    child: Container(
-                      child: const Center(child: SizedBox.shrink()),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: Colors.white.withOpacity(0.06),
+                      size: 28,
                     ),
                   ),
                 ),
                 onDragStarted: () {},
                 onDragEnd: (details) {},
-                child: DragTarget<int>(
-                  onAccept: (int oldIndex) {
-                    if (oldIndex != index) {
+                child: DragTarget<Widget>(
+                  onWillAccept: (draggedCard) {
+                    if (draggedCard == null) return false;
+                    final draggedIndex = cards.indexOf(draggedCard);
+                    final targetIndex = index;
+                    if (draggedIndex != -1 && draggedIndex != targetIndex) {
                       setState(() {
-                        Widget card = cards.removeAt(oldIndex);
-                        int adjustedNewIndex = oldIndex < index
-                            ? index - 1
-                            : index;
-                        cards.insert(adjustedNewIndex, card);
+                        final card = cards.removeAt(draggedIndex);
+                        cards.insert(targetIndex, card);
+                        
+                        final type = _cardOrder.removeAt(draggedIndex);
+                        _cardOrder.insert(targetIndex, type);
                       });
                     }
+                    return true;
                   },
+                  onAccept: (draggedCard) {},
                   builder: (context, candidateData, rejectedData) {
-                    return cards[index];
+                    final bool isHovered = candidateData.isNotEmpty;
+                    return AnimatedScale(
+                      scale: isHovered ? 1.02 : 1.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutBack,
+                      child: AnimatedOpacity(
+                        opacity: isHovered ? 0.9 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: currentCard,
+                      ),
+                    );
                   },
                 ),
               ),
@@ -2916,7 +2920,7 @@ class ResponsiveBMIIndicator extends StatelessWidget {
   final double bmi;
   final double height;
 
-  const ResponsiveBMIIndicator({Key? key, required this.bmi, this.height = 32})
+  const ResponsiveBMIIndicator({Key? key, required this.bmi, this.height = 38})
     : super(key: key);
 
   @override
@@ -2931,9 +2935,10 @@ class ResponsiveBMIIndicator extends StatelessWidget {
               builder: (context, constraints) {
                 final double width = constraints.maxWidth;
                 return Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     // Background scale
-                    _buildBMIScale(width),
+                    _buildBMIScale(),
                     // BMI Indicator
                     _buildBMIIndicator(width),
                   ],
@@ -2942,70 +2947,77 @@ class ResponsiveBMIIndicator extends StatelessWidget {
             ),
           ),
           // BMI Labels
-          SizedBox(height: 4),
+          const SizedBox(height: 8),
           _buildBMILabels(),
         ],
       ),
     );
   }
 
- Widget _buildBMIScale(double totalWidth) {
-    // Define BMI ranges and their widths
-    final bmiRanges = [
-      _BMIRange(15.0, 18.5, Colors.blue), // Underweight
-      _BMIRange(18.5, 25.0, Colors.green), // Normal
-      _BMIRange(25.0, 30.0, Colors.orange), // Overweight
-      _BMIRange(30.0, 40.0, Colors.red), // Obese
-    ];
-
-    return Row(
-      children: bmiRanges.map((range) {
-        final rangeWidth = _calculateRangeWidth(range, totalWidth);
-        return Container(
-          width: rangeWidth,
-          height: 12,
-          decoration: BoxDecoration(
-            color: range.color,
-            borderRadius: _getBorderRadius(range, bmiRanges),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildBMIIndicator(double totalWidth) {
-    final double indicatorPosition = _calculateIndicatorPosition(totalWidth);
-
-    return Positioned(
-      left: indicatorPosition - 8, // Center the arrow above the position
-      child: Column(
-        children: [
-          Icon(Icons.arrow_drop_up, color: Colors.white, size: 20),
-          SizedBox(height: 2),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: _getBMIColor(bmi),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              bmi.toStringAsFixed(1),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+  Widget _buildBMIScale() {
+    return Container(
+      height: 12,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        gradient: const LinearGradient(
+          colors: [
+            Colors.blue,
+            Colors.green,
+            Colors.orange,
+            Colors.red,
+          ],
+          stops: [0.125, 0.375, 0.625, 0.875],
+        ),
       ),
     );
   }
 
- Widget _buildBMILabels() {
+  Widget _buildBMIIndicator(double totalWidth) {
+    // Piecewise non-linear mapping (exactly matching the labels and detail screen)
+    double percentage = 0.0;
+    final value = bmi;
+
+    if (value <= 15.0) {
+      percentage = 0.0;
+    } else if (value <= 18.5) {
+      percentage = 0.0 + 0.25 * (value - 15.0) / (18.5 - 15.0);
+    } else if (value <= 25.0) {
+      percentage = 0.25 + 0.25 * (value - 18.5) / (25.0 - 18.5);
+    } else if (value <= 30.0) {
+      percentage = 0.50 + 0.25 * (value - 25.0) / (30.0 - 25.0);
+    } else if (value <= 40.0) {
+      percentage = 0.75 + 0.25 * (value - 30.0) / (40.0 - 30.0);
+    } else {
+      percentage = 1.0;
+    }
+
+    final double position = percentage * totalWidth;
+
+    return Positioned(
+      left: position.clamp(0.0, totalWidth) - 2, // Center the 4px wide bar
+      top: -4,
+      child: Container(
+        width: 4,
+        height: 20,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBMILabels() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
+      children: const [
         Text("15", style: TextStyle(color: Colors.white70, fontSize: 10)),
         Text("18.5", style: TextStyle(color: Colors.white70, fontSize: 10)),
         Text("25", style: TextStyle(color: Colors.white70, fontSize: 10)),
@@ -3014,49 +3026,10 @@ class ResponsiveBMIIndicator extends StatelessWidget {
       ],
     );
   }
-
-  double _calculateRangeWidth(_BMIRange range, double totalWidth) {
-    final totalRange = 40.0 - 15.0; // 15 to 40+
-    final rangeSize = range.end - range.start;
-    return (rangeSize / totalRange) * totalWidth;
-  }
-
-  double _calculateIndicatorPosition(double totalWidth) {
-    final double clampedBMI = bmi.clamp(15.0, 40.0);
-    final double totalRange = 40.0 - 15.0;
-    final double percentage = (clampedBMI - 15.0) / totalRange;
-    return percentage * totalWidth;
-  }
-
-  BorderRadius _getBorderRadius(_BMIRange range, List<_BMIRange> allRanges) {
-    final isFirst = range == allRanges.first;
-    final isLast = range == allRanges.last;
-
-    return BorderRadius.horizontal(
-      left: isFirst ? Radius.circular(6) : Radius.circular(0),
-      right: isLast ? Radius.circular(6) : Radius.circular(0),
-    );
-  }
-
-  Color _getBMIColor(double bmi) {
-    if (bmi < 18.5) return Colors.blue;
-    if (bmi < 25) return Colors.green;
-    if (bmi < 30) return Colors.orange;
-    return Colors.red;
-  }
 }
-
-class _BMIRange {
-  final double start;
-  final double end;
-  final Color color;
-
-  _BMIRange(this.start, this.end, this.color);
-}
-
 class _BMICard extends StatelessWidget {
   final double bmi;
- final VoidCallback onDataSaved; // ADD THIS
+  final VoidCallback onDataSaved;
   const _BMICard({required this.bmi, required this.onDataSaved});
 
   @override
@@ -3068,45 +3041,67 @@ class _BMICard extends StatelessWidget {
           MaterialPageRoute(
             builder: (context) => DetailScreen(
               title: "BMI",
-              onDataSaved: onDataSaved, // PASS THE CALLBACK
+              onDataSaved: onDataSaved,
             ),
           ),
         );
       },
-      child: Card(
-        color: const Color(0xFF191919),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.of(context).cardGradient,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.of(context).cardBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.of(context).shadow,
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center, // Center align for premium symmetrical look
             children: [
-              Icon(Icons.monitor_heart, color: Colors.orange, size: 28),
-              const SizedBox(height: 10),
-              Text(
-                "BMI",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.monitor_heart,
+                  color: Colors.green,
+                  size: 22,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                bmi.toStringAsFixed(1),
-                style: const TextStyle(
+              const SizedBox(height: 10),
+              const Text(
+                "BMI",
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 24,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                bmi.toStringAsFixed(1),
+                style: TextStyle(
+                  color: _getBMIColor(bmi), // Colored value matching category color
+                  fontWeight: FontWeight.w900,
+                  fontSize: 32,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
-                _getBMICategory(bmi),
-                style: TextStyle(
-                  color: _getBMIColor(bmi),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                "${_getBMICategory(bmi)} • Goal 22", // Clean category with target
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
               const Spacer(),
@@ -3119,7 +3114,7 @@ class _BMICard extends StatelessWidget {
     );
   }
 
- String _getBMICategory(double bmi) {
+  String _getBMICategory(double bmi) {
     if (bmi <= 0) return "Check data";
     if (bmi < 18.5) return "Underweight";
     if (bmi < 25) return "Normal";
@@ -3303,10 +3298,32 @@ class LineChartPainter extends CustomPainter {
       return;
     }
 
-    final paint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final Color themeColor = Colors.blue;
+
+    // Draw subtle horizontal dashed grid lines (3 rails)
+    final gridPaint = Paint()
+      ..color = Colors.white.withOpacity(0.04)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    
+    const double dashWidth = 4;
+    const double dashSpace = 4;
+    
+    void drawDashedLine(double y) {
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          gridPaint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+    }
+    
+    drawDashedLine(size.height * 0.15);
+    drawDashedLine(size.height * 0.5);
+    drawDashedLine(size.height * 0.85);
 
     // Calculate max value for scaling - SAFE PARSING
     double maxValue = 1.0; // Default to 1 to avoid division by zero
@@ -3326,37 +3343,105 @@ class LineChartPainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // Draw line
-    if (points.length > 1) {
-      for (int i = 0; i < points.length - 1; i++) {
-        canvas.drawLine(points[i], points[i + 1], paint);
+    if (points.length == 1) {
+      // Draw centered glow dot with full width dashed baseline projection
+      final x = size.width / 2;
+      final y = size.height / 2;
+      final centerPoint = Offset(x, y);
+      
+      final baselinePaint = Paint()
+        ..color = themeColor.withOpacity(0.15)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+        
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          baselinePaint,
+        );
+        startX += dashWidth + dashSpace;
       }
-    }
-
-    // Draw points
-    for (int i = 0; i < points.length; i++) {
-      Offset point = points[i];
-
-      // Draw point
-      canvas.drawCircle(point, 4, paint);
-      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
-    }
-
-    // Draw area under curve
-    if (points.length > 1) {
+      
       final gradient = LinearGradient(
-        colors: [Colors.blue.withOpacity(0.4), Colors.blue.withOpacity(0.1)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [themeColor.withOpacity(0.08), themeColor.withOpacity(0.01)],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-      Path path = Path();
-      path.moveTo(points[0].dx, points[0].dy);
-      for (int i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
-      }
-      path.lineTo(points.last.dx, size.height);
-      path.lineTo(points.first.dx, size.height);
-      path.close();
+      
+      final path = Path()
+        ..moveTo(0, y)
+        ..lineTo(size.width, y)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
       canvas.drawPath(path, Paint()..shader = gradient);
+      
+      canvas.drawCircle(centerPoint, 8, Paint()..color = themeColor.withOpacity(0.18));
+      canvas.drawCircle(centerPoint, 5, Paint()..color = themeColor..strokeWidth = 1.5..style = PaintingStyle.stroke);
+      canvas.drawCircle(centerPoint, 2.5, Paint()..color = Colors.white);
+      return;
+    }
+
+    // Draw Bezier Line
+    final linePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      path.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    canvas.drawPath(path, linePaint);
+
+    // Draw area under curve with a premium gradient fade
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [themeColor.withOpacity(0.24), themeColor.withOpacity(0.01)],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final fillPath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      fillPath.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    fillPath.lineTo(points.last.dx, size.height);
+    fillPath.lineTo(points.first.dx, size.height);
+    fillPath.close();
+    canvas.drawPath(fillPath, Paint()..shader = gradient);
+
+    // Draw glowing data points
+    final pointGlowPaint = Paint()..color = themeColor.withOpacity(0.18);
+    final pointStrokePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final pointCorePaint = Paint()..color = Colors.white;
+
+    for (int i = 0; i < points.length; i++) {
+      final point = points[i];
+      canvas.drawCircle(point, 8, pointGlowPaint);
+      canvas.drawCircle(point, 5, pointStrokePaint);
+      canvas.drawCircle(point, 2.5, pointCorePaint);
     }
   }
 
@@ -3395,10 +3480,32 @@ class WeightLineChartPainter extends CustomPainter {
       return;
     }
 
-    final paint = Paint()
-      ..color = Colors.green
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final Color themeColor = Colors.green;
+
+    // Draw subtle horizontal dashed grid lines (3 rails)
+    final gridPaint = Paint()
+      ..color = Colors.white.withOpacity(0.04)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    
+    const double dashWidth = 4;
+    const double dashSpace = 4;
+    
+    void drawDashedLine(double y) {
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          gridPaint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+    }
+    
+    drawDashedLine(size.height * 0.15);
+    drawDashedLine(size.height * 0.5);
+    drawDashedLine(size.height * 0.85);
 
     // Calculate max value for scaling - SAFE PARSING
     double maxValue = 1.0; // Default to 1 to avoid division by zero
@@ -3418,37 +3525,105 @@ class WeightLineChartPainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // Draw line
-    if (points.length > 1) {
-      for (int i = 0; i < points.length - 1; i++) {
-        canvas.drawLine(points[i], points[i + 1], paint);
+    if (points.length == 1) {
+      // Draw centered glow dot with full width dashed baseline projection
+      final x = size.width / 2;
+      final y = size.height / 2;
+      final centerPoint = Offset(x, y);
+      
+      final baselinePaint = Paint()
+        ..color = themeColor.withOpacity(0.15)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+        
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          baselinePaint,
+        );
+        startX += dashWidth + dashSpace;
       }
-    }
-
-    // Draw points
-    for (int i = 0; i < points.length; i++) {
-      Offset point = points[i];
-
-      // Draw point
-      canvas.drawCircle(point, 4, paint);
-      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
-    }
-
-    // Draw area under curve
-    if (points.length > 1) {
+      
       final gradient = LinearGradient(
-        colors: [Colors.green.withOpacity(0.4), Colors.green.withOpacity(0.1)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [themeColor.withOpacity(0.08), themeColor.withOpacity(0.01)],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-      Path path = Path();
-      path.moveTo(points[0].dx, points[0].dy);
-      for (int i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
-      }
-      path.lineTo(points.last.dx, size.height);
-      path.lineTo(points.first.dx, size.height);
-      path.close();
+      
+      final path = Path()
+        ..moveTo(0, y)
+        ..lineTo(size.width, y)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
       canvas.drawPath(path, Paint()..shader = gradient);
+      
+      canvas.drawCircle(centerPoint, 8, Paint()..color = themeColor.withOpacity(0.18));
+      canvas.drawCircle(centerPoint, 5, Paint()..color = themeColor..strokeWidth = 1.5..style = PaintingStyle.stroke);
+      canvas.drawCircle(centerPoint, 2.5, Paint()..color = Colors.white);
+      return;
+    }
+
+    // Draw Bezier Line
+    final linePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      path.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    canvas.drawPath(path, linePaint);
+
+    // Draw area under curve with a premium gradient fade
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [themeColor.withOpacity(0.24), themeColor.withOpacity(0.01)],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final fillPath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      fillPath.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    fillPath.lineTo(points.last.dx, size.height);
+    fillPath.lineTo(points.first.dx, size.height);
+    fillPath.close();
+    canvas.drawPath(fillPath, Paint()..shader = gradient);
+
+    // Draw glowing data points
+    final pointGlowPaint = Paint()..color = themeColor.withOpacity(0.18);
+    final pointStrokePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final pointCorePaint = Paint()..color = Colors.white;
+
+    for (int i = 0; i < points.length; i++) {
+      final point = points[i];
+      canvas.drawCircle(point, 8, pointGlowPaint);
+      canvas.drawCircle(point, 5, pointStrokePaint);
+      canvas.drawCircle(point, 2.5, pointCorePaint);
     }
   }
 
@@ -3488,10 +3663,32 @@ class SleepGraphPainter extends CustomPainter {
       return;
     }
 
-    final paint = Paint()
-      ..color = Colors.purple
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final Color themeColor = Colors.purple;
+
+    // Draw subtle horizontal dashed grid lines (3 rails)
+    final gridPaint = Paint()
+      ..color = Colors.white.withOpacity(0.04)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    
+    const double dashWidth = 4;
+    const double dashSpace = 4;
+    
+    void drawDashedLine(double y) {
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          gridPaint,
+        );
+        startX += dashWidth + dashSpace;
+      }
+    }
+    
+    drawDashedLine(size.height * 0.15);
+    drawDashedLine(size.height * 0.5);
+    drawDashedLine(size.height * 0.85);
 
     // Calculate max value for scaling - SAFE PARSING
     double maxValue = 1.0; // Default to 1 to avoid division by zero
@@ -3511,37 +3708,105 @@ class SleepGraphPainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // Draw line
-    if (points.length > 1) {
-      for (int i = 0; i < points.length - 1; i++) {
-        canvas.drawLine(points[i], points[i + 1], paint);
+    if (points.length == 1) {
+      // Draw centered glow dot with full width dashed baseline projection
+      final x = size.width / 2;
+      final y = size.height / 2;
+      final centerPoint = Offset(x, y);
+      
+      final baselinePaint = Paint()
+        ..color = themeColor.withOpacity(0.15)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+        
+      double startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          baselinePaint,
+        );
+        startX += dashWidth + dashSpace;
       }
-    }
-
-    // Draw points
-    for (int i = 0; i < points.length; i++) {
-      Offset point = points[i];
-
-      // Draw point
-      canvas.drawCircle(point, 4, paint);
-      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
-    }
-
-    // Draw area under curve
-    if (points.length > 1) {
+      
       final gradient = LinearGradient(
-        colors: [Colors.purple.withOpacity(0.4), Colors.purple.withOpacity(0.1)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [themeColor.withOpacity(0.08), themeColor.withOpacity(0.01)],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-      Path path = Path();
-      path.moveTo(points[0].dx, points[0].dy);
-      for (int i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
-      }
-      path.lineTo(points.last.dx, size.height);
-      path.lineTo(points.first.dx, size.height);
-      path.close();
+      
+      final path = Path()
+        ..moveTo(0, y)
+        ..lineTo(size.width, y)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
       canvas.drawPath(path, Paint()..shader = gradient);
+      
+      canvas.drawCircle(centerPoint, 8, Paint()..color = themeColor.withOpacity(0.18));
+      canvas.drawCircle(centerPoint, 5, Paint()..color = themeColor..strokeWidth = 1.5..style = PaintingStyle.stroke);
+      canvas.drawCircle(centerPoint, 2.5, Paint()..color = Colors.white);
+      return;
+    }
+
+    // Draw Bezier Line
+    final linePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      path.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    canvas.drawPath(path, linePaint);
+
+    // Draw area under curve with a premium gradient fade
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [themeColor.withOpacity(0.24), themeColor.withOpacity(0.01)],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final fillPath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      fillPath.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    fillPath.lineTo(points.last.dx, size.height);
+    fillPath.lineTo(points.first.dx, size.height);
+    fillPath.close();
+    canvas.drawPath(fillPath, Paint()..shader = gradient);
+
+    // Draw glowing data points
+    final pointGlowPaint = Paint()..color = themeColor.withOpacity(0.18);
+    final pointStrokePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final pointCorePaint = Paint()..color = Colors.white;
+
+    for (int i = 0; i < points.length; i++) {
+      final point = points[i];
+      canvas.drawCircle(point, 8, pointGlowPaint);
+      canvas.drawCircle(point, 5, pointStrokePaint);
+      canvas.drawCircle(point, 2.5, pointCorePaint);
     }
   }
 

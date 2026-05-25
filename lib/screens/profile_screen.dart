@@ -8,6 +8,7 @@ import 'admin_login_screen.dart';
 import 'permissions_screen.dart';
 import '../widgets/web_auth_shell.dart';
 import '../theme/app_colors.dart';
+import '../widgets/premium_back_button.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -617,18 +618,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> with WidgetsBindingOb
                 padding: const EdgeInsets.only(left: 16, top: 16),
                 child: Align(
                   alignment: Alignment.topLeft,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.cardAlt,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.cardBorder),
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-                      onPressed: _isLoading
-                          ? null
-                          : _handleBackNavigation,
-                    ),
+                  child: PremiumBackButton(
+                    iconColor: colors.textPrimary,
+                    onPressed: _isLoading ? null : _handleBackNavigation,
                   ),
                 ),
               ),

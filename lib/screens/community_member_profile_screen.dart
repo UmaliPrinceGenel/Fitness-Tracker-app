@@ -523,60 +523,90 @@ class _CommunityMemberProfileScreenState
     final bmiColor = _bmiColor(data.bmi);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _border),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.05),
+            Colors.white.withOpacity(0.02),
+            Colors.black.withOpacity(0.4),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 25,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked = constraints.maxWidth < 620;
-          const avatarSize = 84.0;
+          const avatarSize = 90.0;
 
           final bmiBadge = Container(
-            width: stacked ? double.infinity : 148,
-            margin: EdgeInsets.only(top: stacked ? 18 : 0),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            width: stacked ? double.infinity : 154,
+            margin: EdgeInsets.only(top: stacked ? 20 : 0),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
-              color: bmiColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: bmiColor.withOpacity(0.28)),
+              gradient: LinearGradient(
+                colors: [
+                  bmiColor.withOpacity(0.15),
+                  bmiColor.withOpacity(0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: bmiColor.withOpacity(0.3), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: bmiColor.withOpacity(0.08),
+                  blurRadius: 12,
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Text(
-                  'Current BMI',
+                  'CURRENT BMI',
                   style: TextStyle(
                     color: Colors.white60,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   data.bmi > 0 ? data.bmi.toStringAsFixed(1) : '--',
                   style: TextStyle(
                     color: bmiColor,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _bmiLabel(data.bmi),
-                  style: TextStyle(
-                    color: bmiColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: bmiColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _bmiLabel(data.bmi).toUpperCase(),
+                    style: TextStyle(
+                      color: bmiColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ],
@@ -592,47 +622,59 @@ class _CommunityMemberProfileScreenState
                   height: avatarSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.15), width: 3),
-                    color: Colors.grey[850],
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.15),
-                        blurRadius: 24,
-                        spreadRadius: 4,
+                        color: const Color(0xFFFF5200).withOpacity(0.25),
+                        blurRadius: 20,
+                        spreadRadius: 2,
                       ),
                     ],
                   ),
-                  child: ClipOval(
-                    child: data.profileImageUrl != null
-                        ? Image.network(
-                            data.profileImageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 36,
-                              );
-                            },
-                          )
-                        : const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 36,
-                          ),
+                  padding: const EdgeInsets.all(3),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black,
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: ClipOval(
+                      child: data.profileImageUrl != null
+                          ? Image.network(
+                              data.profileImageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.person_rounded,
+                                  color: Colors.white,
+                                  size: 40,
+                                );
+                              },
+                            )
+                          : const Icon(
+                              Icons.person_rounded,
+                              color: Colors.white,
+                              size: 40,
+                            ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Text(
                   data.displayName,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Wrap(
                   alignment: WrapAlignment.center,
                   spacing: 8,
@@ -640,27 +682,31 @@ class _CommunityMemberProfileScreenState
                   children: [
                     _buildMetaChip(
                       icon: Icons.groups_rounded,
-                      label: 'Community member',
+                      label: 'Community Member',
+                      accentColor: Colors.orange,
                     ),
                     if ((data.gender ?? '').isNotEmpty)
                       _buildMetaChip(
-                        icon: Icons.badge_outlined,
+                        icon: Icons.face_rounded,
                         label: data.gender!,
+                        accentColor: const Color(0xFF3EA6FF),
                       ),
                     if (data.age != null)
                       _buildMetaChip(
-                        icon: Icons.cake_outlined,
+                        icon: Icons.cake_rounded,
                         label: '${data.age} yrs',
+                        accentColor: const Color(0xFFFF6B6B),
                       ),
                   ],
                 ),
+                const SizedBox(height: 8),
                 bmiBadge,
               ],
             );
           }
 
           return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Row(
@@ -671,67 +717,83 @@ class _CommunityMemberProfileScreenState
                       height: avatarSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.15), width: 3),
-                        color: Colors.grey[850],
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.orange.withOpacity(0.15),
-                            blurRadius: 24,
-                            spreadRadius: 4,
+                            color: const Color(0xFFFF5200).withOpacity(0.25),
+                            blurRadius: 20,
+                            spreadRadius: 2,
                           ),
                         ],
                       ),
-                      child: ClipOval(
-                        child: data.profileImageUrl != null
-                            ? Image.network(
-                                data.profileImageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 36,
-                                  );
-                                },
-                              )
-                            : const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 36,
-                              ),
+                      padding: const EdgeInsets.all(3),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black,
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: ClipOval(
+                          child: data.profileImageUrl != null
+                              ? Image.network(
+                                  data.profileImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.person_rounded,
+                                      color: Colors.white,
+                                      size: 40,
+                                    );
+                                  },
+                                )
+                              : const Icon(
+                                  Icons.person_rounded,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 20),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             data.displayName,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: [
                               _buildMetaChip(
                                 icon: Icons.groups_rounded,
-                                label: 'Community member',
+                                label: 'Community Member',
+                                accentColor: Colors.orange,
                               ),
                               if ((data.gender ?? '').isNotEmpty)
                                 _buildMetaChip(
-                                  icon: Icons.badge_outlined,
+                                  icon: Icons.face_rounded,
                                   label: data.gender!,
+                                  accentColor: const Color(0xFF3EA6FF),
                                 ),
                               if (data.age != null)
                                 _buildMetaChip(
-                                  icon: Icons.cake_outlined,
+                                  icon: Icons.cake_rounded,
                                   label: '${data.age} yrs',
+                                  accentColor: const Color(0xFFFF6B6B),
                                 ),
                             ],
                           ),
@@ -753,25 +815,26 @@ class _CommunityMemberProfileScreenState
   Widget _buildMetaChip({
     required IconData icon,
     required String label,
+    required Color accentColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        color: accentColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: accentColor.withOpacity(0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: Colors.white70),
-          const SizedBox(width: 7),
+          Icon(icon, size: 14, color: accentColor),
+          const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: accentColor.withOpacity(0.9),
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -786,21 +849,42 @@ class _CommunityMemberProfileScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-          ),
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF9A00), Color(0xFFFF5200)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: Colors.white60,
-            fontSize: 13,
-            height: 1.4,
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.only(left: 14),
+          child: Text(
+            subtitle,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 13,
+              height: 1.4,
+            ),
           ),
         ),
       ],
@@ -812,26 +896,26 @@ class _CommunityMemberProfileScreenState
       _StatCardData(
         label: 'Weight',
         value: _formatMetric(data.weight, 'kg'),
-        icon: Icons.monitor_weight,
+        icon: Icons.monitor_weight_rounded,
         accent: const Color(0xFF63D471),
       ),
       _StatCardData(
         label: 'Height',
         value: _formatMetric(data.height, 'cm'),
-        icon: Icons.height,
+        icon: Icons.height_rounded,
         accent: const Color(0xFF4FC3F7),
       ),
       _StatCardData(
         label: 'BMI',
         value: data.bmi > 0 ? data.bmi.toStringAsFixed(1) : '--',
         sublabel: _bmiLabel(data.bmi),
-        icon: Icons.monitor_heart_outlined,
+        icon: Icons.favorite_rounded,
         accent: _bmiColor(data.bmi),
       ),
       _StatCardData(
         label: 'Waist',
         value: _formatMetric(data.waistMeasurement, 'cm'),
-        icon: Icons.straighten,
+        icon: Icons.straighten_rounded,
         accent: const Color(0xFF3EA6FF),
       ),
       _StatCardData(
@@ -876,11 +960,25 @@ class _CommunityMemberProfileScreenState
   }) {
     return Container(
       constraints: BoxConstraints(minHeight: compact ? 132 : 144),
-      padding: EdgeInsets.all(compact ? 14 : 16),
+      padding: EdgeInsets.all(compact ? 16 : 18),
       decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _border),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.04),
+            Colors.white.withOpacity(0.01),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -889,8 +987,9 @@ class _CommunityMemberProfileScreenState
           Container(
             padding: EdgeInsets.all(compact ? 9 : 10),
             decoration: BoxDecoration(
-              color: item.accent.withOpacity(0.14),
-              borderRadius: BorderRadius.circular(12),
+              color: item.accent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: item.accent.withOpacity(0.2), width: 1),
             ),
             child: Icon(
               item.icon,
@@ -898,13 +997,14 @@ class _CommunityMemberProfileScreenState
               size: compact ? 18 : 20,
             ),
           ),
-          SizedBox(height: compact ? 18 : 24),
+          SizedBox(height: compact ? 20 : 26),
           Text(
-            item.label,
+            item.label.toUpperCase(),
             style: TextStyle(
-              color: Colors.white60,
-              fontSize: compact ? 11 : 12,
-              fontWeight: FontWeight.w600,
+              color: Colors.white38,
+              fontSize: compact ? 9 : 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 6),
@@ -914,8 +1014,8 @@ class _CommunityMemberProfileScreenState
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white,
-              fontSize: compact ? 20 : 22,
-              fontWeight: FontWeight.w800,
+              fontSize: compact ? 22 : 24,
+              fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 4),
@@ -929,7 +1029,7 @@ class _CommunityMemberProfileScreenState
                     style: TextStyle(
                       color: item.accent,
                       fontSize: compact ? 11 : 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -944,7 +1044,7 @@ class _CommunityMemberProfileScreenState
       _SummaryCardData(
         label: 'Completed',
         value: '${data.workoutRuns.length}',
-        icon: Icons.task_alt,
+        icon: Icons.task_alt_rounded,
         accent: const Color(0xFF63D471),
       ),
       _SummaryCardData(
@@ -962,7 +1062,7 @@ class _CommunityMemberProfileScreenState
       _SummaryCardData(
         label: 'Total Calories',
         value: '${data.totalCalories}',
-        icon: Icons.local_fire_department,
+        icon: Icons.local_fire_department_rounded,
         accent: const Color(0xFFFF6B57),
       ),
     ];
@@ -982,33 +1082,49 @@ class _CommunityMemberProfileScreenState
                 (item) => SizedBox(
                   width: cardWidth,
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                     decoration: BoxDecoration(
-                      color: _surface,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _border),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.04),
+                          Colors.white.withOpacity(0.01),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: Colors.white.withOpacity(0.06)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: item.accent.withOpacity(0.14),
-                            borderRadius: BorderRadius.circular(12),
+                            color: item.accent.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: item.accent.withOpacity(0.2), width: 1),
                           ),
                           child: Icon(item.icon, color: item.accent, size: 20),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item.label,
+                                item.label.toUpperCase(),
                                 style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white38,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -1017,7 +1133,7 @@ class _CommunityMemberProfileScreenState
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
                             ],

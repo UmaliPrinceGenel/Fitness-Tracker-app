@@ -11,6 +11,8 @@ import 'admin_users_screen.dart';
 import 'admin_custom_workout_screen.dart';
 import 'community_member_profile_screen.dart';
 import 'login_screen.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
+import 'dart:ui' as ui;
 
 class AdminFeedbackScreen extends StatefulWidget {
   const AdminFeedbackScreen({super.key});
@@ -245,40 +247,111 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     );
   }
 
-  Widget _buildStatChip(String label, String value, Color color) {
+  Widget _buildStatChip(String label, String value, Color color, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      height: 84,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.26)),
-      ),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.12),
+            color.withOpacity(0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon ?? Icons.analytics_outlined, color: color, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatusPill(String label, Color color) {
+  Widget _buildStatsGrid(List<Widget> cards) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 420 ? 3 : width >= 280 ? 2 : 1;
+        const spacing = 8.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: cards.map((card) => SizedBox(width: cardWidth, child: card)).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusPill(String label, Color color, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color.withOpacity(0.8)),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withOpacity(0.9),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -289,30 +362,43 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withOpacity(0.28)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: color.withOpacity(0.15),
+        highlightColor: color.withOpacity(0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.12),
+                color.withOpacity(0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -372,28 +458,61 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF111111),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white10),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.06),
+            Colors.white.withOpacity(0.015),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Rating Overview',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rating Overview',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Average stars and how ratings are distributed from 1 to 5.',
+          const SizedBox(height: 4),
+          Text(
+            'Distribution of ${_feedback.length} ratings from 1 to 5 stars',
             style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              height: 1.45,
+              color: Colors.white.withOpacity(0.45),
+              fontSize: 12,
             ),
           ),
           const SizedBox(height: 18),
@@ -401,17 +520,24 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
             builder: (context, constraints) {
               final isSmallScreen = constraints.maxWidth < 500;
               return Wrap(
-                spacing: 18,
-                runSpacing: 18,
+                spacing: 14,
+                runSpacing: 14,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Container(
                     width: isSmallScreen ? double.infinity : 140,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.03),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white10),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.amber.withOpacity(0.08),
+                          Colors.amber.withOpacity(0.02),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.amber.withOpacity(0.12)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,9 +546,10 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                           _averageRating.toStringAsFixed(1),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
                             height: 1,
+                            letterSpacing: -1,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -430,8 +557,8 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '${_feedback.length} ratings',
-                          style: const TextStyle(
-                            color: Colors.white60,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -567,28 +694,38 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+  Widget _buildSectionHeader(String title, String subtitle, {int count = 0}) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 13,
-            height: 1.4,
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -599,102 +736,215 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
         ? item['email'].toString()
         : 'No email provided';
     final isReviewed = item['isReviewed'] == true;
+    final rating = (item['rating'] as int?) ?? 0;
+    final displayName = item['displayName']?.toString() ?? 'User';
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.06),
+            Colors.white.withOpacity(0.015),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(
+          color: !isReviewed
+              ? const Color(0xFFFF7317).withOpacity(0.12)
+              : Colors.white.withOpacity(0.07),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.amber.withOpacity(0.14),
-                backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
-                child: hasPhoto
-                    ? null
-                    : const Icon(Icons.person, color: Colors.amber),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['displayName']?.toString() ?? 'User',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: isReviewed
+                          ? [const Color(0xFF4ADE80), const Color(0xFF22C55E)]
+                          : [const Color(0xFFFF7317), const Color(0xFFFF9E59)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      email,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildStatusPill(
-                          isReviewed ? 'Reviewed' : 'Needs Review',
-                          isReviewed ? Colors.green : Colors.orange,
-                        ),
-                        _buildStatusPill(
-                          _formatTimestamp(item['createdAt']),
-                          Colors.blueGrey,
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+                    child: hasPhoto
+                        ? null
+                        : Text(
+                            displayName[0].toUpperCase(),
+                            style: TextStyle(
+                              color: isReviewed ? const Color(0xFF4ADE80) : const Color(0xFFFF7317),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _buildRatingRow(item['rating'] as int),
-          const SizedBox(height: 12),
-          Text(
-            item['comment']?.toString().isNotEmpty == true
-                ? item['comment'].toString()
-                : 'No comment provided.',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              height: 1.45,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              displayName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStatusPill(
+                            isReviewed ? 'REVIEWED' : 'PENDING',
+                            isReviewed ? const Color(0xFF4ADE80) : const Color(0xFFFF7317),
+                            icon: isReviewed ? Icons.check_circle_outline : Icons.schedule,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.mail_outline, size: 11, color: Colors.white.withOpacity(0.35)),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              email,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 11,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 11, color: Colors.white.withOpacity(0.35)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatTimestamp(item['createdAt']),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              if (!isReviewed)
-                _buildActionChip(
-                  label: 'Mark Reviewed',
-                  icon: Icons.task_alt,
-                  color: Colors.green,
-                  onTap: () => _toggleFeedbackReviewed(item),
+          // Rating + Comment
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                _buildRatingRow(rating),
+                const SizedBox(width: 8),
+                Text(
+                  '$rating/5',
+                  style: TextStyle(
+                    color: Colors.amber.withOpacity(0.7),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              if ((item['userId']?.toString().isNotEmpty ?? false))
-                _buildActionChip(
-                  label: 'View Profile',
-                  icon: Icons.person_outline,
-                  color: Colors.blue,
-                  onTap: () => _openUserProfile(item),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.04)),
+              ),
+              child: Text(
+                item['comment']?.toString().isNotEmpty == true
+                    ? item['comment'].toString()
+                    : 'No comment provided.',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.65),
+                  fontSize: 13,
+                  height: 1.5,
+                  fontStyle: item['comment']?.toString().isNotEmpty == true
+                      ? FontStyle.normal
+                      : FontStyle.italic,
                 ),
-            ],
+              ),
+            ),
+          ),
+          // Action bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.02),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.05)),
+              ),
+            ),
+            child: Row(
+              children: [
+                if (!isReviewed)
+                  Expanded(
+                    child: _buildActionChip(
+                      label: 'Mark Reviewed',
+                      icon: Icons.task_alt,
+                      color: const Color(0xFF4ADE80),
+                      onTap: () => _toggleFeedbackReviewed(item),
+                    ),
+                  ),
+                if (!isReviewed && (item['userId']?.toString().isNotEmpty ?? false))
+                  const SizedBox(width: 8),
+                if ((item['userId']?.toString().isNotEmpty ?? false))
+                  Expanded(
+                    child: _buildActionChip(
+                      label: 'View Profile',
+                      icon: Icons.person_outline,
+                      color: const Color(0xFF4DA6FF),
+                      onTap: () => _openUserProfile(item),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1079,200 +1329,321 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
     }
     
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Admin Feedback',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+        bottom: false,
+        child: Stack(
+          children: [
+            // Atmospheric glowing backdrops
+            Positioned(
+              top: -140,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF7317).withOpacity(0.07),
                 ),
-              )
-            : RefreshIndicator(
-                onRefresh: () => _loadFeedback(showLoader: false),
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF111111),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white10),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 350,
+              left: -150,
+              child: Container(
+                width: 260,
+                height: 260,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.amber.withOpacity(0.04),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 60,
+              right: -80,
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.green.withOpacity(0.04),
+                ),
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+
+            _isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7317)),
+                            strokeWidth: 3,
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Feedback Inbox',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Review ratings and comments submitted by users from their profile screen.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                                height: 1.5,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading feedback...',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    color: const Color(0xFFFF7317),
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    onRefresh: () => _loadFeedback(showLoader: false),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Premium Header
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildStatChip(
-                                  'Total',
-                                  _feedback.length.toString(),
-                                  Colors.amber,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF7317).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFFF7317).withOpacity(0.2)),
+                                  ),
+                                  child: const Text(
+                                    'RATINGS & REVIEWS',
+                                    style: TextStyle(
+                                      color: Color(0xFFFF7317),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.8,
+                                    ),
+                                  ),
                                 ),
-                                _buildStatChip(
-                                  'Pending',
-                                  _unreviewedCount.toString(),
-                                  Colors.orange,
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Feedback',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -1.0,
+                                  ),
                                 ),
-                                _buildStatChip(
-                                  'Reviewed',
-                                  _reviewedCount.toString(),
-                                  Colors.green,
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Review user ratings, comments & app feedback',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.45),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                  ),
                                 ),
                               ],
                             ),
+                          ),
+
+                          // Search Bar
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.06),
+                                  Colors.white.withOpacity(0.025),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withOpacity(0.07)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              onChanged: _applySearchFilter,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: InputDecoration(
+                                hintText: 'Search feedback by name or comment...',
+                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                prefixIcon: ShaderMask(
+                                  shaderCallback: (bounds) => const LinearGradient(
+                                    colors: [Color(0xFFFF7317), Color(0xFFFF9E59)],
+                                  ).createShader(bounds),
+                                  child: const Icon(Icons.search, color: Colors.white, size: 22),
+                                ),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(Icons.clear, color: Colors.white.withOpacity(0.4), size: 18),
+                                        onPressed: () => _applySearchFilter(''),
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Stats Row
+                          _buildStatsGrid([
+                            _buildStatChip(
+                              'Total',
+                              _feedback.length.toString(),
+                              const Color(0xFF4DA6FF),
+                              icon: Icons.inbox_outlined,
+                            ),
+                            _buildStatChip(
+                              'Pending',
+                              _unreviewedCount.toString(),
+                              const Color(0xFFFF7317),
+                              icon: Icons.pending_outlined,
+                            ),
+                            _buildStatChip(
+                              'Reviewed',
+                              _reviewedCount.toString(),
+                              const Color(0xFF4ADE80),
+                              icon: Icons.check_circle_outline,
+                            ),
+                          ]),
+                          const SizedBox(height: 16),
+
+                          _buildRatingInsightsCard(),
+                          const SizedBox(height: 22),
+
+                          if (_feedback.isEmpty)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 48),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.04),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.rate_review_outlined,
+                                        size: 40,
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No feedback yet',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.5),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'User submissions will appear here',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.3),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else ...[
+                            _buildSectionHeader(
+                              'New Feedback',
+                              'Unreviewed feedback.',
+                              count: _newFeedback.length,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_newFeedback.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text(
+                                    'All caught up! No new feedback.',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.4),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._newFeedback.map(
+                                (item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildFeedbackCard(item),
+                                ),
+                              ),
+                            const SizedBox(height: 18),
+                            _buildSectionHeader(
+                              'Reviewed',
+                              'Previously reviewed.',
+                              count: _reviewedFeedback.length,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_reviewedFeedback.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text(
+                                    'No reviewed feedback yet.',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.4),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              ..._reviewedFeedback.map(
+                                (item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildFeedbackCard(item),
+                                ),
+                              ),
                           ],
-                        ),
+                          const SizedBox(height: 100),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      _buildRatingInsightsCard(),
-                      const SizedBox(height: 20),
-                      if (_feedback.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF191919),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white10),
-                          ),
-                          child: const Text(
-                            'No feedback has been submitted yet.',
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
-                          ),
-                        )
-                      else ...[
-                        _buildSectionHeader(
-                          'New Feedback',
-                          'Newest feedback always stays at the top until it is reviewed.',
-                        ),
-                        const SizedBox(height: 14),
-                        if (_newFeedback.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: const Text(
-                              'No new feedback waiting for review.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          )
-                        else
-                          ..._newFeedback.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildFeedbackCard(item),
-                            ),
-                          ),
-                        const SizedBox(height: 16),
-                        _buildSectionHeader(
-                          'Reviewed Feedback',
-                          'Previously checked feedback stays here as your history.',
-                        ),
-                        const SizedBox(height: 14),
-                        if (_reviewedFeedback.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF191919),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: const Text(
-                              'No reviewed feedback yet.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          )
-                        else
-                          ..._reviewedFeedback.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildFeedbackCard(item),
-                            ),
-                          ),
-                      ],
-                    ],
+                    ),
                   ),
-                ),
-              ),
+          ],
+        ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AdminBottomNavBar(
         currentIndex: 3,
         onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F0F0F),
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.white54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Overview',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            activeIcon: Icon(Icons.rate_review),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Workout',
-          ),
-        ],
       ),
     );
   }

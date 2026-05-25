@@ -9,6 +9,7 @@ class AppTheme {
       iconTheme: IconThemeData(color: Colors.white),
       titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
       elevation: 0,
+      surfaceTintColor: Colors.transparent,
     ),
     colorScheme: const ColorScheme.dark(
       background: Colors.black,
@@ -31,6 +32,7 @@ class AppTheme {
       iconTheme: IconThemeData(color: Colors.black),
       titleTextStyle: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
       elevation: 0,
+      surfaceTintColor: Colors.transparent,
     ),
     colorScheme: const ColorScheme.light(
       background: Color(0xFFF5F5F7),

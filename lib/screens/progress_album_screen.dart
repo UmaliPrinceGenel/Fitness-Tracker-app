@@ -8,6 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart' as fbAuth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'photo_editing_screen.dart';
+import 'dart:ui' as ui;
+import '../widgets/premium_dialog.dart';
 
 class ProgressAlbumScreen extends StatefulWidget {
   const ProgressAlbumScreen({super.key});
@@ -560,7 +562,16 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       backgroundColor: Colors.black,
       appBar: AppBar(
         toolbarHeight: 80,
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.black.withOpacity(0.6),
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              color: Colors.transparent,
+            ),
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -571,25 +582,29 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
           "Progress Album",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
           ),
         ),
         centerTitle: true,
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF3EA6FF), Color(0xFF67C3FF)],
+                colors: [Color(0xFF3EA6FF), Color(0xFF00E5FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF3EA6FF).withOpacity(0.28),
-                  blurRadius: 10,
+                  color: const Color(0xFF3EA6FF).withOpacity(0.4),
+                  blurRadius: 12,
+                  spreadRadius: 1,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -598,14 +613,14 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
               padding: EdgeInsets.zero,
               icon: _isLoading
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Icon(Icons.add, color: Colors.white, size: 20),
+                  : const Icon(Icons.add_rounded, color: Colors.white, size: 24),
               onPressed: _isLoading ? null : _uploadProgressImage,
             ),
           ),
@@ -627,50 +642,99 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                   child: Column(
                     children: [
                       const SizedBox(height: 16),
+                      // Header banner card with premium camera badge and subtle glass border
                       Container(
                         width: double.infinity,
                         margin: EdgeInsets.symmetric(
                           horizontal: isWideWeb ? 0 : 16.0,
                         ),
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF141414),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.05),
+                              Colors.white.withOpacity(0.01),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           borderRadius: BorderRadius.circular(22),
-                          border: Border.all(color: Colors.white10),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.08),
+                            width: 1.0,
+                          ),
                         ),
-                        child: Column(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              "Track your body changes",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF3EA6FF).withOpacity(0.18),
+                                    const Color(0xFF00E5FF).withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF3EA6FF).withOpacity(0.25),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_outlined,
+                                color: Color(0xFF3EA6FF),
+                                size: 24,
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              "Recent keeps only today's uploads. Older progress photos automatically move to Old tomorrow.",
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 13,
-                                height: 1.4,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Track your body changes",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    "Recent keeps only today's uploads. Older progress photos automatically move to Old tomorrow.",
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 13,
+                                      height: 1.45,
+                                      letterSpacing: 0.05,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
+                      // Pill-shaped high-fidelity Tab Selector
                       Container(
-                        height: 52,
+                        height: 54,
                         margin: EdgeInsets.symmetric(
                           horizontal: isWideWeb ? 0 : 16.0,
                         ),
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF141414),
-                          borderRadius: BorderRadius.circular(26),
-                          border: Border.all(color: Colors.white10),
+                          color: Colors.white.withOpacity(0.02),
+                          borderRadius: BorderRadius.circular(27),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.06),
+                            width: 1.0,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -683,29 +747,43 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                                   _tabController.animateTo(0);
                                 },
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  margin: const EdgeInsets.all(4),
+                                  duration: const Duration(milliseconds: 240),
+                                  curve: Curves.easeInOut,
                                   decoration: BoxDecoration(
                                     gradient: _selectedTabIndex == 0
                                         ? const LinearGradient(
                                             colors: [
                                               Color(0xFF3EA6FF),
-                                              Color(0xFF67C3FF),
+                                              Color(0xFF00E5FF),
                                             ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
                                           )
                                         : null,
                                     color: _selectedTabIndex == 0
                                         ? null
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(22),
+                                    borderRadius: BorderRadius.circular(23),
+                                    boxShadow: _selectedTabIndex == 0
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFF3EA6FF).withOpacity(0.35),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : null,
                                   ),
-                                  child: const Center(
+                                  child: Center(
                                     child: Text(
                                       'Recent',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: _selectedTabIndex == 0
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.5),
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 15,
+                                        letterSpacing: 0.1,
                                       ),
                                     ),
                                   ),
@@ -721,29 +799,43 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                                   _tabController.animateTo(1);
                                 },
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  margin: const EdgeInsets.all(4),
+                                  duration: const Duration(milliseconds: 240),
+                                  curve: Curves.easeInOut,
                                   decoration: BoxDecoration(
                                     gradient: _selectedTabIndex == 1
                                         ? const LinearGradient(
                                             colors: [
                                               Color(0xFF3EA6FF),
-                                              Color(0xFF67C3FF),
+                                              Color(0xFF00E5FF),
                                             ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
                                           )
                                         : null,
                                     color: _selectedTabIndex == 1
                                         ? null
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(22),
+                                    borderRadius: BorderRadius.circular(23),
+                                    boxShadow: _selectedTabIndex == 1
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFF3EA6FF).withOpacity(0.35),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : null,
                                   ),
-                                  child: const Center(
+                                  child: Center(
                                     child: Text(
                                       'Old',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: _selectedTabIndex == 1
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.5),
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 15,
+                                        letterSpacing: 0.1,
                                       ),
                                     ),
                                   ),
@@ -915,13 +1007,24 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF191919),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.04),
+            Colors.white.withOpacity(0.01),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -929,27 +1032,42 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  date,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      color: const Color(0xFF3EA6FF),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
                 ),
                 PopupMenuButton<String>(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                      horizontal: 14,
+                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.blue,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.12),
+                        width: 1.0,
+                      ),
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -962,27 +1080,31 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                               ),
                             ),
                           )
-                        : const Row(
+                        : Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                "Actions",
+                                "Options",
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white.withOpacity(0.85),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Icon(
-                                Icons.arrow_drop_down,
-                                color: Colors.white,
-                                size: 18,
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.white.withOpacity(0.6),
+                                size: 16,
                               ),
                             ],
                           ),
                   ),
-                  color: Colors.grey[800],
+                  color: const Color(0xFF1C1C1E),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Colors.white10),
+                  ),
                   onSelected: (String result) {
                     if (result == 'share_community') {
                       _handleShareToCommunity(date);
@@ -994,16 +1116,28 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
                       <PopupMenuEntry<String>>[
                         PopupMenuItem<String>(
                           value: 'share_community',
-                          child: Text(
-                            'Share to Community',
-                            style: TextStyle(color: Colors.white),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.share_rounded, color: Color(0xFF3EA6FF), size: 18),
+                              SizedBox(width: 10),
+                              Text(
+                                'Share to Community',
+                                style: TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                            ],
                           ),
                         ),
                         PopupMenuItem<String>(
                           value: 'delete_day',
-                          child: Text(
-                            'Delete all images for this day',
-                            style: TextStyle(color: Colors.red[300]),
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, color: Colors.red[300], size: 18),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Delete all for today',
+                                style: TextStyle(color: Colors.red[300], fontSize: 14),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1013,9 +1147,9 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
           ),
           Padding(
             padding: const EdgeInsets.only(
-              left: 16.0,
-              right: 16.0,
-              bottom: 16.0,
+              left: 18.0,
+              right: 18.0,
+              bottom: 18.0,
             ),
             child: _buildImagesGrid(context, images, date),
           ),
@@ -1037,8 +1171,8 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
         childAspectRatio: 1,
       ),
       itemCount: imageUrls.length,
@@ -1050,56 +1184,93 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF1C1C1E),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.04),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    imageUrls[index],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Colors.blue,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        imageUrls[index],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                  : null,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Color(0xFF3EA6FF),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.error_outline_rounded,
+                            color: Colors.redAccent,
+                            size: 28,
+                          );
+                        },
+                      ),
+                      // Soft premium bottom-up vignette shade
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withOpacity(0.4),
+                                Colors.transparent,
+                                Colors.transparent,
+                              ],
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              stops: const [0.0, 0.4, 1.0],
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.error,
-                        color: Colors.red,
-                        size: 32,
-                      );
-                    },
+                      ),
+                    ],
                   ),
                 ),
               ),
               Positioned(
                 top: 6,
                 right: 6,
-                child: Material(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(999),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: () => _showDeleteDialog(date, index),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.delete_outline,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                child: GestureDetector(
+                  onTap: () => _showDeleteDialog(date, index),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF6B6B).withOpacity(0.9),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF6B6B).withOpacity(0.35),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.delete_rounded,
+                      color: Colors.white,
+                      size: 14,
                     ),
                   ),
                 ),
@@ -1115,34 +1286,24 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            "Delete Image",
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Delete Image",
+          icon: Icons.delete_forever_rounded,
+          iconColor: const Color(0xFFFF4B4B),
           content: const Text(
             "Are you sure you want to delete this image?",
-            style: TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
             ),
-            ElevatedButton(
+            PremiumConfirmButton(
+              label: "Delete",
+              gradientColors: const [Color(0xFFFF4B4B), Color(0xFFFF7B7B)],
               onPressed: () {
                 Navigator.of(context).pop();
                 _deleteProgressImage(date, index);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text(
-                "DELETE",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ],
         );
@@ -1154,34 +1315,24 @@ class _ProgressAlbumScreenState extends State<ProgressAlbumScreen>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            "Delete Day Images",
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Delete Day Images",
+          icon: Icons.delete_sweep_rounded,
+          iconColor: const Color(0xFFFF4B4B),
           content: Text(
             "Are you sure you want to delete all images uploaded on $date? This will also remove them from Supabase.",
-            style: const TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
             ),
-            ElevatedButton(
+            PremiumConfirmButton(
+              label: "Delete All",
+              gradientColors: const [Color(0xFFFF4B4B), Color(0xFFFF7B7B)],
               onPressed: () {
                 Navigator.of(context).pop();
                 _deleteAllImagesForDate(date);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text(
-                "DELETE ALL",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ],
         );

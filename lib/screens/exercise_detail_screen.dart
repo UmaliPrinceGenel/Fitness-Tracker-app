@@ -10,6 +10,8 @@ import 'package:video_player/video_player.dart';
 import '../models/workout_model.dart';
 import '../services/workout_goal_service.dart';
 import '../services/video_mapping_service.dart';
+import '../widgets/premium_dialog.dart';
+import '../widgets/premium_back_button.dart';
 
 class ExerciseTrackingDraft {
   final String weight;
@@ -434,19 +436,18 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            "Input Required",
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Text(message, style: const TextStyle(color: Colors.white70)),
+        return PremiumDialog(
+          title: "Input Required",
+          icon: Icons.error_outline_rounded,
+          iconColor: const Color(0xFFFF9800),
+          content: Text(message),
           actions: [
-            TextButton(
+            PremiumConfirmButton(
+              label: "OK",
+              gradientColors: const [Color(0xFFFF9800), Color(0xFFFF5722)],
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text("OK", style: TextStyle(color: Colors.orange)),
             ),
           ],
         );
@@ -1504,7 +1505,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return WillPopScope(
       onWillPop: _handleBackNavigation,
       child: Scaffold(
-        resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: true,
         backgroundColor: Colors.black,
         appBar: AppBar(
           backgroundColor: Colors.black,
@@ -1513,8 +1514,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               widget.isPreviewMode ||
                   widget.isReadOnlyMode ||
                   widget.exerciseNumber == 1
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ? PremiumBackButton(
                   onPressed: () async {
                     final shouldPop = await _handleBackNavigation();
                     if (shouldPop && mounted) {

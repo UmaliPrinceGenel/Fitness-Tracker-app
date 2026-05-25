@@ -9,7 +9,9 @@ import '../screens/admin_dashboard_screen.dart';
 import '../screens/health_dashboard.dart';
 import '../screens/permissions_screen.dart';
 import '../screens/signup_screen.dart';
+import '../widgets/premium_dialog.dart';
 import '../widgets/web_auth_shell.dart';
+import '../widgets/premium_back_button.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? prefilledEmail;
@@ -260,20 +262,17 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title: const Text(
-            'Check Your Email',
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: 'Check Your Email',
+          icon: Icons.mark_email_unread_rounded,
+          iconColor: const Color(0xFF3EA6FF),
           content: const Text(
             'We\'ve sent a password reset link to your email address. Please check your inbox and follow the instructions to reset your password.',
-            style: TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumConfirmButton(
+              label: 'OK',
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK', style: TextStyle(color: Colors.orange)),
             ),
           ],
         );
@@ -742,25 +741,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (Navigator.of(context).canPop())
                         Align(
                           alignment: Alignment.topLeft,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.08),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.2),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: IconButton(
-                                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                  onPressed: _isLoading ? null : () => Navigator.pop(context),
-                                ),
-                              ),
-                            ),
+                          child: PremiumBackButton(
+                            onPressed: _isLoading ? null : () => Navigator.pop(context),
                           ),
                         )
                       else
@@ -825,9 +807,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                             child: Form(
                               key: _formKey,
-                              child: SingleChildScrollView(
+                              child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                     const SizedBox(height: 20),

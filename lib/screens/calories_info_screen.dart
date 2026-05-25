@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/premium_back_button.dart';
 
 class CaloriesInfoScreen extends StatelessWidget {
   const CaloriesInfoScreen({super.key});
@@ -10,8 +11,7 @@ class CaloriesInfoScreen extends StatelessWidget {
       appBar: AppBar(
         toolbarHeight: 80,
         backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+        leading: PremiumBackButton(
           onPressed: () {
             Navigator.pop(context);
           },

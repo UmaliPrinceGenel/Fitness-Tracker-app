@@ -9,6 +9,8 @@ import 'calories_info_screen.dart';
 import 'moving_info_screen.dart';
 import 'steps_info_screen.dart';
 import 'waist_measurement_info_screen.dart';
+import '../widgets/premium_dialog.dart';
+import '../widgets/premium_back_button.dart';
 import 'dart:ui' as ui;
 
 class DetailScreen extends StatefulWidget {
@@ -768,8 +770,7 @@ class _DetailScreenState extends State<DetailScreen> {
         appBar: AppBar(
           toolbarHeight: 80,
           backgroundColor: Colors.black,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+          leading: PremiumBackButton(
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
@@ -790,8 +791,7 @@ class _DetailScreenState extends State<DetailScreen> {
       appBar: AppBar(
         toolbarHeight: 80,
         backgroundColor: Colors.black,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+        leading: PremiumBackButton(
           onPressed: () {
             Navigator.pop(context);
           },
@@ -895,46 +895,68 @@ class _DetailScreenState extends State<DetailScreen> {
 
     final controller = TextEditingController(text: initialText);
 
+    IconData dialogIcon;
+    switch (widget.title) {
+      case "Weight":
+        dialogIcon = Icons.monitor_weight_rounded;
+        break;
+      case "Height":
+        dialogIcon = Icons.height_rounded;
+        break;
+      case "Waist Measurement":
+        dialogIcon = Icons.straighten_rounded;
+        break;
+      default:
+        dialogIcon = Icons.bedtime_rounded;
+        break;
+    }
+
     await showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: Text(
-            dialogTitle,
-            style: const TextStyle(color: Colors.white),
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        return PremiumDialog(
+          title: dialogTitle,
+          icon: dialogIcon,
+          iconColor: _getThemeColor(),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                  suffixText: _getUnit().isEmpty ? null : _getUnit(),
+                  suffixStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.04),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: _getThemeColor(), width: 1.5),
+                  ),
+                ),
+              ),
             ],
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: const TextStyle(color: Colors.white38),
-              suffixText: _getUnit().isEmpty ? null : _getUnit(),
-              suffixStyle: const TextStyle(color: Colors.white70),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white24),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _getThemeColor()),
-              ),
-            ),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.grey),
-              ),
             ),
-            TextButton(
+            PremiumConfirmButton(
+              label: "Save",
+              gradientColors: [_getThemeColor(), _getThemeColor().withOpacity(0.8)],
               onPressed: () async {
                 final value = double.tryParse(controller.text);
                 if (value == null || value <= 0) {
@@ -1016,10 +1038,6 @@ class _DetailScreenState extends State<DetailScreen> {
 
                 _refreshData();
               },
-              child: Text(
-                "Save",
-                style: TextStyle(color: _getThemeColor()),
-              ),
             ),
           ],
         );
@@ -1048,40 +1066,46 @@ class _DetailScreenState extends State<DetailScreen> {
     await showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            'Set Weight Goal',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Enter goal in kg',
-              hintStyle: const TextStyle(color: Colors.white38),
-              suffixText: 'kg',
-              suffixStyle: const TextStyle(color: Colors.white70),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white24),
+        return PremiumDialog(
+          title: 'Set Weight Goal',
+          icon: Icons.track_changes_rounded,
+          iconColor: const Color(0xFF2ECC71),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: 'Enter goal in kg',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                  suffixText: 'kg',
+                  suffixStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.04),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF2ECC71), width: 1.5),
+                  ),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.green),
-              ),
-            ),
+            ],
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
             ),
-            TextButton(
+            PremiumConfirmButton(
+              label: 'Save',
+              gradientColors: const [Color(0xFF2ECC71), Color(0xFF27AE60)],
               onPressed: () async {
                 final goal = double.tryParse(controller.text);
                 if (goal == null || goal <= 0 || goal > 500) {
@@ -1097,10 +1121,6 @@ class _DetailScreenState extends State<DetailScreen> {
                 Navigator.pop(context);
                 await _saveWeightGoal(goal);
               },
-              child: const Text(
-                'Save',
-                style: TextStyle(color: Colors.green),
-              ),
             ),
           ],
         );
@@ -1319,24 +1339,8 @@ class _DetailScreenState extends State<DetailScreen> {
         final hero = Container(
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.08),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Column(
             children: [
@@ -1344,8 +1348,9 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(1),
                 style: TextStyle(
                   color: const Color(0xFF4FC3F7),
-                  fontSize: isWideLayout ? 64 : 52,
-                  fontWeight: FontWeight.bold,
+                  fontSize: isWideLayout ? 110 : 96,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -2.0,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1545,24 +1550,8 @@ class _DetailScreenState extends State<DetailScreen> {
         final summaryCard = Container(
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.08),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Column(
             children: [
@@ -1570,8 +1559,9 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(1),
                 style: TextStyle(
                   color: Colors.green,
-                  fontSize: isWideLayout ? 64 : 52,
-                  fontWeight: FontWeight.bold,
+                  fontSize: isWideLayout ? 110 : 96,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -2.0,
                 ),
               ),
               const SizedBox(height: 8),
@@ -2032,24 +2022,8 @@ class _DetailScreenState extends State<DetailScreen> {
         final isWideLayout = kIsWeb && constraints.maxWidth >= 980;
         final summaryCard = Container(
           width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.08),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Padding(
             padding: EdgeInsets.all(isWideLayout ? 28.0 : 20.0),
@@ -2107,9 +2081,9 @@ class _DetailScreenState extends State<DetailScreen> {
                     _currentData.toStringAsFixed(1),
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isWideLayout ? 64 : 56,
+                      fontSize: isWideLayout ? 110 : 96,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: -1.5,
+                      letterSpacing: -2.0,
                     ),
                   ),
                 ),
@@ -2143,7 +2117,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   Colors.orange,
                                   Colors.deepOrange,
                                 ],
-                                stops: [0.14, 0.40, 0.60, 1.0],
+                                stops: [0.125, 0.375, 0.625, 0.875],
                               ),
                             ),
                           ),
@@ -2341,18 +2315,25 @@ class _DetailScreenState extends State<DetailScreen> {
         availableWidth ??
         (MediaQuery.of(context).size.width - 56); // Fallback for older callers
 
-    // BMI ranges from 15 to 40 for the scale
-    double clampedValue = _currentData.clamp(15.0, 40.0);
-    double percentage = (clampedValue - 15.0) / (40.0 - 15.0);
+    double percentage = 0.0;
+    final bmi = _currentData;
 
-    // Calculate position, but ensure it stays within bounds
+    if (bmi <= 15.0) {
+      percentage = 0.0;
+    } else if (bmi <= 18.5) {
+      percentage = 0.0 + 0.25 * (bmi - 15.0) / (18.5 - 15.0);
+    } else if (bmi <= 25.0) {
+      percentage = 0.25 + 0.25 * (bmi - 18.5) / (25.0 - 18.5);
+    } else if (bmi <= 30.0) {
+      percentage = 0.50 + 0.25 * (bmi - 25.0) / (30.0 - 25.0);
+    } else if (bmi <= 40.0) {
+      percentage = 0.75 + 0.25 * (bmi - 30.0) / (40.0 - 30.0);
+    } else {
+      percentage = 1.0;
+    }
+
     double position = percentage * scaleWidth;
-
-    // Ensure the arrow doesn't go off the edges
-    return position.clamp(
-      0.0,
-      scaleWidth - 30,
-    ); // 30 is approx half the arrow width
+    return position.clamp(0.0, scaleWidth);
   }
 
   // Helper method for BMI category rows
@@ -2392,24 +2373,8 @@ class _DetailScreenState extends State<DetailScreen> {
         final summaryCard = Container(
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.08),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2418,8 +2383,9 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(1),
                 style: TextStyle(
                   color: Colors.purple,
-                  fontSize: isWideLayout ? 64 : 52,
-                  fontWeight: FontWeight.bold,
+                  fontSize: isWideLayout ? 110 : 96,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -2.0,
                 ),
               ),
               const SizedBox(height: 8),
@@ -2652,21 +2618,8 @@ class _DetailScreenState extends State<DetailScreen> {
         final heroCard = Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(vertical: isWideLayout ? 24 : 16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2675,9 +2628,9 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(0),
                 style: TextStyle(
                   color: _getThemeColor(),
-                  fontSize: isWideLayout ? 68 : 60,
+                  fontSize: isWideLayout ? 110 : 96,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -1,
+                  letterSpacing: -2.0,
                 ),
               ),
               const SizedBox(height: 4),
@@ -3031,24 +2984,8 @@ class _DetailScreenState extends State<DetailScreen> {
         final summaryCard = Container(
           width: double.infinity,
           padding: EdgeInsets.all(isWideLayout ? 28 : 20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1F1F24), Color(0xFF141416)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.08),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+          decoration: const BoxDecoration(
+            color: Colors.transparent,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -3057,8 +2994,9 @@ class _DetailScreenState extends State<DetailScreen> {
                 _currentData.toStringAsFixed(1),
                 style: TextStyle(
                   color: Colors.blue,
-                  fontSize: isWideLayout ? 64 : 52,
-                  fontWeight: FontWeight.bold,
+                  fontSize: isWideLayout ? 110 : 96,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -2.0,
                 ),
               ),
               const SizedBox(height: 8),
@@ -4288,24 +4226,59 @@ class RealDataChartPainter extends CustomPainter {
       return;
     }
 
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final Color themeColor = color;
+
+    // Draw subtle horizontal dashed grid lines (3 rails)
+    final gridPaint = Paint()
+      ..color = Colors.white.withOpacity(0.04)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    
+    const double dashWidth = 4;
+    const double dashSpace = 4;
+    
+    void drawDashedLine(double y, {Paint? customPaint}) {
+      double startX = 0;
+      final paintToUse = customPaint ?? gridPaint;
+      while (startX < size.width) {
+        canvas.drawLine(
+          Offset(startX, y),
+          Offset(startX + dashWidth > size.width ? size.width : startX + dashWidth, y),
+          paintToUse,
+        );
+        startX += dashWidth + dashSpace;
+      }
+    }
+    
+    drawDashedLine(size.height * 0.15);
+    drawDashedLine(size.height * 0.5);
+    drawDashedLine(size.height * 0.85);
 
     // Calculate max value for scaling
     double maxValue = data.reduce((a, b) => a > b ? a : b);
     maxValue = maxValue > goal ? maxValue * 1.1 : goal * 1.1;
     if (maxValue == 0) maxValue = 1;
 
-    // Draw goal line
-    final goalPaint = Paint()
-      ..color = color.withOpacity(0.5)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-
-    double goalY = size.height - (goal / maxValue * size.height);
-    canvas.drawLine(Offset(0, goalY), Offset(size.width, goalY), goalPaint);
+    // Draw Goal horizontal line (represented as a clear colored dotted guide line)
+    if (goal > 0 && goal < maxValue) {
+      final goalPaint = Paint()
+        ..color = themeColor.withOpacity(0.4)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+      double goalY = size.height - (goal / maxValue * size.height);
+      drawDashedLine(goalY, customPaint: goalPaint);
+      
+      // Draw "Goal" label text near the end of the line
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: "Goal",
+          style: TextStyle(color: themeColor.withOpacity(0.6), fontSize: 9, fontWeight: FontWeight.bold),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(size.width - textPainter.width - 6, goalY - 14));
+    }
 
     // Draw data points and lines
     List<Offset> points = [];
@@ -4318,22 +4291,112 @@ class RealDataChartPainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // Draw line
-    if (points.length > 1) {
-      for (int i = 0; i < points.length - 1; i++) {
-        canvas.drawLine(points[i], points[i + 1], paint);
-      }
+    if (points.length == 1) {
+      // Draw centered glow dot with full width dashed baseline projection
+      final x = size.width / 2;
+      final y = size.height / 2;
+      final centerPoint = Offset(x, y);
+      
+      final baselinePaint = Paint()
+        ..color = themeColor.withOpacity(0.15)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+        
+      drawDashedLine(y, customPaint: baselinePaint);
+      
+      final gradient = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [themeColor.withOpacity(0.08), themeColor.withOpacity(0.01)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      
+      final path = Path()
+        ..moveTo(0, y)
+        ..lineTo(size.width, y)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
+      canvas.drawPath(path, Paint()..shader = gradient);
+      
+      canvas.drawCircle(centerPoint, 8, Paint()..color = themeColor.withOpacity(0.18));
+      canvas.drawCircle(centerPoint, 5, Paint()..color = themeColor..strokeWidth = 1.5..style = PaintingStyle.stroke);
+      canvas.drawCircle(centerPoint, 2.5, Paint()..color = Colors.white);
+      
+      // Draw single date label at the bottom center
+      String dateLabel = _getDateLabel(dates.first);
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: dateLabel,
+          style: const TextStyle(color: Colors.white70, fontSize: 10),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(x - textPainter.width / 2, size.height - 15),
+      );
+      return;
     }
 
-    // Draw points and date labels
-    final textStyle = ui.TextStyle(color: Colors.white70, fontSize: 10);
+    // Draw Bezier Line
+    final linePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      path.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    canvas.drawPath(path, linePaint);
+
+    // Draw area under curve with a premium gradient fade
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [themeColor.withOpacity(0.24), themeColor.withOpacity(0.01)],
+    ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final fillPath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = points[i];
+      final p1 = points[i + 1];
+      final controlPoint1 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p0.dy);
+      final controlPoint2 = Offset(p0.dx + (p1.dx - p0.dx) / 2, p1.dy);
+      fillPath.cubicTo(
+        controlPoint1.dx, controlPoint1.dy,
+        controlPoint2.dx, controlPoint2.dy,
+        p1.dx, p1.dy,
+      );
+    }
+    fillPath.lineTo(points.last.dx, size.height);
+    fillPath.lineTo(points.first.dx, size.height);
+    fillPath.close();
+    canvas.drawPath(fillPath, Paint()..shader = gradient);
+
+    // Draw glowing data points & date labels
+    final pointGlowPaint = Paint()..color = themeColor.withOpacity(0.18);
+    final pointStrokePaint = Paint()
+      ..color = themeColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final pointCorePaint = Paint()..color = Colors.white;
 
     for (int i = 0; i < points.length; i++) {
-      Offset point = points[i];
-
-      // Draw point
-      canvas.drawCircle(point, 4, paint);
-      canvas.drawCircle(point, 2, Paint()..color = Colors.black);
+      final point = points[i];
+      canvas.drawCircle(point, 8, pointGlowPaint);
+      canvas.drawCircle(point, 5, pointStrokePaint);
+      canvas.drawCircle(point, 2.5, pointCorePaint);
 
       // Draw date label for every point or every other point depending on density
       if (data.length <= 7 || i % 2 == 0 || i == data.length - 1) {
@@ -4341,7 +4404,7 @@ class RealDataChartPainter extends CustomPainter {
         final textPainter = TextPainter(
           text: TextSpan(
             text: dateLabel,
-            style: TextStyle(color: Colors.white70, fontSize: 10),
+            style: const TextStyle(color: Colors.white70, fontSize: 10),
           ),
           textDirection: ui.TextDirection.ltr,
         );
@@ -4351,23 +4414,6 @@ class RealDataChartPainter extends CustomPainter {
           Offset(point.dx - textPainter.width / 2, size.height - 15),
         );
       }
-    }
-
-    // Draw area under curve
-    if (points.length > 1) {
-      final gradient = LinearGradient(
-        colors: [color.withOpacity(0.4), color.withOpacity(0.1)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-      Path path = Path();
-      path.moveTo(points[0].dx, points[0].dy);
-      for (int i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
-      }
-      path.lineTo(points.last.dx, size.height);
-      path.lineTo(points.first.dx, size.height);
-      path.close();
-      canvas.drawPath(path, Paint()..shader = gradient);
     }
   }
 

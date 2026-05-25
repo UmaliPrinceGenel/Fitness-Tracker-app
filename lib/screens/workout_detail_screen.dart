@@ -6,6 +6,8 @@ import '../models/workout_model.dart';
 import '../services/journey_progress_service.dart';
 import '../services/workout_goal_service.dart';
 import 'exercise_detail_screen.dart';
+import '../widgets/premium_dialog.dart';
+import '../widgets/premium_back_button.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final Workout workout;
@@ -211,8 +213,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           backgroundColor: Colors.black,
           leading: _isSavingWorkoutCompletion
               ? null
-              : IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+              : PremiumBackButton(
                   onPressed: () async {
                     bool shouldPop = await _onBackPressed();
                     if (shouldPop) {
@@ -924,40 +925,32 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       return await showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: const Text(
-              "Workout in Progress",
-              style: TextStyle(color: Colors.white),
-            ),
+          return PremiumDialog(
+            title: "Workout in Progress",
+            icon: Icons.warning_amber_rounded,
+            iconColor: const Color(0xFFFF9800),
             content: const Text(
               "You have a workout in progress. Are you sure you want to exit? Your progress will not be saved.",
-              style: TextStyle(color: Colors.white70),
             ),
             actions: [
-              TextButton(
+              PremiumCancelButton(
+                label: "Cancel",
                 onPressed: () {
-                  Navigator.of(context).pop(false); // Don't pop the screen
+                  Navigator.of(context).pop(false);
                 },
-                child: const Text(
-                  "Cancel",
-                  style: TextStyle(color: Colors.grey),
-                ),
               ),
-              TextButton(
+              PremiumConfirmButton(
+                label: "Exit",
+                gradientColors: const [Color(0xFFFF9800), Color(0xFFFF5722)],
                 onPressed: () {
                   _cancelWorkoutSession();
-                  Navigator.of(context).pop(true); // Pop the screen
+                  Navigator.of(context).pop(true);
                 },
-                child: const Text(
-                  "Exit",
-                  style: TextStyle(color: Colors.orange),
-                ),
               ),
             ],
           );
         },
-      ) ?? false; // Return false if dialog is dismissed
+      ) ?? false;
     }
 
     // If no workout is in progress, allow normal exit
@@ -1328,25 +1321,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       await showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: const Text(
-              "Exercise Input Required",
-              style: TextStyle(color: Colors.white),
-            ),
+          return PremiumDialog(
+            title: "Exercise Input Required",
+            icon: Icons.info_outline_rounded,
+            iconColor: const Color(0xFF3EA6FF),
             content: Text(
               "Please complete reps, sets, and weight where needed before finishing the workout. ${widget.workout.exerciseList.length - _completedExerciseDraftCount()} exercises are still incomplete.",
-              style: const TextStyle(color: Colors.white70),
             ),
             actions: [
-              TextButton(
+              PremiumConfirmButton(
+                label: "OK",
                 onPressed: () {
                   Navigator.of(context).pop(); // Close dialog
                 },
-                child: const Text(
-                  "OK",
-                  style: TextStyle(color: Colors.orange),
-                ),
               ),
             ],
           );
@@ -1365,18 +1352,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            "Congratulations!",
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Congratulations!",
+          icon: Icons.emoji_events_rounded,
+          iconColor: const Color(0xFFFFD700),
           content: Text(
             "Great job completing the ${widget.workout.title} workout in ${_formatSecondsToMinutes(actualDurationSeconds)}! Your progress has been saved.",
-            style: const TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumConfirmButton(
+              label: "OK",
+              gradientColors: const [Color(0xFFFFD700), Color(0xFFFF8C00)],
               onPressed: _isSavingWorkoutCompletion
                   ? null
                   : () async {
@@ -1388,10 +1374,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       Navigator.of(context).pop(); // Close dialog
                       await _saveWorkoutCompletion();
                     },
-              child: const Text(
-                "OK",
-                style: TextStyle(color: Colors.orange),
-              ),
             ),
           ],
         );
@@ -1404,35 +1386,26 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            "Start Workout Again?",
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Start Workout Again?",
+          icon: Icons.refresh_rounded,
+          iconColor: const Color(0xFF3EA6FF),
           content: const Text(
             "Are you sure you want to start this workout again?",
-            style: TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
+              label: "Cancel",
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog and do nothing
               },
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.grey),
-              ),
             ),
-            TextButton(
+            PremiumConfirmButton(
+              label: "Yes",
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
                 _beginWorkoutSession();
               },
-              child: const Text(
-                "Yes",
-                style: TextStyle(color: Colors.orange),
-              ),
             ),
           ],
         );
@@ -1798,25 +1771,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFF191919),
-            title: const Text(
-              "Error",
-              style: TextStyle(color: Colors.white),
-            ),
+          return PremiumDialog(
+            title: "Error",
+            icon: Icons.error_outline_rounded,
+            iconColor: const Color(0xFFFF4B4B),
             content: const Text(
               "There was an error saving your workout progress. Please try again.",
-              style: TextStyle(color: Colors.white70),
             ),
             actions: [
-              TextButton(
+              PremiumConfirmButton(
+                label: "OK",
+                gradientColors: const [Color(0xFFFF4B4B), Color(0xFFFF7B7B)],
                 onPressed: () {
                   Navigator.of(context).pop(); // Close dialog
                 },
-                child: const Text(
-                  "OK",
-                  style: TextStyle(color: Colors.orange),
-                ),
               ),
             ],
           );
@@ -1926,25 +1894,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           showDialog(
             context: context,
             builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: const Color(0xFF191919),
-                title: const Text(
-                  "Workout Reset",
-                  style: TextStyle(color: Colors.white),
-                ),
+              return PremiumDialog(
+                title: "Workout Reset",
+                icon: Icons.check_circle_outline_rounded,
+                iconColor: const Color(0xFF3EA6FF),
                 content: const Text(
                   "Workout status has been reset successfully.",
-                  style: TextStyle(color: Colors.white70),
                 ),
                 actions: [
-                  TextButton(
+                  PremiumConfirmButton(
+                    label: "OK",
                     onPressed: () {
                       Navigator.of(context).pop(); // Close dialog
                     },
-                    child: const Text(
-                      "OK",
-                      style: TextStyle(color: Colors.orange),
-                    ),
                   ),
                 ],
               );
@@ -1960,25 +1922,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         showDialog(
           context: context,
           builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF191919),
-              title: const Text(
-                "Error",
-                style: TextStyle(color: Colors.white),
-              ),
+            return PremiumDialog(
+              title: "Error",
+              icon: Icons.error_outline_rounded,
+              iconColor: const Color(0xFFFF4B4B),
               content: const Text(
                 "There was an error resetting your workout progress. Please try again.",
-                style: TextStyle(color: Colors.white70),
               ),
               actions: [
-                TextButton(
+                PremiumConfirmButton(
+                  label: "OK",
+                  gradientColors: const [Color(0xFFFF4B4B), Color(0xFFFF7B7B)],
                   onPressed: () {
                     Navigator.of(context).pop(); // Close dialog
                   },
-                  child: const Text(
-                    "OK",
-                    style: TextStyle(color: Colors.orange),
-                  ),
                 ),
               ],
             );
@@ -1993,35 +1950,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF191919),
-          title: const Text(
-            "Reset Workout Status",
-            style: TextStyle(color: Colors.white),
-          ),
+        return PremiumDialog(
+          title: "Reset Workout Status",
+          icon: Icons.restart_alt_rounded,
+          iconColor: const Color(0xFFFF9800),
           content: Text(
             "Are you sure you want to reset the status for ${widget.workout.title}? This will mark the workout as not completed.",
-            style: const TextStyle(color: Colors.white70),
           ),
           actions: [
-            TextButton(
+            PremiumCancelButton(
+              label: "Cancel",
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog without resetting
               },
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.grey),
-              ),
             ),
-            TextButton(
+            PremiumConfirmButton(
+              label: "Reset",
+              gradientColors: const [Color(0xFFFF9800), Color(0xFFFF5722)],
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
                 await _resetWorkoutCompletion(); // Reset the workout status
               },
-              child: const Text(
-                "Reset",
-                style: TextStyle(color: Colors.orange),
-              ),
             ),
           ],
         );
