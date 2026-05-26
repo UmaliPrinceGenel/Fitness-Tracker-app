@@ -674,6 +674,11 @@ class _HealthDashboardState extends State<HealthDashboard>
 
         if (weight != null && weight != _weight) {
           await _firestore.collection('users').doc(user.uid).set({
+            'profile': {
+              'weight': weight,
+              'bmi': _bmi,
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
             'profile.weight': weight,
             'profile.bmi': _bmi,
             'profile.lastUpdated': FieldValue.serverTimestamp(),
@@ -1707,6 +1712,11 @@ class _HealthDashboardState extends State<HealthDashboard>
 
           // Update user profile with height AND recalculated BMI
           await _firestore.collection('users').doc(user.uid).set({
+            'profile': {
+              'height': newValue,
+              'bmi': _bmi,
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
             'profile.height': newValue,
             'profile.bmi': _bmi,
             'profile.lastUpdated': FieldValue.serverTimestamp(),
@@ -1737,6 +1747,12 @@ class _HealthDashboardState extends State<HealthDashboard>
 
           // Update user profile with weight AND recalculated BMI
           await _firestore.collection('users').doc(user.uid).set({
+            'profile': {
+              'weight': newValue,
+              'height': _height,
+              'bmi': _bmi, // Use the locally calculated BMI
+              'lastUpdated': FieldValue.serverTimestamp(),
+            },
             'profile.weight': newValue,
             'profile.height': _height,
             'profile.bmi': _bmi, // Use the locally calculated BMI

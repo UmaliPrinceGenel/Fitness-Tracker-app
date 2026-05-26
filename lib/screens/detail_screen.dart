@@ -1195,6 +1195,12 @@ class _DetailScreenState extends State<DetailScreen> {
           }, SetOptions(merge: true));
 
       await _firestore.collection('users').doc(user.uid).set({
+        'profile': {
+          'weight': _weight,
+          'height': newValue,
+          'bmi': updatedBmi,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
         'profile.weight': _weight,
         'profile.height': newValue,
         'profile.bmi': updatedBmi,
@@ -1236,6 +1242,12 @@ class _DetailScreenState extends State<DetailScreen> {
 
       // Update in user profile with dot notation to avoid overwriting the whole profile map
       await _firestore.collection('users').doc(user.uid).set({
+        'profile': {
+          'weight': newValue,
+          'height': _height,
+          'bmi': updatedBmi,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        },
         'profile.weight': newValue,
         'profile.height': _height,
         'profile.bmi': updatedBmi,

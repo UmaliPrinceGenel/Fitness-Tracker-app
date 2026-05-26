@@ -161,6 +161,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
                 }, SetOptions(merge: true));
 
             await _firestore.collection('users').doc(user.uid).set({
+              'profile': {
+                'weight': currentWeight,
+                'height': value,
+                'bmi': updatedHeightBmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              },
               'profile.weight': currentWeight,
               'profile.height': value,
               'profile.bmi': updatedHeightBmi,
@@ -213,6 +219,12 @@ class _AddDataScreenState extends State<AddDataScreen> {
 
             // Update in user profile with dot notation to avoid overwriting the whole profile map
             await _firestore.collection('users').doc(user.uid).set({
+              'profile': {
+                'weight': value,
+                'height': currentHeight,
+                'bmi': updatedBmi,
+                'lastUpdated': FieldValue.serverTimestamp(),
+              },
               'profile.weight': value,
               'profile.height': currentHeight,
               'profile.bmi': updatedBmi,
