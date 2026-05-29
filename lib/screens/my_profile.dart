@@ -1529,62 +1529,60 @@ class _MyProfileState extends State<MyProfile> {
                                 ),
                               ),
 
-                              // ✅ LOGOUT BUTTON - Mobile + web-mobile view
-                              if (!kIsWeb || MediaQuery.of(context).size.width < 800) ...[
-                                const SizedBox(height: 14),
-                                Center(
-                                  child: Container(
-                                    width: 220,
-                                    margin: const EdgeInsets.only(bottom: 20),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
+                              // ✅ LOGOUT BUTTON - Always visible on Profile page
+                              const SizedBox(height: 14),
+                              Center(
+                                child: Container(
+                                  width: 220,
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFE53935).withOpacity(0.25),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
                                       ),
-                                      borderRadius: BorderRadius.circular(28),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFFE53935).withOpacity(0.25),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
+                                    ],
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: _logout,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 18,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(28),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.logout_rounded, size: 20, color: Colors.white),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          "Logout",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    child: ElevatedButton(
-                                      onPressed: _logout,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.transparent,
-                                        shadowColor: Colors.transparent,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 18,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(28),
-                                        ),
-                                      ),
-                                      child: const Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.logout_rounded, size: 20, color: Colors.white),
-                                          SizedBox(width: 10),
-                                          Text(
-                                            "Logout",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                   ),
                                 ),
-                              ],
+                              ),
 
                               const SizedBox(height: 120), // Added padding to clear the bottom navigation bar
                             ],

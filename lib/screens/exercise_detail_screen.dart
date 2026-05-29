@@ -1507,31 +1507,45 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          automaticallyImplyLeading: false,
-          leading:
-              widget.isPreviewMode ||
-                  widget.isReadOnlyMode ||
-                  widget.exerciseNumber == 1
-              ? PremiumBackButton(
-                  onPressed: () async {
-                    final shouldPop = await _handleBackNavigation();
-                    if (shouldPop && mounted) {
-                      Navigator.pop(context);
-                    }
-                  },
-                )
-              : null,
-          title: Text(
-            exercise.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(80),
+          child: Container(
+            color: Colors.black,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isWebLayout ? 1400.0 : MediaQuery.of(context).size.width,
+                ),
+                child: AppBar(
+                  backgroundColor: Colors.black,
+                  automaticallyImplyLeading: false,
+                  elevation: 0,
+                  leading:
+                      widget.isPreviewMode ||
+                          widget.isReadOnlyMode ||
+                          widget.exerciseNumber == 1
+                      ? PremiumBackButton(
+                          onPressed: () async {
+                            final shouldPop = await _handleBackNavigation();
+                            if (shouldPop && mounted) {
+                              Navigator.pop(context);
+                            }
+                          },
+                        )
+                      : null,
+                  title: Text(
+                    exercise.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  centerTitle: true,
+                ),
+              ),
             ),
           ),
-          centerTitle: true,
         ),
         body: _isLoadingData
             ? const Center(

@@ -300,25 +300,28 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final bool isDesktop = kIsWeb && MediaQuery.of(context).size.width >= 980;
     return Scaffold(
       backgroundColor: colors.scaffold,
-      appBar: AppBar(
-        backgroundColor: colors.scaffold,
-        toolbarHeight: 80,
-        title: Padding(
-          padding: const EdgeInsets.only(top: 20),
-          child: Text(
-            "Community",
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 34,
-              fontWeight: FontWeight.w900,
+      appBar: isDesktop
+          ? null
+          : AppBar(
+              backgroundColor: colors.scaffold,
+              toolbarHeight: 80,
+              title: Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Text(
+                  "Community",
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              centerTitle: false,
+              automaticallyImplyLeading: false,
             ),
-          ),
-        ),
-        centerTitle: false,
-        automaticallyImplyLeading: false,
-      ),
       body: Stack(
         children: [
           SafeArea(
@@ -637,6 +640,17 @@ class _CommunityScreenState extends State<CommunityScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 20.0, left: 16.0),
+                                      child: Text(
+                                        "Community",
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 34,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
                                     Container(
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.04),
@@ -1531,7 +1545,7 @@ class _PostCardState extends State<PostCard>
                 return Container(
                   margin: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                   width: double.infinity,
-                  height: 300.0,
+                  height: MediaQuery.of(context).size.width >= 980 ? 500.0 : 300.0,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     color: Colors.black,

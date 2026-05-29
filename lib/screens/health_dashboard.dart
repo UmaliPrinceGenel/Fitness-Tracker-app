@@ -73,11 +73,13 @@ class _HealthDashboardState extends State<HealthDashboard>
 
 
   late final PageController _pageController;
+  late final PageController _webPageController;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
+    _webPageController = PageController(initialPage: _selectedIndex);
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _checkDailyReset();
@@ -764,6 +766,7 @@ class _HealthDashboardState extends State<HealthDashboard>
   @override
   void dispose() {
     _pageController.dispose();
+    _webPageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -792,13 +795,22 @@ class _HealthDashboardState extends State<HealthDashboard>
     setState(() {
       _selectedIndex = index;
     });
-    // Also animate the PageController for the mobile layout.
-    // On desktop the PageView is not rendered, so this is a no-op there.
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.fastOutSlowIn,
-    );
+    // Also animate the PageController for the mobile layout if it is attached.
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.fastOutSlowIn,
+      );
+    }
+    // Also animate the PageController for the desktop layout if it is attached.
+    if (_webPageController.hasClients) {
+      _webPageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.fastOutSlowIn,
+      );
+    }
     if (index == 0) {
       _loadUserData();
     }
@@ -811,16 +823,6 @@ class _HealthDashboardState extends State<HealthDashboard>
     });
   }
 
-  Future<void> _logoutFromDashboard() async {
-    await _auth.signOut();
-    if (!mounted) return;
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
-    );
-  }
-
   Widget _buildWebDashboard() {
     final colors = AppColors.of(context);
     return Scaffold(
@@ -830,19 +832,58 @@ class _HealthDashboardState extends State<HealthDashboard>
           children: [
             Padding(
               padding: const EdgeInsets.all(8),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _WebDashboardSidebar(
-                    selectedIndex: _selectedIndex,
-                    onItemSelected: _onItemTapped,
-                    onLogout: _logoutFromDashboard,
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800),
+                      child: _WebDashboardNavbar(
+                        selectedIndex: _selectedIndex,
+                        onItemSelected: _onItemTapped,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: _buildWebMainPanel(),
+                      child: PageView(
+                        controller: _webPageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onPageChanged: (index) {
+                          setState(() {
+                            _selectedIndex = index;
+                          });
+                          if (index == 0) {
+                            _loadUserData();
+                          }
+                        },
+                        children: [
+                          KeepAlivePage(child: _buildWebHealthPanel()),
+                          KeepAlivePage(
+                            child: _buildWebWideCenteredPanel(
+                              WorkoutScreen(
+                                showChatbot: false,
+                                onDataChanged: _handleHealthDataChanged,
+                              ),
+                            ),
+                          ),
+                          KeepAlivePage(
+                            child: _buildWebCenteredPanel(
+                              const CommunityScreen(showChatbot: false),
+                            ),
+                          ),
+                          KeepAlivePage(
+                            child: _buildWebCenteredPanel(
+                              MyProfile(
+                                refreshVersion: _profileRefreshVersion,
+                                showChatbot: false,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -855,29 +896,18 @@ class _HealthDashboardState extends State<HealthDashboard>
     );
   }
 
-  Widget _buildWebMainPanel() {
-    switch (_selectedIndex) {
-      case 0:
-        return _buildWebHealthPanel();
-      case 1:
-        return WorkoutScreen(
-          showChatbot: false,
-          onDataChanged: _handleHealthDataChanged,
-        );
-      case 2:
-        return _buildWebCenteredPanel(
-          const CommunityScreen(showChatbot: false),
-        );
-      case 3:
-        return _buildWebCenteredPanel(
-          MyProfile(
-            refreshVersion: _profileRefreshVersion,
-            showChatbot: false,
-          ),
-        );
-      default:
-        return _buildWebHealthPanel();
-    }
+  /// Wraps a screen in a wide centered, max-width container for desktop web.
+  Widget _buildWebWideCenteredPanel(Widget child) {
+    return Container(
+      color: Colors.black,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1150),
+          child: child,
+        ),
+      ),
+    );
   }
 
   /// Wraps a screen in a centered, max-width container for desktop web.
@@ -901,50 +931,56 @@ class _HealthDashboardState extends State<HealthDashboard>
     final colors = AppColors.of(context);
     return Container(
       color: colors.scaffold,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final bool stacked = constraints.maxWidth < 1080;
-            final Widget leftColumn = _buildWebHealthLeftColumn(constraints);
-            final Widget rightColumn = _buildWebHealthRightColumn();
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1150),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final bool stacked = constraints.maxWidth < 1080;
+                final Widget leftColumn = _buildWebHealthLeftColumn(constraints);
+                final Widget rightColumn = _buildWebHealthRightColumn();
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Health',
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: stacked
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              leftColumn,
-                              const SizedBox(height: 20),
-                              rightColumn,
-                            ],
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(flex: 8, child: leftColumn),
-                              const SizedBox(width: 18),
-                              Expanded(flex: 9, child: rightColumn),
-                            ],
-                          ),
-                  ),
-                ),
-              ],
-            );
-          },
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Health',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: stacked
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  leftColumn,
+                                  const SizedBox(height: 20),
+                                  rightColumn,
+                                ],
+                              )
+                            : Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(flex: 8, child: leftColumn),
+                                  const SizedBox(width: 18),
+                                  Expanded(flex: 9, child: rightColumn),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -1832,97 +1868,105 @@ class DailyActivity {
   }
 }
 
-class _WebDashboardSidebar extends StatelessWidget {
-  const _WebDashboardSidebar({
+class _WebDashboardNavbar extends StatelessWidget {
+  const _WebDashboardNavbar({
     required this.selectedIndex,
     required this.onItemSelected,
-    required this.onLogout,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onItemSelected;
-  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 280,
+      height: 60,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFF050505),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
-        child: Column(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
           children: [
-            Container(
-              width: 86,
-              height: 86,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white12),
-              ),
-              child: ClipOval(
-                child: Image.asset('assets/logo.jpg', fit: BoxFit.cover),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Rockies\nFitness',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: 26),
-            Container(height: 1, color: Colors.white12),
-            const SizedBox(height: 18),
-            _WebSidebarItem(
-              icon: Icons.favorite_border,
-              label: 'Health',
-              selected: selectedIndex == 0,
-              onTap: () => onItemSelected(0),
-            ),
-            _WebSidebarItem(
-              icon: Icons.directions_run,
-              label: 'Workout',
-              selected: selectedIndex == 1,
-              onTap: () => onItemSelected(1),
-            ),
-            _WebSidebarItem(
-              icon: Icons.groups_outlined,
-              label: 'Community',
-              selected: selectedIndex == 2,
-              onTap: () => onItemSelected(2),
-            ),
-            _WebSidebarItem(
-              icon: Icons.person_outline,
-              label: 'Profile',
-              selected: selectedIndex == 3,
-              onTap: () => onItemSelected(3),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onLogout,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white12),
-                  backgroundColor: const Color(0xFF111111),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            // Left menu: Health, Workout
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _WebNavbarItem(
+                    icon: Icons.favorite_border,
+                    label: 'Health',
+                    selected: selectedIndex == 0,
+                    onTap: () => onItemSelected(0),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  const SizedBox(width: 16),
+                  _WebNavbarItem(
+                    icon: Icons.directions_run,
+                    label: 'Workout',
+                    selected: selectedIndex == 1,
+                    onTap: () => onItemSelected(1),
+                  ),
+                  const SizedBox(width: 24),
+                ],
+              ),
+            ),
+            // Center logo
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24, width: 1.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.2),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset('assets/logo.jpg', fit: BoxFit.cover),
+                  ),
                 ),
-                child: const Text(
-                  'Log out',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                const SizedBox(width: 10),
+                const Text(
+                  'Rockies Fitness',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
                 ),
+              ],
+            ),
+            // Right menu: Community, Profile
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const SizedBox(width: 24),
+                  _WebNavbarItem(
+                    icon: Icons.groups_outlined,
+                    label: 'Community',
+                    selected: selectedIndex == 2,
+                    onTap: () => onItemSelected(2),
+                  ),
+                  const SizedBox(width: 16),
+                  _WebNavbarItem(
+                    icon: Icons.person_outline,
+                    label: 'Profile',
+                    selected: selectedIndex == 3,
+                    onTap: () => onItemSelected(3),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1932,8 +1976,8 @@ class _WebDashboardSidebar extends StatelessWidget {
   }
 }
 
-class _WebSidebarItem extends StatelessWidget {
-  const _WebSidebarItem({
+class _WebNavbarItem extends StatelessWidget {
+  const _WebNavbarItem({
     required this.icon,
     required this.label,
     required this.selected,
@@ -1947,40 +1991,41 @@ class _WebSidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-            child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: selected ? Colors.white10 : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(30),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white.withOpacity(0.08) : Colors.transparent,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: selected ? Colors.white.withOpacity(0.12) : Colors.transparent,
+              width: 1,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: selected ? Colors.orange : Colors.white70,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
                   color: selected ? Colors.white : Colors.white70,
-                  size: 24,
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: 0.3,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: selected ? Colors.white : Colors.white70,
-                      fontSize: 18,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -2317,24 +2362,29 @@ class _DraggableCardGridState extends State<_DraggableCardGrid> {
         final isVerySmallScreen = screenWidth < 430;
         final isWideScreen = screenWidth >= 1100;
         final isMediumScreen = screenWidth >= 700;
-        final crossAxisCount = isWideScreen
-            ? 4
-            : isMediumScreen
-                ? 2
-                : isVerySmallScreen
-                    ? 1
-                    : 2;
+        final bool isDesktop = kIsWeb && MediaQuery.of(context).size.width >= 800;
+        final crossAxisCount = isDesktop
+            ? 1
+            : (isWideScreen
+                ? 4
+                : isMediumScreen
+                    ? 2
+                    : isVerySmallScreen
+                        ? 1
+                        : 2);
         final spacing = isWideScreen ? 14.0 : isMediumScreen ? 12.0 : 8.0;
         final double cardWidth =
             (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
             crossAxisCount;
-        final childAspectRatio = isWideScreen
-            ? 1.4
-            : isMediumScreen
-                ? 1.15
-                : isVerySmallScreen
-                    ? 2.2
-                    : 1.0;
+        final childAspectRatio = isDesktop
+            ? 3.4
+            : (isWideScreen
+                ? 1.4
+                : isMediumScreen
+                    ? 1.15
+                    : isVerySmallScreen
+                        ? 2.2
+                        : 1.0);
         final double cardHeight = cardWidth / childAspectRatio;
 
         return GridView.builder(

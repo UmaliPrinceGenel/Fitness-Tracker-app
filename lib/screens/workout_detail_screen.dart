@@ -208,28 +208,42 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       onWillPop: _onBackPressed,
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          toolbarHeight: 80,
-          backgroundColor: Colors.black,
-          leading: _isSavingWorkoutCompletion
-              ? null
-              : PremiumBackButton(
-                  onPressed: () async {
-                    bool shouldPop = await _onBackPressed();
-                    if (shouldPop) {
-                      Navigator.pop(context);
-                    }
-                  },
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(80),
+          child: Container(
+            color: Colors.black,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isTabletLayout ? contentMaxWidth : screenWidth,
                 ),
-          title: Text(
-            widget.workout.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+                child: AppBar(
+                  toolbarHeight: 80,
+                  backgroundColor: Colors.black,
+                  elevation: 0,
+                  leading: _isSavingWorkoutCompletion
+                      ? null
+                      : PremiumBackButton(
+                          onPressed: () async {
+                            bool shouldPop = await _onBackPressed();
+                            if (shouldPop) {
+                              Navigator.pop(context);
+                            }
+                          },
+                        ),
+                  title: Text(
+                    widget.workout.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  centerTitle: true,
+                ),
+              ),
             ),
           ),
-          centerTitle: true,
         ),
         body: SafeArea(
           child: Align(

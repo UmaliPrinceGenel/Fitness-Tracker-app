@@ -764,18 +764,38 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final useWebDesktopLayout = kIsWeb && screenWidth >= 980;
+    final contentMaxWidth = useWebDesktopLayout
+        ? (screenWidth >= 1280 ? 1180.0 : screenWidth)
+        : screenWidth;
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          toolbarHeight: 80,
-          backgroundColor: Colors.black,
-          leading: PremiumBackButton(
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            widget.title,
-            style: const TextStyle(color: Colors.white),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(80),
+          child: Container(
+            color: Colors.black,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: useWebDesktopLayout ? contentMaxWidth : screenWidth,
+                ),
+                child: AppBar(
+                  toolbarHeight: 80,
+                  backgroundColor: Colors.black,
+                  elevation: 0,
+                  leading: PremiumBackButton(
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: Text(
+                    widget.title,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
         body: const Center(
@@ -788,24 +808,38 @@ class _DetailScreenState extends State<DetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        toolbarHeight: 80,
-        backgroundColor: Colors.black,
-        leading: PremiumBackButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(
-          widget.title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: Container(
+          color: Colors.black,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: useWebDesktopLayout ? contentMaxWidth : screenWidth,
+              ),
+              child: AppBar(
+                toolbarHeight: 80,
+                backgroundColor: Colors.black,
+                elevation: 0,
+                leading: PremiumBackButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+                title: Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                centerTitle: true,
+                actions: _buildAppBarActions(),
+              ),
+            ),
           ),
         ),
-        centerTitle: true,
-        actions: _buildAppBarActions(),
       ),
       body: SafeArea(
         child: LayoutBuilder(
